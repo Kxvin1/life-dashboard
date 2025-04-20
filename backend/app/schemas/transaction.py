@@ -6,7 +6,6 @@ from app.models.transaction import TransactionType, PaymentMethod
 class TransactionBase(BaseModel):
     amount: float
     description: str
-    category: str
     date: date
     type: TransactionType
     payment_method: PaymentMethod

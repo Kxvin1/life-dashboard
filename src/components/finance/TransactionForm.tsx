@@ -7,14 +7,14 @@ interface TransactionFormProps {
   onTransactionAdded: () => void;
 }
 
-export type TransactionType = 'INCOME' | 'EXPENSE';
-export type PaymentMethod = 'CASH' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'BANK_TRANSFER' | 'OTHER';
+export type TransactionType = 'income' | 'expense';
+export type PaymentMethod = 'cash' | 'credit_card' | 'debit_card' | 'bank_transfer' | 'other';
 
 const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState<number>(0);
   const [description, setDescription] = useState('');
-  const [type, setType] = useState<TransactionType>('EXPENSE');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
+  const [type, setType] = useState<TransactionType>('expense');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -26,14 +26,14 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
 
     try {
       const token = Cookies.get('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          amount: parseFloat(amount),
+          amount: parseFloat(amount.toString()),
           description,
           type,
           payment_method: paymentMethod,
@@ -45,7 +45,7 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
         throw new Error('Failed to create transaction');
       }
 
-      setAmount('');
+      setAmount(0);
       setDescription('');
       onTransactionAdded();
     } catch (error) {
@@ -59,77 +59,69 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
-          Amount
-        </label>
+        <label htmlFor="amount" className="block text-sm font-medium text-gray-700">Amount</label>
         <input
           type="number"
           id="amount"
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
+          step="0.01"
+          min="0"
+          className="mt-1 block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
         />
       </div>
 
       <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-          Description
-        </label>
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
         <input
           type="text"
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          className="mt-1 block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
         />
       </div>
 
       <div>
-        <label htmlFor="type" className="block text-sm font-medium text-gray-700">
-          Type
-        </label>
+        <label htmlFor="type" className="block text-sm font-medium text-gray-700">Type</label>
         <select
           id="type"
           value={type}
           onChange={(e) => setType(e.target.value as TransactionType)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+          className="mt-1 block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
         >
-          <option value="INCOME">Income</option>
-          <option value="EXPENSE">Expense</option>
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
         </select>
       </div>
 
       <div>
-        <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700">
-          Payment Method
-        </label>
+        <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700">Payment Method</label>
         <select
           id="paymentMethod"
           value={paymentMethod}
           onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+          className="mt-1 block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
         >
-          <option value="CASH">Cash</option>
-          <option value="CREDIT_CARD">Credit Card</option>
-          <option value="DEBIT_CARD">Debit Card</option>
-          <option value="BANK_TRANSFER">Bank Transfer</option>
-          <option value="OTHER">Other</option>
+          <option value="cash">Cash</option>
+          <option value="credit_card">Credit Card</option>
+          <option value="debit_card">Debit Card</option>
+          <option value="bank_transfer">Bank Transfer</option>
+          <option value="other">Other</option>
         </select>
       </div>
 
       <div>
-        <label htmlFor="date" className="block text-sm font-medium text-gray-700">
-          Date
-        </label>
+        <label htmlFor="date" className="block text-sm font-medium text-gray-700">Date</label>
         <input
           type="date"
           id="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
+          className="mt-1 block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
         />
       </div>
 

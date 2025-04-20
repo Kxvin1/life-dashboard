@@ -7,12 +7,9 @@ interface Transaction {
   id: number;
   amount: number;
   description: string;
-  category: string;
   date: string;
-  type: 'INCOME' | 'EXPENSE';
-  payment_method: string;
-  is_recurring: boolean;
-  recurring_frequency: string | null;
+  type: 'income' | 'expense';
+  payment_method: 'cash' | 'credit_card' | 'debit_card' | 'bank_transfer' | 'other';
   notes: string | null;
 }
 
@@ -24,7 +21,7 @@ const TransactionList = () => {
   const fetchTransactions = async () => {
     try {
       const token = Cookies.get('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -55,13 +52,13 @@ const TransactionList = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const formatAmount = (amount: number, type: 'INCOME' | 'EXPENSE') => {
+  const formatAmount = (amount: number, type: 'income' | 'expense') => {
     const formattedAmount = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
     }).format(amount);
     
-    return type === 'INCOME' ? formattedAmount : `-${formattedAmount}`;
+    return type === 'income' ? formattedAmount : `-${formattedAmount}`;
   };
 
   const formatPaymentMethod = (method: string) => {
@@ -89,13 +86,12 @@ const TransactionList = () => {
   }
 
   return (
-    <div className="bg-white shadow rounded-lg overflow-hidden">
+    <div className="overflow-hidden">
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
           </tr>
@@ -103,26 +99,18 @@ const TransactionList = () => {
         <tbody className="bg-white divide-y divide-gray-200">
           {transactions.map((transaction) => (
             <tr key={transaction.id} className="hover:bg-gray-50">
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 {formatDate(transaction.date)}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 {transaction.description}
-                {transaction.is_recurring && (
-                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                    Recurring
-                  </span>
-                )}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {transaction.category}
               </td>
               <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                transaction.type === 'INCOME' ? 'text-green-600' : 'text-red-600'
+                transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
               }`}>
                 {formatAmount(transaction.amount, transaction.type)}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 {formatPaymentMethod(transaction.payment_method)}
               </td>
             </tr>
@@ -133,4 +121,4 @@ const TransactionList = () => {
   );
 };
 
-export default TransactionList; 
+export default TransactionList;

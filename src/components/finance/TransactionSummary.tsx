@@ -18,7 +18,7 @@ const TransactionSummaryComponent = () => {
   const fetchSummary = async () => {
     try {
       const token = Cookies.get('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/summary`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/summary/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -70,21 +70,21 @@ const TransactionSummaryComponent = () => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div className="bg-white p-6 rounded-lg shadow">
+      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
         <div className="text-sm font-medium text-gray-500">Total Income</div>
         <div className="mt-2 text-3xl font-semibold text-green-600">
           {formatAmount(summary.total_income)}
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow">
+      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
         <div className="text-sm font-medium text-gray-500">Total Expenses</div>
         <div className="mt-2 text-3xl font-semibold text-red-600">
           {formatAmount(summary.total_expenses)}
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow">
+      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
         <div className="text-sm font-medium text-gray-500">Net Income</div>
         <div className={`mt-2 text-3xl font-semibold ${
           summary.net_income >= 0 ? 'text-green-600' : 'text-red-600'
@@ -93,7 +93,7 @@ const TransactionSummaryComponent = () => {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow">
+      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
         <div className="text-sm font-medium text-gray-500">Total Transactions</div>
         <div className="mt-2 text-3xl font-semibold text-blue-600">
           {summary.transaction_count}

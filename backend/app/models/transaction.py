@@ -21,7 +21,6 @@ class Transaction(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     amount = Column(Float, nullable=False)
     description = Column(String, nullable=False)
-    category = Column(String, nullable=False)
     date = Column(Date, nullable=False)
     type = Column(Enum(TransactionType), nullable=False)
     payment_method = Column(Enum(PaymentMethod), nullable=False)
