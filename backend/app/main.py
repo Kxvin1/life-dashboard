@@ -12,10 +12,14 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Temporarily allow all origins
+    allow_origins=[
+        "http://localhost:3000",
+        "https://life-dashboard-hxv8qc7ih-kxvin1s-projects.vercel.app",
+        "https://life-dashboard.vercel.app"
+    ],
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
     expose_headers=["*"],
     max_age=600
 )
