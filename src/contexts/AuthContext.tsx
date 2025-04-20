@@ -96,6 +96,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       const data = await response.json();
+      console.log('Login response data:', data);
       Cookies.set('token', data.access_token, { expires: 7 });
       await fetchUser();
       router.push('/dashboard');
@@ -120,22 +121,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         credentials: 'include',
       });
 
-      console.log('Registration response status:', response.status);
-      const responseText = await response.text();
-      console.log('Registration response text:', responseText);
-
       if (!response.ok) {
-        let errorMessage = 'Registration failed';
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.detail || errorMessage;
-        } catch (e) {
-          console.error('Error parsing error response:', e);
-        }
-        throw new Error(errorMessage);
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Registration failed');
       }
 
-      const data = JSON.parse(responseText);
+      const data = await response.json();
       Cookies.set('token', data.access_token, { expires: 7 });
       await fetchUser();
       router.push('/dashboard');
@@ -148,6 +139,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const fetchUser = async () => {
     try {
       const token = Cookies.get('token');
+      console.log('Fetching user with token:', token);
       if (!token) return;
 
       const response = await fetch(getApiUrl('/api/v1/auth/me'), {
@@ -162,6 +154,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       const userData = await response.json();
+      console.log('User data received:', userData);
       setUser(userData);
       setIsAuthenticated(true);
     } catch (error) {
