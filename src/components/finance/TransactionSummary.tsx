@@ -15,7 +15,6 @@ const TransactionSummaryComponent = () => {
   const [summary, setSummary] = useState<TransactionSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
 
   const fetchSummary = async () => {
     try {

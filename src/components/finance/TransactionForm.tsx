@@ -8,15 +8,14 @@ interface TransactionFormProps {
   onTransactionAdded: () => void;
 }
 
-export type TransactionType = 'income' | 'expense';
-export type PaymentMethod = 'cash' | 'credit_card' | 'debit_card' | 'bank_transfer' | 'other';
+export type TransactionType = 'INCOME' | 'EXPENSE';
+export type PaymentMethod = 'CASH' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'BANK_TRANSFER' | 'OTHER';
 
 const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
-  const { user } = useAuth();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [type, setType] = useState<TransactionType>('expense');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [type, setType] = useState<TransactionType>('EXPENSE');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -98,8 +97,8 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
           onChange={(e) => setType(e.target.value as TransactionType)}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
         >
-          <option value="income">Income</option>
-          <option value="expense">Expense</option>
+          <option value="INCOME">Income</option>
+          <option value="EXPENSE">Expense</option>
         </select>
       </div>
 
@@ -113,11 +112,11 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
           onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
         >
-          <option value="cash">Cash</option>
-          <option value="credit_card">Credit Card</option>
-          <option value="debit_card">Debit Card</option>
-          <option value="bank_transfer">Bank Transfer</option>
-          <option value="other">Other</option>
+          <option value="CASH">Cash</option>
+          <option value="CREDIT_CARD">Credit Card</option>
+          <option value="DEBIT_CARD">Debit Card</option>
+          <option value="BANK_TRANSFER">Bank Transfer</option>
+          <option value="OTHER">Other</option>
         </select>
       </div>
 

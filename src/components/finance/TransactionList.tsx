@@ -17,11 +17,7 @@ interface Transaction {
   notes: string | null;
 }
 
-interface TransactionListProps {
-  onTransactionDeleted?: () => void;
-}
-
-const TransactionList = ({ onTransactionDeleted }: TransactionListProps) => {
+const TransactionList = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
