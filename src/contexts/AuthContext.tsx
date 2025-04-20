@@ -36,6 +36,7 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -73,9 +74,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const login = async (email: string, password: string) => {
     try {
-      setIsLoading(true);
-      setError(null);
-      
       const formData = new URLSearchParams();
       formData.append('username', email);
       formData.append('password', password);
@@ -86,6 +84,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: formData,
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -94,50 +93,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       const data = await response.json();
-      Cookies.set('token', data.access_token, { expires: 7 }); // Token expires in 7 days
-      
-      // Get user data
-      const userResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${data.access_token}`,
-        },
-      });
-
-      if (!userResponse.ok) {
-        throw new Error('Failed to get user data');
-      }
-
-      const userData = await userResponse.json();
-      setUser(userData);
+      Cookies.set('token', data.access_token, { expires: 7 });
+      await fetchUser();
       router.push('/dashboard');
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else if (typeof err === 'string') {
-        setError(err);
-      } else {
-        setError('An unexpected error occurred');
-      }
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     }
   };
 
   const register = async (email: string, password: string, name: string) => {
     try {
-      setIsLoading(true);
-      setError(null);
-      
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password,
-          full_name: name,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name }),
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -145,17 +116,39 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         throw new Error(errorData.detail || 'Registration failed');
       }
 
+      const data = await response.json();
+      Cookies.set('token', data.access_token, { expires: 7 });
+      await fetchUser();
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
+  };
+
+  const fetchUser = async () => {
+    try {
+      const token = Cookies.get('token');
+      if (!token) return;
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch user data');
+      }
+
       const userData = await response.json();
       setUser(userData);
-      router.push('/login');
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else if (typeof err === 'string') {
-        setError(err);
-      } else {
-        setError('An unexpected error occurred');
-      }
+      setIsAuthenticated(true);
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      setUser(null);
+      setIsAuthenticated(false);
     } finally {
       setIsLoading(false);
     }
@@ -169,7 +162,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const value = {
     user,
-    isAuthenticated: !!user,
+    isAuthenticated,
     isLoading,
     error,
     login,

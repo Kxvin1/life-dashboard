@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ENVIRONMENT: str = "development"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 300
+    FRONTEND_URL: str = "http://localhost:3000"  # Default to localhost in development
     
     class Config:
         env_file = ".env"
