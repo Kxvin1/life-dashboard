@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     SECRET_KEY: str
     ENVIRONMENT: str = "development"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 300
     
     class Config:
         env_file = ".env"
