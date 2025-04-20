@@ -1,5 +1,5 @@
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -8,14 +8,23 @@ from app.core.security import create_access_token, get_password_hash, verify_pas
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.auth import UserCreate, Token, User as UserSchema
+import logging
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
 @router.post("/register", response_model=Token)
-async def register(user_data: UserCreate, response: Response, db: Session = Depends(get_db)):
+async def register(request: Request, user_data: UserCreate, response: Response, db: Session = Depends(get_db)):
+    # Log the request body
+    body = await request.body()
+    logging.info(f"Received registration request with body: {body.decode()}")
+    
+    # Log the parsed user data
+    logging.info(f"Parsed user data: {user_data.dict()}")
+    
     db_user = db.query(User).filter(User.email == user_data.email).first()
     if db_user:
+        logging.warning(f"Registration attempt with existing email: {user_data.email}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
