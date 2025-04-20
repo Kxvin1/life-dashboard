@@ -120,12 +120,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         credentials: 'include',
       });
 
+      console.log('Registration response status:', response.status);
+      const responseText = await response.text();
+      console.log('Registration response text:', responseText);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Registration failed');
+        let errorMessage = 'Registration failed';
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.detail || errorMessage;
+        } catch (e) {
+          console.error('Error parsing error response:', e);
+        }
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
+      const data = JSON.parse(responseText);
       Cookies.set('token', data.access_token, { expires: 7 });
       await fetchUser();
       router.push('/dashboard');
