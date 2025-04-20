@@ -16,7 +16,9 @@ app.add_middleware(
         settings.FRONTEND_URL,
         settings.FRONTEND_URL.rstrip('/'),
         "http://localhost:3000",
-        "https://life-dashboard-eta.vercel.app"
+        "https://life-dashboard-eta.vercel.app",
+        "https://life-dashboard-ckeingbma-kxvin1s-projects.vercel.app",
+        "https://*.vercel.app"  # This will allow any Vercel deployment
     ] if settings.ENVIRONMENT == "production" else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
