@@ -13,19 +13,19 @@ router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
 @router.post("/register", response_model=Token)
-async def register(user: UserCreate, response: Response, db: Session = Depends(get_db)):
-    db_user = db.query(User).filter(User.email == user.email).first()
+async def register(user_data: UserCreate, response: Response, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.email == user_data.email).first()
     if db_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
     
-    hashed_password = get_password_hash(user.password)
+    hashed_password = get_password_hash(user_data.password)
     db_user = User(
-        email=user.email,
+        email=user_data.email,
         hashed_password=hashed_password,
-        full_name=user.full_name
+        full_name=user_data.full_name
     )
     db.add(db_user)
     db.commit()
@@ -33,7 +33,7 @@ async def register(user: UserCreate, response: Response, db: Session = Depends(g
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
+        data={"sub": user_data.email}, expires_delta=access_token_expires
     )
     
     response.headers["Access-Control-Allow-Credentials"] = "true"
