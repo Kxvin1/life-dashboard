@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import Cookies from 'js-cookie';
 
 interface TransactionFormProps {
