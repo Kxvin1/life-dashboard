@@ -18,10 +18,10 @@ const TransactionSummaryComponent = () => {
   const fetchSummary = async () => {
     try {
       const token = Cookies.get('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/transactions/summary/`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/summary`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+        },
       });
 
       if (!response.ok) {

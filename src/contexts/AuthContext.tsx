@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const token = Cookies.get('token');
     if (token) {
       // Get user data
-      fetch(process.env.NEXT_PUBLIC_AUTH_ME_URL!, {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -80,7 +80,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       formData.append('username', email);
       formData.append('password', password);
 
-      const response = await fetch(process.env.NEXT_PUBLIC_AUTH_LOGIN_URL!, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       Cookies.set('token', data.access_token, { expires: 7 }); // Token expires in 7 days
       
       // Get user data
-      const userResponse = await fetch(process.env.NEXT_PUBLIC_AUTH_ME_URL!, {
+      const userResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/me`, {
         headers: {
           'Authorization': `Bearer ${data.access_token}`,
         },
@@ -128,7 +128,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch(process.env.NEXT_PUBLIC_AUTH_REGISTER_URL!, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -24,7 +24,7 @@ const TransactionList = () => {
   const fetchTransactions = async () => {
     try {
       const token = Cookies.get('token');
-      const response = await fetch('http://localhost:8000/api/transactions', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
