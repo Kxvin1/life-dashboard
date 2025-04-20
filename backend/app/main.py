@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api import transactions
+from app.api import transactions, health
 
 app = FastAPI(
     title="Finance Tracker API",
@@ -20,7 +20,8 @@ app.add_middleware(
 
 # Include routers
 app.include_router(transactions.router, prefix="/api/v1", tags=["transactions"])
+app.include_router(health.router, tags=["health"])
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Finance Tracker API"} 
+    return {"message": "Welcome to Finance Tracker API", "status": "healthy"} 
