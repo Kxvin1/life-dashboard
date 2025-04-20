@@ -96,8 +96,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       const data = await response.json();
-      console.log('Login response data:', data);
-      Cookies.set('token', data.access_token, { expires: 7 });
+      Cookies.set('token', data.access_token, { 
+        expires: 7,
+        secure: true,
+        sameSite: 'lax',
+        path: '/'
+      });
       await fetchUser();
       router.push('/dashboard');
     } catch (error) {
@@ -127,7 +131,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       const data = await response.json();
-      Cookies.set('token', data.access_token, { expires: 7 });
+      Cookies.set('token', data.access_token, { 
+        expires: 7,
+        secure: true,
+        sameSite: 'lax',
+        path: '/'
+      });
       await fetchUser();
       router.push('/dashboard');
     } catch (error) {
