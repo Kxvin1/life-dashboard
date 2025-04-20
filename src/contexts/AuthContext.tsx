@@ -107,10 +107,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const register = async (email: string, password: string, name: string) => {
     try {
+      const formData = new URLSearchParams();
+      formData.append('email', email);
+      formData.append('password', password);
+      formData.append('name', name);
+
       const response = await fetch(getApiUrl('/api/v1/auth/register'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name }),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData,
         credentials: 'include',
       });
 
