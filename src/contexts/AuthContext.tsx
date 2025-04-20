@@ -70,13 +70,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }, []);
 
+  const getApiUrl = (endpoint: string) => {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
+    return `${baseUrl}${endpoint}`;
+  };
+
   const login = async (email: string, password: string) => {
     try {
       const formData = new URLSearchParams();
       formData.append('username', email);
       formData.append('password', password);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`, {
+      const response = await fetch(getApiUrl('/api/v1/auth/login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -102,7 +107,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const register = async (email: string, password: string, name: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`, {
+      const response = await fetch(getApiUrl('/api/v1/auth/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, name }),
@@ -129,7 +134,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const token = Cookies.get('token');
       if (!token) return;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/me`, {
+      const response = await fetch(getApiUrl('/api/v1/auth/me'), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

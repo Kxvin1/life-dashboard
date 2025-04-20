@@ -12,10 +12,16 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL] if settings.ENVIRONMENT == "production" else ["*"],
+    allow_origins=[
+        settings.FRONTEND_URL,
+        settings.FRONTEND_URL.rstrip('/'),
+        "http://localhost:3000",
+        "https://life-dashboard-eta.vercel.app"
+    ] if settings.ENVIRONMENT == "production" else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # Include routers
