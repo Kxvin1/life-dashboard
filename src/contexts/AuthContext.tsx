@@ -110,7 +110,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const formData = new URLSearchParams();
       formData.append('email', email);
       formData.append('password', password);
-      formData.append('name', name);
+      formData.append('full_name', name);
 
       const response = await fetch(getApiUrl('/api/v1/auth/register'), {
         method: 'POST',
