@@ -90,8 +90,9 @@ const RegisterForm = () => {
           </div>
 
           <div className="text-sm text-center">
-            <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
-              Already have an account? Sign in here
+          <span className="text-black">Already have an account? </span>
+            <Link href="/login" className="text-md text-blue-600 hover:text-blue-400">
+              Sign In
             </Link>
           </div>
         </form>
