@@ -19,10 +19,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # First, ensure all categories are set to expense
-    op.execute("UPDATE categories SET type = 'expense'")
-    
-    # Then, set the income categories
+    # Update income categories
     op.execute("""
         UPDATE categories 
         SET type = 'income' 
@@ -31,5 +28,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Revert all categories back to expense
-    op.execute("UPDATE categories SET type = 'expense'") 
+    # Revert income categories back to expense
+    op.execute("""
+        UPDATE categories 
+        SET type = 'expense' 
+        WHERE name IN ('Employment', 'Business', 'Investment', 'Rental', 'Other')
+    """) 
