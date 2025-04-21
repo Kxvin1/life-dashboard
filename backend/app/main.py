@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from app.core.config import settings
 from app.api import transactions_router, health_router, auth_router, categories_router
-from app.db.seed_categories import seed_categories
+from app.db.seed_categories import seed_categories, verify_categories
+import asyncio
 
 app = FastAPI(
     title="Finance Tracker API",
@@ -11,10 +12,10 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Seed categories on startup
+# Verify categories in background after startup
 @app.on_event("startup")
 async def startup_event():
-    seed_categories()
+    asyncio.create_task(verify_categories())
 
 # Configure CORS
 app.add_middleware(
@@ -55,4 +56,12 @@ app.include_router(health_router, tags=["health"])
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Finance Tracker API", "status": "healthy"} 
+    return {"message": "Welcome to Finance Tracker API", "status": "healthy"}
+
+@app.post("/api/v1/seed-categories")
+async def seed_categories_endpoint():
+    try:
+        seed_categories()
+        return {"message": "Categories seeded successfully"}
+    except Exception as e:
+        return {"message": f"Error seeding categories: {str(e)}", "status": "error"} 

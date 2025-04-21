@@ -2,13 +2,13 @@ from sqlalchemy.orm import Session
 from app.db.database import SessionLocal, Base, engine
 from app.models.transaction import TransactionType
 from app.models.category import Category
+import asyncio
 
 def seed_categories():
-    # Create all tables
-    Base.metadata.create_all(bind=engine)
-    
-    db = SessionLocal()
+    """Idempotent function to ensure categories exist with correct types"""
     try:
+        db = SessionLocal()
+        
         # Default expense categories
         expense_categories = [
             {"name": "Housing", "type": TransactionType.expense},
@@ -35,21 +35,27 @@ def seed_categories():
         # Update or create categories
         for category_data in expense_categories + income_categories:
             if category_data["name"] in existing_categories:
-                # Update existing category
+                # Only update if type is incorrect
                 existing_category = existing_categories[category_data["name"]]
-                existing_category.type = category_data["type"]
+                if existing_category.type != category_data["type"]:
+                    existing_category.type = category_data["type"]
             else:
                 # Create new category
                 category = Category(**category_data)
                 db.add(category)
 
         db.commit()
-        print("Successfully updated categories")
+        print("Categories verified/updated successfully")
     except Exception as e:
-        print(f"Error updating categories: {e}")
+        print(f"Error verifying/updating categories: {e}")
         db.rollback()
     finally:
         db.close()
+
+async def verify_categories():
+    """Async wrapper to run category verification in background"""
+    await asyncio.sleep(5)  # Wait 5 seconds after startup
+    seed_categories()
 
 if __name__ == "__main__":
     seed_categories() 
