@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
 import { Transaction } from '@/types/finance';
-
+import { sortTransactionsByDate } from '@/lib/utils';
 const TransactionList = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,7 +25,9 @@ const TransactionList = () => {
       }
 
       const data = await response.json();
-      setTransactions(data);
+      // Sort transactions by date in descending order (newest first)
+      const sortedTransactions = sortTransactionsByDate(data);
+      setTransactions(sortedTransactions);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);

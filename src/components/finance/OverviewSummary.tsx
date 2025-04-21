@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
 import { formatCurrency } from '@/lib/utils';
 import { Transaction } from '@/types/finance';
+import { sortTransactionsByDate } from '@/lib/utils';
 
 interface MonthlySummary {
   income: number;
@@ -80,7 +81,9 @@ export default function OverviewSummary({ year, month, categoryId, viewMode, onM
 
         if (!transactionsResponse.ok) throw new Error('Failed to fetch transactions');
         const transactionsData = await transactionsResponse.json();
-        setTransactions(transactionsData);
+        // Sort transactions by date in descending order (newest first)
+        const sortedTransactions = sortTransactionsByDate(transactionsData);
+        setTransactions(sortedTransactions);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch data');
       } finally {
