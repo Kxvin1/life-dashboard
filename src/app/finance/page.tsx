@@ -13,16 +13,17 @@ const FinancePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Finance Dashboard</h1>
-          <p className="mt-2 text-gray-600">Track your income and expenses</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="bg-white/70 backdrop-blur-lg rounded-2xl border border-white/20 shadow-xl p-8">
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900">Finance Dashboard</h1>
+          <p className="mt-2 text-base text-gray-600 leading-relaxed">Track your income and expenses</p>
         </div>
 
         {/* Transaction Summary */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Summary</h2>
+        <div className="bg-white/70 backdrop-blur-lg rounded-2xl border border-white/20 shadow-xl p-8">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-6">Summary</h2>
           <TransactionSummary 
             key={`summary-${refreshKey}`}
             year={new Date().getFullYear()}
@@ -32,14 +33,14 @@ const FinancePage = () => {
         </div>
 
         {/* Transaction Form */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Add Transaction</h2>
+        <div className="bg-white/70 backdrop-blur-lg rounded-2xl border border-white/20 shadow-xl p-8">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-6">Add Transaction</h2>
           <TransactionForm onTransactionAdded={handleTransactionAdded} />
         </div>
 
         {/* Transaction List */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Transactions</h2>
+        <div className="bg-white/70 backdrop-blur-lg rounded-2xl border border-white/20 shadow-xl p-8">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-6">Recent Transactions</h2>
           <TransactionList key={`list-${refreshKey}`} />
         </div>
       </div>

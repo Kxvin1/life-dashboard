@@ -93,14 +93,11 @@ export default function OverviewSummary({ year, month, categoryId, viewMode, onM
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="space-y-3">
-            <div className="h-4 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded"></div>
-          </div>
+      <div className="bg-white/70 backdrop-blur-lg rounded-2xl border border-white/20 shadow-xl p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-200 rounded"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
         </div>
       </div>
     );
@@ -108,7 +105,7 @@ export default function OverviewSummary({ year, month, categoryId, viewMode, onM
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="bg-white/70 backdrop-blur-lg rounded-2xl border border-white/20 shadow-xl p-6">
         <div className="text-red-600">Error: {error}</div>
       </div>
     );
@@ -119,93 +116,99 @@ export default function OverviewSummary({ year, month, categoryId, viewMode, onM
       if (month) {
         const monthData = monthlyData[month] || { income: 0, expense: 0, net: 0 };
         return (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">
-                {new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
-              </h2>
-              <button
-                onClick={() => onMonthSelect(0)}
-                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <svg className="h-4 w-4 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Back to All Months
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-green-50 rounded-lg p-6 border border-green-100">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Income</h3>
-                <p className="text-3xl font-bold text-green-600">{formatCurrency(monthData.income)}</p>
+          <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100/10 backdrop-blur-sm">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
+                </h2>
+                <button
+                  onClick={() => onMonthSelect(0)}
+                  className="inline-flex items-center px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover text-white font-medium transition-colors duration-200 shadow-sm hover:shadow-md active:scale-95 transform"
+                >
+                  <svg className="h-4 w-4 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Back to All Months
+                </button>
               </div>
-              <div className="bg-red-50 rounded-lg p-6 border border-red-100">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Expenses</h3>
-                <p className="text-3xl font-bold text-red-600">{formatCurrency(monthData.expense)}</p>
-              </div>
-              <div className={`rounded-lg p-6 border ${monthData.net >= 0 ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Net</h3>
-                <p className={`text-3xl font-bold ${monthData.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(monthData.net)}
-                </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="bg-green-50 rounded-lg p-6 border border-green-100">
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Income</h3>
+                  <p className="text-3xl font-bold text-green-600">{formatCurrency(monthData.income)}</p>
+                </div>
+                <div className="bg-red-50 rounded-lg p-6 border border-red-100">
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Expenses</h3>
+                  <p className="text-3xl font-bold text-red-600">{formatCurrency(monthData.expense)}</p>
+                </div>
+                <div className={`rounded-lg p-6 border ${monthData.net >= 0 ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
+                  <h3 className="text-sm font-medium text-gray-500 mb-1">Net</h3>
+                  <p className={`text-3xl font-bold ${monthData.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatCurrency(monthData.net)}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         );
       } else {
         return (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">{year} Monthly Overview</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {Object.entries(monthlyData).map(([monthNum, data]) => (
-                <div 
-                  key={monthNum} 
-                  className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => onMonthSelect(Number(monthNum))}
-                >
-                  <h3 className="text-lg font-medium text-gray-900 mb-3">
-                    {new Date(year, Number(monthNum) - 1).toLocaleString('default', { month: 'long' })}
-                  </h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-500">Income</span>
-                      <span className="text-green-600 font-medium">{formatCurrency(data.income)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-500">Expenses</span>
-                      <span className="text-red-600 font-medium">{formatCurrency(data.expense)}</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-                      <span className="text-sm font-medium text-gray-700">Net</span>
-                      <span className={`font-medium ${data.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(data.net)}
-                      </span>
+          <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100/10 backdrop-blur-sm">
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">{year} Monthly Overview</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {Object.entries(monthlyData).map(([monthNum, data]) => (
+                  <div 
+                    key={monthNum} 
+                    className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => onMonthSelect(Number(monthNum))}
+                  >
+                    <h3 className="text-lg font-medium text-gray-900 mb-3">
+                      {new Date(year, Number(monthNum) - 1).toLocaleString('default', { month: 'long' })}
+                    </h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-500">Income</span>
+                        <span className="text-green-600 font-medium">{formatCurrency(data.income)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-500">Expenses</span>
+                        <span className="text-red-600 font-medium">{formatCurrency(data.expense)}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                        <span className="text-sm font-medium text-gray-700">Net</span>
+                        <span className={`font-medium ${data.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatCurrency(data.net)}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         );
       }
     } else {
       return (
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">{year} Yearly Overview</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-green-50 rounded-lg p-6 border border-green-100">
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Total Income</h3>
-              <p className="text-3xl font-bold text-green-600">{formatCurrency(yearlyData?.total_income || 0)}</p>
-            </div>
-            <div className="bg-red-50 rounded-lg p-6 border border-red-100">
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Total Expenses</h3>
-              <p className="text-3xl font-bold text-red-600">{formatCurrency(yearlyData?.total_expense || 0)}</p>
-            </div>
-            <div className={`rounded-lg p-6 border ${(yearlyData?.net_income || 0) >= 0 ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
-              <h3 className="text-sm font-medium text-gray-500 mb-1">Net Income</h3>
-              <p className={`text-3xl font-bold ${(yearlyData?.net_income || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(yearlyData?.net_income || 0)}
-              </p>
+        <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100/10 backdrop-blur-sm">
+          <div className="p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">{year} Yearly Overview</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-green-50 rounded-lg p-6 border border-green-100">
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Total Income</h3>
+                <p className="text-3xl font-bold text-green-600">{formatCurrency(yearlyData?.total_income || 0)}</p>
+              </div>
+              <div className="bg-red-50 rounded-lg p-6 border border-red-100">
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Total Expenses</h3>
+                <p className="text-3xl font-bold text-red-600">{formatCurrency(yearlyData?.total_expense || 0)}</p>
+              </div>
+              <div className={`rounded-lg p-6 border ${(yearlyData?.net_income || 0) >= 0 ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
+                <h3 className="text-sm font-medium text-gray-500 mb-1">Net Income</h3>
+                <p className={`text-3xl font-bold ${(yearlyData?.net_income || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(yearlyData?.net_income || 0)}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -216,8 +219,10 @@ export default function OverviewSummary({ year, month, categoryId, viewMode, onM
   const renderTransactions = () => {
     if (transactions.length === 0) {
       return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <p className="text-gray-500 text-center">No transactions found</p>
+        <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100/10 backdrop-blur-sm">
+          <div className="p-6">
+            <p className="text-gray-500 text-center">No transactions found</p>
+          </div>
         </div>
       );
     }
@@ -232,8 +237,10 @@ export default function OverviewSummary({ year, month, categoryId, viewMode, onM
 
     if (filteredTransactions.length === 0) {
       return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <p className="text-gray-500 text-center">No transactions found for the selected month</p>
+        <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100/10 backdrop-blur-sm">
+          <div className="p-6">
+            <p className="text-gray-500 text-center">No transactions found for the selected month</p>
+          </div>
         </div>
       );
     }
@@ -244,7 +251,7 @@ export default function OverviewSummary({ year, month, categoryId, viewMode, onM
     const paginatedTransactions = filteredTransactions.slice(startIndex, startIndex + transactionsPerPage);
 
     return (
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100/10 backdrop-blur-sm">
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Transaction History</h2>
@@ -352,8 +359,10 @@ export default function OverviewSummary({ year, month, categoryId, viewMode, onM
 
   return (
     <div className="space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
       {renderSummary()}
       {renderTransactions()}
+      </div>
     </div>
   );
 } 
