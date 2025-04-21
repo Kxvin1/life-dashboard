@@ -72,8 +72,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const getApiUrl = (endpoint: string) => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
-    return `${baseUrl}${endpoint}`;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+    return `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
   };
 
   const login = async (email: string, password: string) => {
