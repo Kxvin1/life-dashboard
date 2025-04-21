@@ -1,26 +1,52 @@
+'use client';
+
+import { useAuth } from '@/contexts/AuthContext';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Layout from '@/components/layout/Layout';
 
-export default function Home() {
+const HomePage = () => {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div>Loading...</div>
+      </Layout>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <Layout>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Recent Transactions</h2>
-            <p className="text-gray-500">No transactions yet. Add your first transaction to get started!</p>
-          </div>
-        </div>
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Add Transaction</h2>
-            <p className="text-gray-500">Transaction form will go here</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Summary</h2>
-            <p className="text-gray-500">Financial summary will go here</p>
+      <div className="min-h-screen bg-gray-100">
+        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="px-4 py-6 sm:px-0">
+            <div className="bg-white shadow rounded-lg p-6">
+              <h1 className="text-2xl font-bold text-gray-900 mb-4">Dashboard</h1>
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-lg font-medium text-gray-900">Your Profile</h2>
+                  <p className="mt-1 text-sm text-gray-500">Email: {user?.email}</p>
+                  <p className="mt-1 text-sm text-gray-500">Name: {user?.full_name}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </Layout>
   );
-}
+};
+
+export default HomePage;

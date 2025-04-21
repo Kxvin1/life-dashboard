@@ -17,7 +17,7 @@ const Navbar = () => {
           <div className="flex">
             <div className="flex space-x-8">
               <Link 
-                href="/dashboard" 
+                href="/" 
                 className="inline-flex items-center px-1 pt-1 text-gray-900 hover:text-gray-500"
               >
                 Home
@@ -26,7 +26,7 @@ const Navbar = () => {
                 href="/finance" 
                 className="inline-flex items-center px-1 pt-1 text-gray-900 hover:text-gray-500"
               >
-                Finance
+                Income/Expense Tracker
               </Link>
             </div>
           </div>
