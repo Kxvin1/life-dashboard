@@ -26,7 +26,7 @@ const Navbar = () => {
                 href="/finance" 
                 className="inline-flex items-center px-1 pt-1 text-gray-900 hover:text-gray-500"
               >
-                Income/Expense Tracker
+                Add Income/Expense
               </Link>
             </div>
           </div>
