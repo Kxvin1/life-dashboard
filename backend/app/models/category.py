@@ -8,7 +8,7 @@ class Category(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, nullable=False)
-    type = Column(Enum(TransactionType), nullable=False)
+    type = Column(Enum(TransactionType, name='transaction_type'), nullable=False)
 
     # Relationship with transactions
     transactions = relationship("Transaction", back_populates="category", lazy="dynamic") 
