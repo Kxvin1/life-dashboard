@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Cookies from 'js-cookie';
-import CategorySelect, { Category } from './CategorySelect';
+import CategorySelect from './CategorySelect';
 
 interface TransactionFormProps {
   onTransactionAdded: () => void;
