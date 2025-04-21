@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import OverviewSummary from '@/components/finance/OverviewSummary';
 import CategorySelect from '@/components/finance/CategorySelect';
-import { TransactionType } from '@/types/transaction';
 
 export default function OverviewPage() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -14,6 +13,11 @@ export default function OverviewPage() {
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
+
+  const handleMonthSelect = (month: number) => {
+    setSelectedMonth(month);
+    setViewMode('monthly');
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -116,6 +120,7 @@ export default function OverviewPage() {
           month={selectedMonth}
           categoryId={selectedCategory}
           viewMode={viewMode}
+          onMonthSelect={handleMonthSelect}
         />
       </div>
     </div>

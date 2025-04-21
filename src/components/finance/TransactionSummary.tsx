@@ -16,11 +16,17 @@ interface YearlySummary {
   net_income: number;
 }
 
-export default function TransactionSummary() {
+interface TransactionSummaryProps {
+  year: number;
+  month: number | null;
+  categoryId: number | null;
+  viewMode: 'monthly' | 'yearly';
+}
+
+export default function TransactionSummary({ year, month, categoryId, viewMode }: TransactionSummaryProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [monthlyData, setMonthlyData] = useState<Record<number, MonthlySummary>>({});
-  const [yearlyData, setYearlyData] = useState<YearlySummary | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -28,10 +34,9 @@ export default function TransactionSummary() {
         setLoading(true);
         setError(null);
         const token = Cookies.get('token');
-        const currentYear = new Date().getFullYear();
         
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/summaries/monthly?year=${currentYear}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/summaries/monthly?year=${year}${month ? `&month=${month}` : ''}${categoryId ? `&category_id=${categoryId}` : ''}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -50,7 +55,7 @@ export default function TransactionSummary() {
     };
 
     fetchData();
-  }, []);
+  }, [year, month, categoryId]);
 
   if (loading) {
     return (

@@ -9,6 +9,7 @@ interface OverviewSummaryProps {
   month: number | null;
   categoryId: number | null;
   viewMode: 'monthly' | 'yearly';
+  onMonthSelect: (month: number) => void;
 }
 
 interface MonthlySummary {
@@ -36,12 +37,14 @@ interface Transaction {
   } | null;
 }
 
-export default function OverviewSummary({ year, month, categoryId, viewMode }: OverviewSummaryProps) {
+export default function OverviewSummary({ year, month, categoryId, viewMode, onMonthSelect }: OverviewSummaryProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [monthlyData, setMonthlyData] = useState<Record<number, MonthlySummary>>({});
   const [yearlyData, setYearlyData] = useState<YearlySummary | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const transactionsPerPage = 10;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -129,9 +132,20 @@ export default function OverviewSummary({ year, month, categoryId, viewMode }: O
         const monthData = monthlyData[month] || { income: 0, expense: 0, net: 0 };
         return (
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              {new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">
+                {new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
+              </h2>
+              <button
+                onClick={() => onMonthSelect(0)}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <svg className="h-4 w-4 mr-1.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to All Months
+              </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-green-50 rounded-lg p-6 border border-green-100">
                 <h3 className="text-sm font-medium text-gray-500 mb-1">Income</h3>
@@ -156,7 +170,11 @@ export default function OverviewSummary({ year, month, categoryId, viewMode }: O
             <h2 className="text-xl font-semibold text-gray-900 mb-4">{year} Monthly Overview</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {Object.entries(monthlyData).map(([monthNum, data]) => (
-                <div key={monthNum} className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+                <div 
+                  key={monthNum} 
+                  className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => onMonthSelect(Number(monthNum))}
+                >
                   <h3 className="text-lg font-medium text-gray-900 mb-3">
                     {new Date(year, Number(monthNum) - 1).toLocaleString('default', { month: 'long' })}
                   </h3>
@@ -216,10 +234,77 @@ export default function OverviewSummary({ year, month, categoryId, viewMode }: O
       );
     }
 
+    // Filter transactions by month if a specific month is selected
+    const filteredTransactions = month 
+      ? transactions.filter(transaction => {
+          const transactionDate = new Date(transaction.date);
+          return transactionDate.getMonth() + 1 === month;
+        })
+      : transactions;
+
+    if (filteredTransactions.length === 0) {
+      return (
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <p className="text-gray-500 text-center">No transactions found for the selected month</p>
+        </div>
+      );
+    }
+
+    // Calculate pagination
+    const totalPages = Math.ceil(filteredTransactions.length / transactionsPerPage);
+    const startIndex = (currentPage - 1) * transactionsPerPage;
+    const paginatedTransactions = filteredTransactions.slice(startIndex, startIndex + transactionsPerPage);
+
     return (
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Transaction History</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Transaction History</h2>
+            {totalPages > 1 && (
+              <div className="flex items-center space-x-2">
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">{startIndex + 1}</span> -{' '}
+                  <span className="font-medium">{Math.min(startIndex + transactionsPerPage, filteredTransactions.length)}</span> of{' '}
+                  <span className="font-medium">{filteredTransactions.length}</span>
+                </p>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="sr-only">Previous</span>
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        currentPage === page
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="sr-only">Next</span>
+                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </nav>
+              </div>
+            )}
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -242,7 +327,7 @@ export default function OverviewSummary({ year, month, categoryId, viewMode }: O
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {transactions.map((transaction) => (
+                {paginatedTransactions.map((transaction) => (
                   <tr key={transaction.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(transaction.date).toLocaleDateString()}
