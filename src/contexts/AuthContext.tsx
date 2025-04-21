@@ -178,6 +178,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const logout = () => {
     Cookies.remove('token');
     setUser(null);
+    setIsAuthenticated(false);
     router.push('/login');
   };
 

@@ -4,7 +4,11 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Navbar = () => {
-  const { logout } = useAuth();
+  const { logout, isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading || !isAuthenticated) {
+    return null;
+  }
 
   return (
     <nav className="bg-white shadow-sm">
