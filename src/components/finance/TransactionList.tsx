@@ -54,10 +54,6 @@ const TransactionList = () => {
     return type === 'income' ? formattedAmount : `-${formattedAmount}`;
   };
 
-  const formatPaymentMethod = (method: string) => {
-    return method.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
-  };
-
   if (isLoading) {
     return (
       <div className="animate-pulse space-y-4">
