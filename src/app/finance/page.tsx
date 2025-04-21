@@ -25,7 +25,13 @@ const FinancePage = () => {
           {/* Transaction Summary */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Summary</h2>
-            <TransactionSummary key={`summary-${refreshKey}`} />
+            <TransactionSummary 
+              key={`summary-${refreshKey}`}
+              year={new Date().getFullYear()}
+              month={null}
+              categoryId={null}
+              viewMode="monthly"
+            />
           </div>
 
           {/* Transaction Form */}

@@ -40,6 +40,20 @@ const HomePage = () => {
                   <p className="mt-1 text-sm text-gray-500">Email: {user?.email}</p>
                   <p className="mt-1 text-sm text-gray-500">Name: {user?.full_name}</p>
                 </div>
+                <div className="mt-6">
+                  <h2 className="text-lg font-medium text-gray-900 mb-4">Quick Access</h2>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <a
+                      href="/overview"
+                      className="block p-4 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+                    >
+                      <h3 className="text-lg font-medium text-gray-900">Transactions Overview</h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        View your financial summary, track income and expenses, and analyze your spending patterns.
+                      </p>
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

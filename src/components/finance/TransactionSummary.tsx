@@ -2,123 +2,100 @@
 
 import { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
+import { formatCurrency } from '@/lib/utils';
 
-interface TransactionSummary {
-  total_income: number;
-  total_expenses: number;
-  net_income: number;
-  transaction_count: number;
+interface MonthlySummary {
+  income: number;
+  expense: number;
+  net: number;
 }
 
-const TransactionSummaryComponent = () => {
-  const [summary, setSummary] = useState<TransactionSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+interface YearlySummary {
+  total_income: number;
+  total_expense: number;
+  net_income: number;
+}
+
+export default function TransactionSummary() {
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchSummary = async () => {
-    try {
-      const token = Cookies.get('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/summary/`;
-      console.log('Fetching from:', apiUrl);
-
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error('API Error:', {
-          status: response.status,
-          statusText: response.statusText,
-          data: errorData,
-        });
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log('Summary data:', data);
-      setSummary(data);
-    } catch (err) {
-      console.error('Error in fetchSummary:', err);
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unexpected error occurred');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [monthlyData, setMonthlyData] = useState<Record<number, MonthlySummary>>({});
+  const [yearlyData, setYearlyData] = useState<YearlySummary | null>(null);
 
   useEffect(() => {
-    fetchSummary();
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const token = Cookies.get('token');
+        const currentYear = new Date().getFullYear();
+        
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/summaries/monthly?year=${currentYear}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        
+        if (!response.ok) throw new Error('Failed to fetch summary');
+        const data = await response.json();
+        setMonthlyData(data.summary);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
-
-  if (isLoading) {
-    return <div className="text-center py-4">Loading summary...</div>;
-  }
-
-  if (error) {
+  if (loading) {
     return (
-      <div className="bg-red-50 text-red-700 p-4 rounded-lg">
-        Error: {error}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="space-y-3">
+            <div className="h-4 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-gray-200 rounded"></div>
+          </div>
+        </div>
       </div>
     );
   }
 
-  if (!summary) {
-    return null;
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="text-red-600">Error: {error}</div>
+      </div>
+    );
   }
 
+  const currentMonth = new Date().getMonth() + 1;
+  const currentMonthData = monthlyData[currentMonth] || { income: 0, expense: 0, net: 0 };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-        <div className="text-sm font-medium text-gray-500">Total Income</div>
-        <div className="mt-2 text-3xl font-semibold text-green-600">
-          {formatAmount(summary.total_income)}
-        </div>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="bg-green-50 rounded-lg p-4">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Income</h3>
+        <p className="text-2xl font-bold text-green-600">{formatCurrency(currentMonthData.income)}</p>
       </div>
-
-      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-        <div className="text-sm font-medium text-gray-500">Total Expenses</div>
-        <div className="mt-2 text-3xl font-semibold text-red-600">
-          {formatAmount(summary.total_expenses)}
-        </div>
+      
+      <div className="bg-red-50 rounded-lg p-4">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Expenses</h3>
+        <p className="text-2xl font-bold text-red-600">{formatCurrency(currentMonthData.expense)}</p>
       </div>
-
-      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-        <div className="text-sm font-medium text-gray-500">Net Income</div>
-        <div className={`mt-2 text-3xl font-semibold ${
-          summary.net_income >= 0 ? 'text-green-600' : 'text-red-600'
-        }`}>
-          {formatAmount(summary.net_income)}
-        </div>
-      </div>
-
-      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-        <div className="text-sm font-medium text-gray-500">Total Transactions</div>
-        <div className="mt-2 text-3xl font-semibold text-blue-600">
-          {summary.transaction_count}
-        </div>
+      
+      <div className={`rounded-lg p-4 ${currentMonthData.net >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Net</h3>
+        <p className={`text-2xl font-bold ${currentMonthData.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          {formatCurrency(currentMonthData.net)}
+        </p>
       </div>
     </div>
   );
-};
-
-export default TransactionSummaryComponent; 
+} 

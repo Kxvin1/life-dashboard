@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from app.core.config import settings
-from app.api import transactions_router, health_router, auth_router, categories_router
+from app.api import transactions_router, health_router, auth_router, categories_router, summaries_router
 from app.db.seed_categories import seed_categories, verify_categories
 import asyncio
 
@@ -52,6 +52,7 @@ async def add_cors_headers(request: Request, call_next):
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(transactions_router, prefix="/api/v1", tags=["transactions"])
 app.include_router(categories_router, prefix="/api/v1/categories", tags=["categories"])
+app.include_router(summaries_router, prefix="/api/v1/summaries", tags=["summaries"])
 app.include_router(health_router, tags=["health"])
 
 @app.get("/")

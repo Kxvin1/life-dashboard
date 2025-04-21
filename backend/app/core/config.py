@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 300
     FRONTEND_URL: str = "http://localhost:3000"  # Default to localhost in development
+    ALGORITHM: str = "HS256"  # Algorithm for JWT token signing
     
     class Config:
         env_file = ".env"
