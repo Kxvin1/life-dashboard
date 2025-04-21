@@ -71,7 +71,7 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
           onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
           step="0.01"
           min="0"
-          className="mt-1 block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900 bg-white hover:bg-gray-50 cursor-pointer appearance-none pl-3 pr-10 py-2"
           required
         />
       </div>
@@ -83,7 +83,7 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="mt-1 block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900 bg-white hover:bg-gray-50 cursor-pointer appearance-none pl-3 pr-10 py-2"
           required
         />
       </div>
@@ -97,17 +97,16 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
             setType(e.target.value as TransactionType);
             setCategoryId(null); // Reset category when type changes
           }}
-          className="mt-1 block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900 bg-white hover:bg-gray-50 cursor-pointer appearance-none pl-3 pr-10 py-2"
         >
-          <option value="income">Income</option>
-          <option value="expense">Expense</option>
+          <option value="income" className="text-green-600">Income</option>
+          <option value="expense" className="text-red-600">Expense</option>
         </select>
       </div>
 
       <div>
         <label htmlFor="category" className="block text-sm font-medium text-gray-700">Category</label>
         <CategorySelect
-          type={type}
           value={categoryId}
           onChange={setCategoryId}
         />
@@ -119,7 +118,7 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
           id="paymentMethod"
           value={paymentMethod}
           onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-          className="mt-1 block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900 bg-white hover:bg-gray-50 cursor-pointer appearance-none pl-3 pr-10 py-2"
         >
           <option value="cash">Cash</option>
           <option value="credit_card">Credit Card</option>
@@ -136,7 +135,7 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
           id="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="mt-1 block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+          className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900 bg-white hover:bg-gray-50 cursor-pointer appearance-none pl-3 pr-10 py-2"
           required
         />
       </div>

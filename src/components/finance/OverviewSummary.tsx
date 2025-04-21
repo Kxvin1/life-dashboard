@@ -3,14 +3,7 @@
 import { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
 import { formatCurrency } from '@/lib/utils';
-
-interface OverviewSummaryProps {
-  year: number;
-  month: number | null;
-  categoryId: number | null;
-  viewMode: 'monthly' | 'yearly';
-  onMonthSelect: (month: number) => void;
-}
+import { Transaction } from '@/types/finance';
 
 interface MonthlySummary {
   income: number;
@@ -24,17 +17,12 @@ interface YearlySummary {
   net_income: number;
 }
 
-interface Transaction {
-  id: number;
-  amount: number;
-  description: string;
-  date: string;
-  type: 'income' | 'expense';
-  category: {
-    id: number;
-    name: string;
-    type: 'income' | 'expense';
-  } | null;
+interface OverviewSummaryProps {
+  year: number;
+  month: number | null;
+  categoryId: number | null;
+  viewMode: 'monthly' | 'yearly';
+  onMonthSelect: (month: number) => void;
 }
 
 export default function OverviewSummary({ year, month, categoryId, viewMode, onMonthSelect }: OverviewSummaryProps) {

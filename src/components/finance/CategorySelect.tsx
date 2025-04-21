@@ -2,16 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
-
-export interface Category {
-  id: number;
-  name: string;
-  type: 'income' | 'expense';
-}
+import { Category } from '@/types/finance';
 
 interface CategorySelectProps {
   value: number | null;
-  onChange: (categoryId: number) => void;
+  onChange: (value: number | null) => void;
 }
 
 const CategorySelect = ({ value, onChange }: CategorySelectProps) => {
@@ -80,14 +75,14 @@ const CategorySelect = ({ value, onChange }: CategorySelectProps) => {
       <option value="">All Categories</option>
       <optgroup label="Income">
         {incomeCategories.map((category) => (
-          <option key={category.id} value={category.id}>
+          <option key={category.id} value={category.id} className="text-green-600">
             {category.name}
           </option>
         ))}
       </optgroup>
       <optgroup label="Expenses">
         {expenseCategories.map((category) => (
-          <option key={category.id} value={category.id}>
+          <option key={category.id} value={category.id} className="text-red-600">
             {category.name}
           </option>
         ))}

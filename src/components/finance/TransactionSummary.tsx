@@ -3,27 +3,15 @@
 import { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
 import { formatCurrency } from '@/lib/utils';
-
-interface MonthlySummary {
-  income: number;
-  expense: number;
-  net: number;
-}
-
-interface YearlySummary {
-  total_income: number;
-  total_expense: number;
-  net_income: number;
-}
+import { MonthlySummary } from '@/types/finance';
 
 interface TransactionSummaryProps {
   year: number;
   month: number | null;
   categoryId: number | null;
-  viewMode: 'monthly' | 'yearly';
 }
 
-export default function TransactionSummary({ year, month, categoryId, viewMode }: TransactionSummaryProps) {
+export default function TransactionSummary({ year, month, categoryId }: TransactionSummaryProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [monthlyData, setMonthlyData] = useState<Record<number, MonthlySummary>>({});
