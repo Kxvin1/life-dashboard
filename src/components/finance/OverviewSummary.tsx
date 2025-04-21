@@ -70,7 +70,7 @@ export default function OverviewSummary({ year, month, categoryId, viewMode, onM
         }
 
         const transactionsResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions?year=${year}${month ? `&month=${month}` : ''}${categoryId ? `&category_id=${categoryId}` : ''}`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/?year=${year}${month ? `&month=${month}` : ''}${categoryId ? `&category_id=${categoryId}` : ''}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
