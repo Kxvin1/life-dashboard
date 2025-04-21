@@ -18,19 +18,37 @@ const TransactionSummaryComponent = () => {
   const fetchSummary = async () => {
     try {
       const token = Cookies.get('token');
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/summary/`, {
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/summary/`;
+      console.log('Fetching from:', apiUrl);
+
+      const response = await fetch(apiUrl, {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch transaction summary');
+        const errorData = await response.text();
+        console.error('API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: errorData,
+        });
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('Summary data:', data);
       setSummary(data);
     } catch (err) {
+      console.error('Error in fetchSummary:', err);
       if (err instanceof Error) {
         setError(err.message);
       } else {

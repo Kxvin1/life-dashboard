@@ -7,6 +7,7 @@ from app.models.transaction import Transaction, TransactionType
 from app.schemas.transaction import TransactionCreate, Transaction as TransactionSchema
 from app.core.security import get_current_user
 from app.models.user import User
+from app.models.category import Category
 
 router = APIRouter()
 
@@ -16,6 +17,17 @@ async def create_transaction(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Validate category if provided
+    if transaction.category_id:
+        category = db.query(Category).filter(Category.id == transaction.category_id).first()
+        if not category:
+            raise HTTPException(status_code=404, detail="Category not found")
+        if category.type != transaction.type:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Category type '{category.type}' does not match transaction type '{transaction.type}'"
+            )
+
     db_transaction = Transaction(
         **transaction.model_dump(),
         user_id=current_user.id
@@ -32,7 +44,7 @@ async def get_transactions(
     type: Optional[TransactionType] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    category: Optional[str] = None,
+    category_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -44,8 +56,8 @@ async def get_transactions(
         query = query.filter(Transaction.date >= start_date)
     if end_date:
         query = query.filter(Transaction.date <= end_date)
-    if category:
-        query = query.filter(Transaction.category == category)
+    if category_id:
+        query = query.filter(Transaction.category_id == category_id)
     
     transactions = query.offset(skip).limit(limit).all()
     return transactions
@@ -68,6 +80,7 @@ async def get_transaction(
 async def get_transaction_summary(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    category_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -77,11 +90,13 @@ async def get_transaction_summary(
         query = query.filter(Transaction.date >= start_date)
     if end_date:
         query = query.filter(Transaction.date <= end_date)
+    if category_id:
+        query = query.filter(Transaction.category_id == category_id)
     
     transactions = query.all()
     
-    income = sum(t.amount for t in transactions if t.type == TransactionType.INCOME)
-    expenses = sum(t.amount for t in transactions if t.type == TransactionType.EXPENSE)
+    income = sum(t.amount for t in transactions if t.type == TransactionType.income)
+    expenses = sum(t.amount for t in transactions if t.type == TransactionType.expense)
     
     return {
         "total_income": income,

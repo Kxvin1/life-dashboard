@@ -16,4 +16,4 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relationships
-    transactions = relationship("Transaction", back_populates="user") 
+    transactions = relationship("Transaction", back_populates="user", lazy="dynamic") 

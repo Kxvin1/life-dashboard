@@ -1,11 +1,12 @@
 from sqlalchemy import Column, Integer, String, Float, Date, Enum, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from app.db.database import Base
+from app.models.user import User
 import enum
 
 class TransactionType(str, enum.Enum):
-    INCOME = "income"
-    EXPENSE = "expense"
+    income = "income"
+    expense = "expense"
 
 class PaymentMethod(str, enum.Enum):
     CASH = "cash"
@@ -27,6 +28,8 @@ class Transaction(Base):
     is_recurring = Column(Boolean, default=False)
     recurring_frequency = Column(String, nullable=True)  # e.g., "monthly", "weekly"
     notes = Column(String, nullable=True)
+    category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     
     # Relationships
-    user = relationship("User", back_populates="transactions") 
+    user = relationship("User", back_populates="transactions", lazy="joined")
+    category = relationship("Category", back_populates="transactions", lazy="joined") 

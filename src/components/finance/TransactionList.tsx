@@ -11,6 +11,11 @@ interface Transaction {
   type: 'income' | 'expense';
   payment_method: 'cash' | 'credit_card' | 'debit_card' | 'bank_transfer' | 'other';
   notes: string | null;
+  category: {
+    id: number;
+    name: string;
+    type: 'income' | 'expense';
+  } | null;
 }
 
 const TransactionList = () => {
@@ -92,6 +97,8 @@ const TransactionList = () => {
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
           </tr>
@@ -104,6 +111,12 @@ const TransactionList = () => {
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 {transaction.description}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {transaction.category?.name || 'Uncategorized'}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
               </td>
               <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
                 transaction.type === 'income' ? 'text-green-600' : 'text-red-600'

@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from app.core.config import settings
-from app.api import transactions, health, auth
+from app.api import transactions_router, health_router, auth_router, categories_router
 
 app = FastAPI(
     title="Finance Tracker API",
@@ -42,9 +42,10 @@ async def add_cors_headers(request: Request, call_next):
     return response
 
 # Include routers
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
-app.include_router(transactions.router, prefix="/api/v1", tags=["transactions"])
-app.include_router(health.router, tags=["health"])
+app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(transactions_router, prefix="/api/v1", tags=["transactions"])
+app.include_router(categories_router, prefix="/api/v1/categories", tags=["categories"])
+app.include_router(health_router, tags=["health"])
 
 @app.get("/")
 async def root():

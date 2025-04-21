@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Cookies from 'js-cookie';
+import CategorySelect, { Category } from './CategorySelect';
 
 interface TransactionFormProps {
   onTransactionAdded: () => void;
@@ -16,6 +17,7 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
   const [type, setType] = useState<TransactionType>('expense');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [categoryId, setCategoryId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -38,6 +40,7 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
           type,
           payment_method: paymentMethod,
           date,
+          category_id: categoryId,
         }),
       });
 
@@ -47,6 +50,7 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
 
       setAmount(0);
       setDescription('');
+      setCategoryId(null);
       onTransactionAdded();
     } catch (error) {
       console.error('Error creating transaction:', error);
@@ -89,12 +93,24 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
         <select
           id="type"
           value={type}
-          onChange={(e) => setType(e.target.value as TransactionType)}
+          onChange={(e) => {
+            setType(e.target.value as TransactionType);
+            setCategoryId(null); // Reset category when type changes
+          }}
           className="mt-1 block w-full px-3 py-2 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
         >
           <option value="income">Income</option>
           <option value="expense">Expense</option>
         </select>
+      </div>
+
+      <div>
+        <label htmlFor="category" className="block text-sm font-medium text-gray-700">Category</label>
+        <CategorySelect
+          type={type}
+          value={categoryId}
+          onChange={setCategoryId}
+        />
       </div>
 
       <div>
