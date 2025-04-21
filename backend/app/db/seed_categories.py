@@ -29,17 +29,17 @@ def seed_categories():
             {"name": "Other", "type": TransactionType.income}
         ]
 
-        all_categories = expense_categories + income_categories
+        # Get existing categories
         existing_categories = {cat.name: cat for cat in db.query(Category).all()}
         
-        # Add or update categories
-        for category_data in all_categories:
+        # Update or create categories
+        for category_data in expense_categories + income_categories:
             if category_data["name"] in existing_categories:
                 # Update existing category
                 existing_category = existing_categories[category_data["name"]]
                 existing_category.type = category_data["type"]
             else:
-                # Add new category
+                # Create new category
                 category = Category(**category_data)
                 db.add(category)
 

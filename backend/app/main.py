@@ -3,12 +3,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from app.core.config import settings
 from app.api import transactions_router, health_router, auth_router, categories_router
+from app.db.seed_categories import seed_categories
 
 app = FastAPI(
     title="Finance Tracker API",
     description="API for managing personal finances",
     version="1.0.0",
 )
+
+# Seed categories on startup
+@app.on_event("startup")
+async def startup_event():
+    seed_categories()
 
 # Configure CORS
 app.add_middleware(

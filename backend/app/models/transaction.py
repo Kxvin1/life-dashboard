@@ -9,11 +9,11 @@ class TransactionType(str, enum.Enum):
     expense = "expense"
 
 class PaymentMethod(str, enum.Enum):
-    CASH = "cash"
-    CREDIT_CARD = "credit_card"
-    DEBIT_CARD = "debit_card"
-    BANK_TRANSFER = "bank_transfer"
-    OTHER = "other"
+    cash = "cash"
+    credit_card = "credit_card"
+    debit_card = "debit_card"
+    bank_transfer = "bank_transfer"
+    other = "other"
 
 class Transaction(Base):
     __tablename__ = "transactions"
