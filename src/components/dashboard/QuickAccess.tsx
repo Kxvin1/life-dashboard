@@ -1,7 +1,7 @@
 "use client";
 
 import { useDashboard } from "@/contexts/DashboardContext";
-import CardGrid from "./DragDropWrapper";
+import CardGrid from "./CardGrid";
 
 const QuickAccess = () => {
   const { quickAccessCards, removeFromQuickAccess } = useDashboard();
