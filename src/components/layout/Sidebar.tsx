@@ -244,8 +244,13 @@ const Sidebar = () => {
               </svg>
             )}
           </button>
-          <button
-            className="p-2 rounded-full bg-secondary text-foreground hover:bg-secondary/80"
+          <Link
+            href="/settings"
+            className={`p-2 rounded-full ${
+              pathname === "/settings"
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-foreground hover:bg-secondary/80"
+            }`}
             aria-label="Settings"
           >
             <svg
@@ -268,12 +273,7 @@ const Sidebar = () => {
                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
               />
             </svg>
-          </button>
-          <div className="ml-auto">
-            <button className="text-sm text-muted-foreground hover:text-foreground">
-              Get help
-            </button>
-          </div>
+          </Link>
         </div>
       </div>
     </div>

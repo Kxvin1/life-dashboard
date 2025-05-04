@@ -3,7 +3,11 @@
 import { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import { Transaction } from "@/types/finance";
-import { sortTransactionsByDate } from "@/lib/utils";
+import {
+  sortTransactionsByDate,
+  formatDateWithTimezoneOffset,
+} from "@/lib/utils";
+
 const TransactionList = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,9 +50,8 @@ const TransactionList = () => {
     fetchTransactions();
   }, []);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
+  // Use the shared utility function for date formatting
+  const formatDate = formatDateWithTimezoneOffset;
 
   const formatAmount = (amount: number, type: "income" | "expense") => {
     const formattedAmount = new Intl.NumberFormat("en-US", {
@@ -61,17 +64,17 @@ const TransactionList = () => {
 
   if (isLoading) {
     return (
-      <div className="animate-pulse space-y-4">
-        <div className="h-4 bg-secondary rounded w-3/4"></div>
-        <div className="h-4 bg-secondary rounded"></div>
-        <div className="h-4 bg-secondary rounded w-1/2"></div>
+      <div className="space-y-4 animate-pulse">
+        <div className="w-3/4 h-4 rounded bg-secondary"></div>
+        <div className="h-4 rounded bg-secondary"></div>
+        <div className="w-1/2 h-4 rounded bg-secondary"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-destructive/10 text-destructive p-6 rounded-xl border border-destructive/20">
+      <div className="p-6 border bg-destructive/10 text-destructive rounded-xl border-destructive/20">
         Error: {error}
       </div>
     );
@@ -79,7 +82,7 @@ const TransactionList = () => {
 
   if (transactions.length === 0) {
     return (
-      <div className="text-center py-8 bg-card/70 backdrop-blur-sm rounded-xl border border-border">
+      <div className="py-8 text-center border bg-card/70 backdrop-blur-sm rounded-xl border-border">
         <p className="text-muted-foreground">
           No transactions found. Add your first transaction above!
         </p>
@@ -96,16 +99,16 @@ const TransactionList = () => {
   );
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-100/20">
+    <div className="overflow-hidden border rounded-xl border-border">
       {/* Table Header with Pagination */}
-      <div className="bg-white px-6 py-4 border-b border-gray-200">
+      <div className="px-6 py-4 border-b bg-card border-border">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="text-xl font-semibold text-foreground">
             Transaction History
           </h2>
           {totalPages > 1 && (
             <div className="flex items-center space-x-4">
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-muted-foreground">
                 <span className="font-medium">{startIndex + 1}</span> -{" "}
                 <span className="font-medium">
                   {Math.min(
@@ -116,7 +119,7 @@ const TransactionList = () => {
                 of <span className="font-medium">{transactions.length}</span>
               </p>
               <nav
-                className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                className="relative z-0 inline-flex -space-x-px rounded-md shadow-sm"
                 aria-label="Pagination"
               >
                 <button
@@ -124,11 +127,11 @@ const TransactionList = () => {
                     setCurrentPage((prev) => Math.max(1, prev - 1))
                   }
                   disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative inline-flex items-center px-2 py-2 text-sm font-medium border rounded-l-md border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="sr-only">Previous</span>
                   <svg
-                    className="h-5 w-5"
+                    className="w-5 h-5"
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 20 20"
                     fill="currentColor"
@@ -147,8 +150,8 @@ const TransactionList = () => {
                       onClick={() => setCurrentPage(page)}
                       className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                         currentPage === page
-                          ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
-                          : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                          ? "z-10 bg-primary/10 border-primary/30 text-primary"
+                          : "bg-card border-border text-foreground hover:bg-accent/50"
                       }`}
                     >
                       {page}
@@ -160,11 +163,11 @@ const TransactionList = () => {
                     setCurrentPage((prev) => Math.min(totalPages, prev + 1))
                   }
                   disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative inline-flex items-center px-2 py-2 text-sm font-medium border rounded-r-md border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="sr-only">Next</span>
                   <svg
-                    className="h-5 w-5"
+                    className="w-5 h-5"
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 20 20"
                     fill="currentColor"
@@ -184,39 +187,39 @@ const TransactionList = () => {
 
       {/* Rest of the table */}
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50/50 backdrop-blur-sm">
+        <table className="min-w-full divide-y divide-border">
+          <thead className="bg-muted/50 backdrop-blur-sm">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-xs font-medium tracking-wider text-left uppercase text-muted-foreground">
                 Date
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-xs font-medium tracking-wider text-left uppercase text-muted-foreground">
                 Description
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-xs font-medium tracking-wider text-left uppercase text-muted-foreground">
                 Category
               </th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-xs font-medium tracking-wider text-left uppercase text-muted-foreground">
                 Type
               </th>
-              <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase text-muted-foreground">
                 Amount
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y bg-card divide-border">
             {paginatedTransactions.map((transaction) => (
               <tr
                 key={transaction.id}
-                className="hover:bg-gray-50/50 backdrop-blur-sm transition-colors duration-150"
+                className="transition-colors duration-150 hover:bg-accent/30"
               >
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 text-sm whitespace-nowrap text-muted-foreground">
                   {formatDate(transaction.date)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-foreground">
                   {transaction.description}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 text-sm whitespace-nowrap text-muted-foreground">
                   {transaction.category?.name || "Uncategorized"}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -231,7 +234,7 @@ const TransactionList = () => {
                       transaction.type.slice(1)}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
+                <td className="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
                   <span
                     className={
                       transaction.type === "income"

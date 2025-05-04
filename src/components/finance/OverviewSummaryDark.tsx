@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Cookies from "js-cookie";
-import { formatCurrency } from "@/lib/utils";
+import {
+  formatCurrency,
+  sortTransactionsByDate,
+  formatDateWithTimezoneOffset,
+} from "@/lib/utils";
 import { Transaction } from "@/types/finance";
-import { sortTransactionsByDate } from "@/lib/utils";
 
 interface MonthlySummary {
   income: number;
@@ -42,6 +45,9 @@ export default function OverviewSummary({
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const transactionsPerPage = 10;
+
+  // Use the shared utility function for date formatting
+  const formatDate = formatDateWithTimezoneOffset;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -144,10 +150,10 @@ export default function OverviewSummary({
           net: 0,
         };
         return (
-          <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100/10 backdrop-blur-sm">
+          <div className="bg-card rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-border backdrop-blur-sm">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-foreground">
                   {new Date(year, month - 1).toLocaleString("default", {
                     month: "long",
                     year: "numeric",
@@ -155,7 +161,7 @@ export default function OverviewSummary({
                 </h2>
                 <button
                   onClick={() => onMonthSelect(0)}
-                  className="inline-flex items-center px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover text-white font-medium transition-colors duration-200 shadow-sm hover:shadow-md active:scale-95 transform"
+                  className="inline-flex items-center px-4 py-2 rounded-lg bg-primary hover:bg-primary/80 text-primary-foreground font-medium transition-colors duration-200 shadow-sm hover:shadow-md active:scale-95 transform"
                 >
                   <svg
                     className="h-4 w-4 mr-1.5"
@@ -175,34 +181,28 @@ export default function OverviewSummary({
                 </button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                <div className="bg-green-50 rounded-lg p-6 border border-green-100">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">
+                <div className="bg-card/80 rounded-lg p-6 border border-border">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">
                     Income
                   </h3>
-                  <p className="text-3xl font-bold text-green-600">
+                  <p className="text-2xl md:text-3xl font-bold text-green-600 truncate">
                     {formatCurrency(monthData.income)}
                   </p>
                 </div>
-                <div className="bg-red-50 rounded-lg p-6 border border-red-100">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">
+                <div className="bg-card/80 rounded-lg p-6 border border-border">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">
                     Expenses
                   </h3>
-                  <p className="text-3xl font-bold text-red-600">
+                  <p className="text-2xl md:text-3xl font-bold text-red-600 truncate">
                     {formatCurrency(monthData.expense)}
                   </p>
                 </div>
-                <div
-                  className={`rounded-lg p-6 border ${
-                    monthData.net >= 0
-                      ? "bg-green-50 border-green-100"
-                      : "bg-red-50 border-red-100"
-                  }`}
-                >
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">
+                <div className="bg-card/80 rounded-lg p-6 border border-border">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">
                     Net
                   </h3>
                   <p
-                    className={`text-3xl font-bold ${
+                    className={`text-2xl md:text-3xl font-bold truncate ${
                       monthData.net >= 0 ? "text-green-600" : "text-red-600"
                     }`}
                   >
@@ -215,19 +215,19 @@ export default function OverviewSummary({
         );
       } else {
         return (
-          <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100/10 backdrop-blur-sm">
+          <div className="bg-card rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-border backdrop-blur-sm">
             <div className="p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              <h2 className="text-xl font-semibold text-foreground mb-4">
                 {year} Monthly Overview
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {Object.entries(monthlyData).map(([monthNum, data]) => (
                   <div
                     key={monthNum}
-                    className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
+                    className="bg-card/80 rounded-lg border border-border p-4 hover:bg-accent/50 transition-colors cursor-pointer"
                     onClick={() => onMonthSelect(Number(monthNum))}
                   >
-                    <h3 className="text-lg font-medium text-gray-900 mb-3">
+                    <h3 className="text-lg font-medium text-foreground mb-3">
                       {new Date(year, Number(monthNum) - 1).toLocaleString(
                         "default",
                         { month: "long" }
@@ -235,19 +235,23 @@ export default function OverviewSummary({
                     </h3>
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">Income</span>
+                        <span className="text-sm text-muted-foreground">
+                          Income
+                        </span>
                         <span className="text-green-600 font-medium">
                           {formatCurrency(data.income)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">Expenses</span>
+                        <span className="text-sm text-muted-foreground">
+                          Expenses
+                        </span>
                         <span className="text-red-600 font-medium">
                           {formatCurrency(data.expense)}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-                        <span className="text-sm font-medium text-gray-700">
+                      <div className="flex justify-between items-center pt-2 border-t border-border">
+                        <span className="text-sm font-medium text-foreground">
                           Net
                         </span>
                         <span
@@ -268,40 +272,34 @@ export default function OverviewSummary({
       }
     } else {
       return (
-        <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100/10 backdrop-blur-sm">
+        <div className="bg-card rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-border backdrop-blur-sm">
           <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            <h2 className="text-xl font-semibold text-foreground mb-4">
               {year} Yearly Overview
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-green-50 rounded-lg p-6 border border-green-100">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">
+              <div className="bg-card/80 rounded-lg p-6 border border-border">
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">
                   Total Income
                 </h3>
-                <p className="text-3xl font-bold text-green-600">
+                <p className="text-2xl md:text-3xl font-bold text-green-600 truncate">
                   {formatCurrency(yearlyData?.total_income || 0)}
                 </p>
               </div>
-              <div className="bg-red-50 rounded-lg p-6 border border-red-100">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">
+              <div className="bg-card/80 rounded-lg p-6 border border-border">
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">
                   Total Expenses
                 </h3>
-                <p className="text-3xl font-bold text-red-600">
+                <p className="text-2xl md:text-3xl font-bold text-red-600 truncate">
                   {formatCurrency(yearlyData?.total_expense || 0)}
                 </p>
               </div>
-              <div
-                className={`rounded-lg p-6 border ${
-                  (yearlyData?.net_income || 0) >= 0
-                    ? "bg-green-50 border-green-100"
-                    : "bg-red-50 border-red-100"
-                }`}
-              >
-                <h3 className="text-sm font-medium text-gray-500 mb-1">
+              <div className="bg-card/80 rounded-lg p-6 border border-border">
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">
                   Net Income
                 </h3>
                 <p
-                  className={`text-3xl font-bold ${
+                  className={`text-2xl md:text-3xl font-bold truncate ${
                     (yearlyData?.net_income || 0) >= 0
                       ? "text-green-600"
                       : "text-red-600"
@@ -320,9 +318,11 @@ export default function OverviewSummary({
   const renderTransactions = () => {
     if (transactions.length === 0) {
       return (
-        <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100/10 backdrop-blur-sm">
+        <div className="bg-card rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-border backdrop-blur-sm">
           <div className="p-6">
-            <p className="text-gray-500 text-center">No transactions found</p>
+            <p className="text-muted-foreground text-center">
+              No transactions found
+            </p>
           </div>
         </div>
       );
@@ -331,16 +331,19 @@ export default function OverviewSummary({
     // Filter transactions by month if a specific month is selected
     const filteredTransactions = month
       ? transactions.filter((transaction) => {
-          const transactionDate = new Date(transaction.date);
-          return transactionDate.getMonth() + 1 === month;
+          // Use a temporary date object created with the shared utility function
+          const tempDate = new Date(
+            formatDateWithTimezoneOffset(transaction.date)
+          );
+          return tempDate.getMonth() + 1 === month;
         })
       : transactions;
 
     if (filteredTransactions.length === 0) {
       return (
-        <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100/10 backdrop-blur-sm">
+        <div className="bg-card rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-border backdrop-blur-sm">
           <div className="p-6">
-            <p className="text-gray-500 text-center">
+            <p className="text-muted-foreground text-center">
               No transactions found for the selected month
             </p>
           </div>
@@ -359,15 +362,15 @@ export default function OverviewSummary({
     );
 
     return (
-      <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100/10 backdrop-blur-sm">
+      <div className="bg-card rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-border backdrop-blur-sm">
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-foreground">
               Transaction History
             </h2>
             {totalPages > 1 && (
               <div className="flex items-center space-x-2">
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-muted-foreground">
                   <span className="font-medium">{startIndex + 1}</span> -{" "}
                   <span className="font-medium">
                     {Math.min(
@@ -389,7 +392,7 @@ export default function OverviewSummary({
                       setCurrentPage((prev) => Math.max(1, prev - 1))
                     }
                     disabled={currentPage === 1}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-border bg-card text-sm font-medium text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="sr-only">Previous</span>
                     <svg
@@ -413,8 +416,8 @@ export default function OverviewSummary({
                         onClick={() => setCurrentPage(page)}
                         className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                           currentPage === page
-                            ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
-                            : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+                            ? "z-10 bg-primary/10 border-primary/30 text-primary"
+                            : "bg-card border-border text-foreground hover:bg-accent/50"
                         }`}
                       >
                         {page}
@@ -426,7 +429,7 @@ export default function OverviewSummary({
                       setCurrentPage((prev) => Math.min(totalPages, prev + 1))
                     }
                     disabled={currentPage === totalPages}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-border bg-card text-sm font-medium text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="sr-only">Next</span>
                     <svg
@@ -448,51 +451,51 @@ export default function OverviewSummary({
             )}
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-muted/50">
                 <tr>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                   >
                     Date
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                   >
                     Description
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                   >
                     Category
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                   >
                     Type
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
                   >
                     Amount
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-card divide-y divide-border">
                 {paginatedTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(transaction.date).toLocaleDateString()}
+                  <tr key={transaction.id} className="hover:bg-accent/30">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                      {formatDate(transaction.date)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
                       {transaction.description}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {transaction.category?.name || "Uncategorized"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -530,10 +533,8 @@ export default function OverviewSummary({
 
   return (
     <div className="space-y-6">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
-        {renderSummary()}
-        {renderTransactions()}
-      </div>
+      {renderSummary()}
+      {renderTransactions()}
     </div>
   );
 }
