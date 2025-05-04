@@ -23,6 +23,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
+  fetchUser: () => Promise<User | null>; // Add fetchUser to the context type
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -49,30 +50,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Check for stored token and validate it
     const token = Cookies.get("token");
     if (token) {
-      // Get user data
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("Failed to get user data");
-          }
-          return response.json();
-        })
+      console.log("Token found on initial load, fetching user data");
+      // Use our improved fetchUser function
+      fetchUser()
         .then((userData) => {
-          setUser(userData);
-          setIsAuthenticated(true);
+          console.log(
+            "Initial user data loaded:",
+            userData ? "success" : "failed"
+          );
         })
-        .catch(() => {
-          // If token is invalid, remove it
-          Cookies.remove("token");
-        })
-        .finally(() => {
-          setIsLoading(false);
+        .catch((error) => {
+          console.error("Error during initial user data fetch:", error);
+          // If token is invalid, it will be removed in fetchUser
         });
     } else {
+      console.log("No token found on initial load");
       setIsLoading(false);
     }
   }, []);
@@ -84,6 +76,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const login = async (email: string, password: string) => {
     try {
+      console.log("Starting login process for:", email);
+
       const formData = new URLSearchParams();
       formData.append("username", email);
       formData.append("password", password);
@@ -97,12 +91,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         credentials: "include",
       });
 
+      console.log("Login response status:", response.status);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("Login error response:", errorData);
         throw new Error(errorData.detail || "Login failed");
       }
 
       const data = await response.json();
+      console.log("Login successful, received token");
 
       // Set the token in cookies
       Cookies.set("token", data.access_token, {
@@ -111,14 +109,47 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         sameSite: "lax",
         path: "/",
       });
+      console.log("Token saved to cookies");
 
-      // Fetch user data and wait for it to complete
-      await fetchUser();
+      // Set authenticated state directly
+      setIsAuthenticated(true);
 
-      // Only navigate after user data is loaded
-      setTimeout(() => {
-        router.push("/");
-      }, 100); // Small delay to ensure state updates are processed
+      try {
+        // Fetch user data and wait for it to complete
+        console.log("Fetching user data after login");
+        const token = Cookies.get("token");
+        console.log("Token for user fetch:", token ? "exists" : "missing");
+
+        const userResponse = await fetch(getApiUrl("/api/v1/auth/me"), {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: "include",
+        });
+
+        console.log("User fetch response status:", userResponse.status);
+
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          console.log("User data received:", userData);
+          setUser(userData);
+
+          // Use window.location for more reliable navigation
+          console.log("Navigating to home page");
+          window.location.href = "/";
+        } else {
+          console.error(
+            "Failed to fetch user data, status:",
+            userResponse.status
+          );
+          // Still redirect to home page
+          window.location.href = "/";
+        }
+      } catch (userError) {
+        console.error("Error fetching user after login:", userError);
+        // Still redirect to home page
+        window.location.href = "/";
+      }
     } catch (error) {
       console.error("Login error:", error);
       throw error;
@@ -127,6 +158,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const register = async (email: string, password: string, name: string) => {
     try {
+      console.log("Starting registration process for:", email);
+
       const response = await fetch(getApiUrl("/api/v1/auth/register"), {
         method: "POST",
         headers: {
@@ -140,12 +173,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         credentials: "include",
       });
 
+      console.log("Registration response status:", response.status);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("Registration error response:", errorData);
         throw new Error(errorData.detail || "Registration failed");
       }
 
       const data = await response.json();
+      console.log("Registration successful, received token");
 
       // Set the token in cookies
       Cookies.set("token", data.access_token, {
@@ -154,20 +191,55 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         sameSite: "lax",
         path: "/",
       });
+      console.log("Token saved to cookies");
 
-      // Fetch user data and wait for it to complete
-      await fetchUser();
+      // Set authenticated state directly
+      setIsAuthenticated(true);
 
-      // Only navigate after user data is loaded
-      setTimeout(() => {
-        router.push("/");
-      }, 100); // Small delay to ensure state updates are processed
+      try {
+        // Fetch user data and wait for it to complete
+        console.log("Fetching user data after registration");
+        const token = Cookies.get("token");
+        console.log("Token for user fetch:", token ? "exists" : "missing");
+
+        const userResponse = await fetch(getApiUrl("/api/v1/auth/me"), {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: "include",
+        });
+
+        console.log("User fetch response status:", userResponse.status);
+
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          console.log("User data received:", userData);
+          setUser(userData);
+
+          // Use window.location for more reliable navigation
+          console.log("Navigating to home page");
+          window.location.href = "/";
+        } else {
+          console.error(
+            "Failed to fetch user data, status:",
+            userResponse.status
+          );
+          // Still redirect to home page
+          window.location.href = "/";
+        }
+      } catch (userError) {
+        console.error("Error fetching user after registration:", userError);
+        // Still redirect to home page
+        window.location.href = "/";
+      }
     } catch (error) {
       console.error("Registration error:", error);
       throw error;
     }
   };
 
+  // This function is kept for potential future use in other parts of the app
+  // It's currently not used directly but could be useful for refreshing user data
   const fetchUser = async () => {
     try {
       const token = Cookies.get("token");
@@ -202,12 +274,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.log("User data received:", userData);
       setUser(userData);
       setIsAuthenticated(true);
+      return userData; // Return the user data for potential future use
     } catch (error) {
       console.error("Error fetching user:", error);
       // If there's an error, clear the token and reset auth state
       Cookies.remove("token");
       setUser(null);
       setIsAuthenticated(false);
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -227,6 +301,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     login,
     register,
     logout,
+    fetchUser, // Add fetchUser to the context value
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
