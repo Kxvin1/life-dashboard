@@ -1,105 +1,112 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect, useRef } from 'react';
+import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useState, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 
 const Navbar = () => {
   const { logout, isAuthenticated, isLoading } = useAuth();
-  const [isFinanceMenuOpen, setIsFinanceMenuOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const { theme } = useTheme();
+  const [showOptions, setShowOptions] = useState(false);
+  const optionsRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+
+  // Determine page title based on pathname
+  const getPageTitle = () => {
+    if (pathname === "/") return "Dashboard";
+    if (pathname === "/overview") return "Financial Overview";
+    if (pathname === "/finance") return "Income & Expenses";
+    if (pathname === "/finance/budgeting") return "Budgeting";
+    if (pathname === "/finance/subscriptions") return "Subscriptions";
+    if (pathname === "/finance/savings") return "Savings Goals";
+    if (pathname === "/settings") return "Settings";
+    if (pathname === "/productivity") return "Productivity";
+    if (pathname === "/health") return "Health";
+    if (pathname === "/personal") return "Personal Organization";
+
+    // Extract the last part of the path for other pages
+    const parts = pathname.split("/");
+    return (
+      parts[parts.length - 1].charAt(0).toUpperCase() +
+      parts[parts.length - 1].slice(1)
+    );
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsFinanceMenuOpen(false);
+      if (
+        optionsRef.current &&
+        !optionsRef.current.contains(event.target as Node)
+      ) {
+        setShowOptions(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
-  const handleNavigation = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setIsFinanceMenuOpen(false);
-  };
 
   if (isLoading || !isAuthenticated) {
     return null;
   }
 
   return (
-    <nav className="bg-white shadow-sm sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex space-x-8">
-              <Link 
-                href="/" 
-                className="inline-flex items-center px-1 pt-1 text-gray-900 hover:text-gray-500"
-                onClick={handleNavigation}
+    <header className="bg-card border-b border-border h-16 flex items-center justify-between px-6 sticky top-0 z-10">
+      <h1 className="text-xl font-semibold text-foreground">
+        {getPageTitle()}
+      </h1>
+
+      <div className="relative" ref={optionsRef}>
+        <button
+          onClick={() => setShowOptions(!showOptions)}
+          className="p-2 rounded-full hover:bg-secondary text-foreground"
+          aria-label="Options"
+        >
+          <svg
+            className="h-6 w-6"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+            />
+          </svg>
+        </button>
+
+        {showOptions && (
+          <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-popover border border-border z-50">
+            <div className="py-1">
+              <Link
+                href="/settings"
+                className="block px-4 py-2 text-sm text-foreground hover:bg-secondary"
+                onClick={() => setShowOptions(false)}
               >
-                Home
+                Settings
               </Link>
-              <div className="relative flex items-center" ref={dropdownRef}>
-                <button
-                  onClick={() => setIsFinanceMenuOpen(!isFinanceMenuOpen)}
-                  className="inline-flex items-center px-1 pt-1 text-gray-900 hover:text-gray-500"
-                >
-                  Finance
-                  <svg
-                    className={`ml-1 h-5 w-5 transition-transform duration-200 ${
-                      isFinanceMenuOpen ? 'rotate-180' : ''
-                    }`}
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
-                {isFinanceMenuOpen && (
-                  <div className="absolute left-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
-                    <div className="py-1">
-                      <Link
-                        href="/overview"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={handleNavigation}
-                      >
-                        Overview
-                      </Link>
-                      <Link
-                        href="/finance"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={handleNavigation}
-                      >
-                        Add Income/Expense
-                      </Link>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <button
+                onClick={() => {
+                  logout();
+                  setShowOptions(false);
+                }}
+                className="block w-full text-left px-4 py-2 text-sm text-destructive hover:bg-secondary"
+              >
+                Sign Out
+              </button>
             </div>
           </div>
-          <div className="flex items-center">
-            <button
-              onClick={logout}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
+        )}
       </div>
-    </nav>
+    </header>
   );
 };
 
-export default Navbar; 
+export default Navbar;

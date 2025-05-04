@@ -1,9 +1,10 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/contexts/AuthContext';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Layout from '@/components/layout/Layout';
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import QuickAccess from "@/components/dashboard/QuickAccess";
+import AllTools from "@/components/dashboard/AllTools";
 
 const HomePage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -11,15 +12,15 @@ const HomePage = () => {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push('/login');
+      router.push("/login");
     }
   }, [isAuthenticated, isLoading, router]);
 
   if (isLoading) {
     return (
-      <Layout>
-        <div>Loading...</div>
-      </Layout>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-foreground">Loading...</div>
+      </div>
     );
   }
 
@@ -28,38 +29,53 @@ const HomePage = () => {
   }
 
   return (
-    <Layout>
-      <div className="min-h-screen bg-gray-100">
-        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
-            <div className="bg-white shadow rounded-lg p-6">
-              <h1 className="text-2xl font-bold text-gray-900 mb-4">Dashboard</h1>
-              <div className="space-y-4">
-                <div>
-                  <h2 className="text-lg font-medium text-gray-900">Your Profile</h2>
-                  <p className="mt-1 text-sm text-gray-500">Email: {user?.email}</p>
-                  <p className="mt-1 text-sm text-gray-500">Name: {user?.full_name}</p>
-                </div>
-                <div className="mt-6">
-                  <h2 className="text-lg font-medium text-gray-900 mb-4">Quick Access</h2>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <a
-                      href="/overview"
-                      className="block p-4 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
-                    >
-                      <h3 className="text-lg font-medium text-gray-900">Transactions Overview</h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        View your financial summary, track income and expenses, and analyze your spending patterns.
-                      </p>
-                    </a>
-                  </div>
-                </div>
-              </div>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold text-foreground mb-6">Dashboard</h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="bg-card rounded-xl shadow-md border border-border p-6">
+          <h2 className="text-xl font-semibold text-foreground mb-4">
+            Your Profile
+          </h2>
+          <div className="space-y-2">
+            <div className="flex items-center">
+              <span className="text-muted-foreground w-24">Email:</span>
+              <span className="text-foreground">{user?.email}</span>
+            </div>
+            <div className="flex items-center">
+              <span className="text-muted-foreground w-24">Name:</span>
+              <span className="text-foreground">{user?.full_name}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl shadow-md border border-border p-6">
+          <h2 className="text-xl font-semibold text-foreground mb-4">
+            Account Summary
+          </h2>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Total Balance</span>
+              <span className="text-foreground font-medium">$24,731.54</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Monthly Income</span>
+              <span className="text-[#4ade80] font-medium">$5,230.00</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Monthly Expenses</span>
+              <span className="text-red-500 font-medium">$3,450.75</span>
             </div>
           </div>
         </div>
       </div>
-    </Layout>
+
+      {/* Quick Access Section */}
+      <QuickAccess />
+
+      {/* All Tools Section */}
+      <AllTools />
+    </div>
   );
 };
 
