@@ -8,7 +8,8 @@ import { usePathname } from "next/navigation";
 
 const Navbar = () => {
   const { logout, isAuthenticated, isLoading } = useAuth();
-  const { theme } = useTheme();
+  // Theme context is imported but not currently used
+  useTheme();
   const [showOptions, setShowOptions] = useState(false);
   const optionsRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
