@@ -5,6 +5,7 @@ import {
   useContext,
   useState,
   useEffect,
+  useCallback,
   ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -46,6 +47,60 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  const getApiUrl = useCallback((endpoint: string) => {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+    return `${baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+  }, []);
+
+  // This function is kept for potential future use in other parts of the app
+  // It's currently not used directly but could be useful for refreshing user data
+  const fetchUser = useCallback(async () => {
+    try {
+      const token = Cookies.get("token");
+      console.log(
+        "Fetching user with token:",
+        token ? "Token exists" : "No token"
+      );
+      if (!token) {
+        setIsLoading(false);
+        setIsAuthenticated(false);
+        return;
+      }
+
+      console.log("Making request to /api/v1/auth/me");
+      const response = await fetch(getApiUrl("/api/v1/auth/me"), {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include",
+      });
+
+      console.log("Response status:", response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Error response:", errorText);
+        throw new Error(
+          `Failed to fetch user data: ${response.status} ${errorText}`
+        );
+      }
+
+      const userData = await response.json();
+      console.log("User data received:", userData);
+      setUser(userData);
+      setIsAuthenticated(true);
+      return userData; // Return the user data for potential future use
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      // If there's an error, clear the token and reset auth state
+      Cookies.remove("token");
+      setUser(null);
+      setIsAuthenticated(false);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getApiUrl]);
+
   useEffect(() => {
     // Check for stored token and validate it
     const token = Cookies.get("token");
@@ -67,12 +122,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.log("No token found on initial load");
       setIsLoading(false);
     }
-  }, []);
-
-  const getApiUrl = (endpoint: string) => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    return `${baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
-  };
+  }, [fetchUser]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -235,55 +285,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } catch (error) {
       console.error("Registration error:", error);
       throw error;
-    }
-  };
-
-  // This function is kept for potential future use in other parts of the app
-  // It's currently not used directly but could be useful for refreshing user data
-  const fetchUser = async () => {
-    try {
-      const token = Cookies.get("token");
-      console.log(
-        "Fetching user with token:",
-        token ? "Token exists" : "No token"
-      );
-      if (!token) {
-        setIsLoading(false);
-        setIsAuthenticated(false);
-        return;
-      }
-
-      console.log("Making request to /api/v1/auth/me");
-      const response = await fetch(getApiUrl("/api/v1/auth/me"), {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: "include",
-      });
-
-      console.log("Response status:", response.status);
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Error response:", errorText);
-        throw new Error(
-          `Failed to fetch user data: ${response.status} ${errorText}`
-        );
-      }
-
-      const userData = await response.json();
-      console.log("User data received:", userData);
-      setUser(userData);
-      setIsAuthenticated(true);
-      return userData; // Return the user data for potential future use
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      // If there's an error, clear the token and reset auth state
-      Cookies.remove("token");
-      setUser(null);
-      setIsAuthenticated(false);
-      return null;
-    } finally {
-      setIsLoading(false);
     }
   };
 
