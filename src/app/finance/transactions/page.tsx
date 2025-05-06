@@ -1,11 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import TransactionForm from "@/components/finance/TransactionForm";
 import BackToHome from "@/components/common/BackToHome";
+import Toast from "@/components/ui/Toast";
 
 const TransactionsPage = () => {
-  const handleTransactionAdded = () => {
-    // This function is kept for future use if needed
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [transactionType, setTransactionType] = useState<"income" | "expense">(
+    "income"
+  );
+
+  const handleTransactionAdded = (type: "income" | "expense") => {
+    setTransactionType(type);
+    setShowSuccessToast(true);
   };
 
   return (
@@ -33,6 +41,20 @@ const TransactionsPage = () => {
           </h2>
           <TransactionForm onTransactionAdded={handleTransactionAdded} />
         </div>
+
+        {/* Success Toast */}
+        {showSuccessToast && (
+          <Toast
+            message={`${
+              transactionType === "income" ? "Income" : "Expense"
+            } transaction added successfully!`}
+            type="success"
+            duration={5000}
+            onClose={() => setShowSuccessToast(false)}
+            actionLabel="View in Overview"
+            actionHref="/finance/overview"
+          />
+        )}
       </div>
     </div>
   );

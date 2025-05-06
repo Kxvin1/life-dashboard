@@ -9,6 +9,7 @@ import {
   PaymentMethod,
 } from "@/components/finance/TransactionForm";
 import CategorySelect from "./CategorySelect";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 interface TransactionDetailPanelProps {
   transaction: Transaction | null;
@@ -27,6 +28,7 @@ const TransactionDetailPanel = ({
   const [hasChanges, setHasChanges] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Local copy of the transaction that we can update
@@ -69,6 +71,7 @@ const TransactionDetailPanel = ({
     if (!isOpen) {
       setIsEditing(false);
       setError(null);
+      setShowConfirmDialog(false);
     }
   }, [isOpen]);
 
@@ -77,18 +80,13 @@ const TransactionDetailPanel = ({
     const handleClickOutside = (event: MouseEvent) => {
       if (
         panelRef.current &&
-        !panelRef.current.contains(event.target as Node)
+        !panelRef.current.contains(event.target as Node) &&
+        !showConfirmDialog // Don't close if confirm dialog is open
       ) {
         // Handle normal panel closing
         if (hasChanges) {
-          // Show confirmation before closing
-          if (
-            window.confirm(
-              "You have unsaved changes. Are you sure you want to close?"
-            )
-          ) {
-            onClose();
-          }
+          // Show confirmation dialog before closing
+          setShowConfirmDialog(true);
         } else {
           onClose();
         }
@@ -102,7 +100,7 @@ const TransactionDetailPanel = ({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isOpen, onClose, hasChanges]);
+  }, [isOpen, onClose, hasChanges, showConfirmDialog]);
 
   // Track form changes
   useEffect(() => {
@@ -131,6 +129,39 @@ const TransactionDetailPanel = ({
     notes,
     localTransaction,
   ]);
+
+  // Function to discard changes and close panel
+  const handleDiscardChanges = () => {
+    if (transaction) {
+      // Reset form to original transaction data
+      setAmount(transaction.amount);
+      setDescription(transaction.description);
+      setType(transaction.type as TransactionType);
+      setPaymentMethod(transaction.payment_method as PaymentMethod);
+      setDate(transaction.date.split("T")[0]);
+      setCategoryId(
+        transaction.category?.id ? parseInt(transaction.category.id) : null
+      );
+      setNotes(transaction.notes || "");
+
+      // Reset editing state and changes flag
+      setIsEditing(false);
+      setHasChanges(false);
+    }
+
+    // Close the dialog and panel
+    setShowConfirmDialog(false);
+    onClose();
+  };
+
+  // Function to handle the close button click
+  const handleCloseClick = () => {
+    if (hasChanges) {
+      setShowConfirmDialog(true);
+    } else {
+      onClose();
+    }
+  };
 
   const handleUpdateTransaction = async () => {
     if (!transaction || !localTransaction) return;
@@ -162,7 +193,6 @@ const TransactionDetailPanel = ({
 
       // Only include date if it's changed
       if (date !== localTransaction.date.split("T")[0]) {
-        // Send the date as is - the backend will handle the conversion
         updateData.date = date;
       }
 
@@ -205,73 +235,16 @@ const TransactionDetailPanel = ({
         }
       );
 
-      let updatedTransaction;
-
       if (!response.ok) {
-        let errorData;
-        try {
-          // Try to parse as JSON first
-          errorData = await response.json();
-
-          // Check if it's a date format error
-          if (
-            (errorData.detail &&
-              typeof errorData.detail === "string" &&
-              errorData.detail.includes("date")) ||
-            (Array.isArray(errorData.detail) &&
-              errorData.detail.some(
-                (err) => err.loc && err.loc.includes("date")
-              ))
-          ) {
-            throw new Error(
-              "Invalid date format. Please use YYYY-MM-DD format."
-            );
-          }
-
-          throw new Error(
-            `Failed to update transaction: ${JSON.stringify(errorData)}`
-          );
-        } catch (e) {
-          // If JSON parsing fails, try to get as text
-          if (
-            !(e instanceof Error) ||
-            !e.message.includes("Invalid date format")
-          ) {
-            try {
-              errorData = await response.text();
-            } catch {
-              errorData = "Unknown error";
-            }
-          }
-          throw e instanceof Error
-            ? e
-            : new Error(`Failed to update transaction: ${errorData}`);
-        }
-      } else {
-        // Get the updated transaction data from the response
-        updatedTransaction = await response.json();
+        const errorText = await response.text();
+        throw new Error(`Failed to update transaction: ${errorText}`);
       }
 
-      // Update the local transaction copy
-      setLocalTransaction(updatedTransaction);
-
-      // Update the form state with the response data
-      setAmount(updatedTransaction.amount);
-      setDescription(updatedTransaction.description);
-      setType(updatedTransaction.type as TransactionType);
-      setPaymentMethod(updatedTransaction.payment_method as PaymentMethod);
-      setDate(updatedTransaction.date.split("T")[0]);
-      setCategoryId(
-        updatedTransaction.category?.id
-          ? parseInt(updatedTransaction.category.id)
-          : null
-      );
-      setNotes(updatedTransaction.notes || "");
-
-      // Update the transaction in the parent component
-      setIsEditing(false);
-      setHasChanges(false);
+      // Notify parent component
       onTransactionUpdated();
+
+      // Close the panel
+      onClose();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "An unexpected error occurred"
@@ -291,17 +264,14 @@ const TransactionDetailPanel = ({
     setError(null);
 
     try {
-      // Get the transaction ID
       const transactionId = localTransaction.id;
-
-      // Get the token
       const token = Cookies.get("token");
+
       if (!token) {
         setError("Authentication token missing");
         return;
       }
 
-      // Use the regular DELETE endpoint
       const baseUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const url = `${baseUrl}/api/v1/transactions/${transactionId}`;
@@ -338,6 +308,18 @@ const TransactionDetailPanel = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-black/50 backdrop-blur-sm">
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showConfirmDialog}
+        title="Unsaved Changes"
+        message="You have unsaved changes. Are you sure you want to close without saving?"
+        confirmLabel="Discard Changes"
+        cancelLabel="Continue Editing"
+        onConfirm={handleDiscardChanges}
+        onCancel={() => setShowConfirmDialog(false)}
+        variant="warning"
+      />
+
       <div className="absolute inset-y-0 right-0 flex max-w-full">
         <div
           ref={panelRef}
@@ -354,20 +336,7 @@ const TransactionDetailPanel = ({
                 <button
                   type="button"
                   className="rounded-md bg-card text-muted-foreground hover:text-foreground focus:outline-none"
-                  onClick={() => {
-                    // Handle panel closing
-                    if (hasChanges) {
-                      if (
-                        window.confirm(
-                          "You have unsaved changes. Are you sure you want to close?"
-                        )
-                      ) {
-                        onClose();
-                      }
-                    } else {
-                      onClose();
-                    }
-                  }}
+                  onClick={handleCloseClick}
                 >
                   <span className="sr-only">Close panel</span>
                   <svg

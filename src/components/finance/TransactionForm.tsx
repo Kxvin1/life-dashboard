@@ -5,7 +5,7 @@ import Cookies from "js-cookie";
 import CategorySelect from "./CategorySelect";
 
 interface TransactionFormProps {
-  onTransactionAdded: () => void;
+  onTransactionAdded: (type: TransactionType) => void;
 }
 
 export type TransactionType = "income" | "expense";
@@ -25,11 +25,13 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     setIsLoading(true);
 
     // Get the token
@@ -69,8 +71,17 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
           setDescription("");
           setCategoryId(null);
 
-          // Notify parent component
-          onTransactionAdded();
+          // Set success message
+          const typeLabel = type === "income" ? "Income" : "Expense";
+          setSuccess(`${typeLabel} transaction added successfully!`);
+
+          // Clear success message after 5 seconds
+          setTimeout(() => {
+            setSuccess(null);
+          }, 5000);
+
+          // Notify parent component with the transaction type
+          onTransactionAdded(type);
         } else {
           setError(
             `Failed to create transaction: ${xhr.statusText || "Unknown error"}`
@@ -209,6 +220,24 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
       {error && (
         <div className="p-3 rounded-md bg-destructive/10 text-destructive">
           {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="p-3 rounded-md bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 flex items-center">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5 mr-2 flex-shrink-0"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+              clipRule="evenodd"
+            />
+          </svg>
+          <span>{success}</span>
         </div>
       )}
 
