@@ -27,47 +27,67 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
 
-    try {
-      const token = Cookies.get("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            amount:
-              typeof amount === "string" ? parseFloat(amount) || 0 : amount,
-            description,
-            type,
-            payment_method: paymentMethod,
-            date,
-            category_id: categoryId,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to create transaction");
-      }
-
-      setAmount("");
-      setDescription("");
-      setCategoryId(null);
-      onTransactionAdded();
-    } catch (error) {
-      console.error("Error creating transaction:", error);
-      setError("An unexpected error occurred");
-    } finally {
+    // Get the token
+    const token = Cookies.get("token");
+    if (!token) {
+      setError("Authentication token missing");
       setIsLoading(false);
+      return;
     }
+
+    // Create the request data
+    const requestData = {
+      amount: typeof amount === "string" ? parseFloat(amount) || 0 : amount,
+      description,
+      type,
+      payment_method: paymentMethod,
+      date,
+      category_id: categoryId,
+      is_recurring: false,
+      recurring_frequency: null,
+    };
+
+    // Create a direct XMLHttpRequest for maximum compatibility
+    const xhr = new XMLHttpRequest();
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const url = `${baseUrl}/api/v1/transactions/`;
+
+    xhr.open("POST", url, true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4) {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          // Reset form
+          setAmount("");
+          setDescription("");
+          setCategoryId(null);
+
+          // Notify parent component
+          onTransactionAdded();
+        } else {
+          setError(
+            `Failed to create transaction: ${xhr.statusText || "Unknown error"}`
+          );
+        }
+
+        setIsLoading(false);
+      }
+    };
+
+    xhr.onerror = function () {
+      setError("Network error occurred");
+      setIsLoading(false);
+    };
+
+    // Send the request
+    xhr.send(JSON.stringify(requestData));
   };
 
   return (
@@ -141,7 +161,11 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
         >
           Category
         </label>
-        <CategorySelect value={categoryId} onChange={setCategoryId} />
+        <CategorySelect
+          value={categoryId}
+          onChange={setCategoryId}
+          transactionType={type}
+        />
       </div>
 
       <div>

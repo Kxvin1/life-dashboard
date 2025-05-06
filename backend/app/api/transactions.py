@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
@@ -154,6 +155,11 @@ async def delete_transaction(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # Log the transaction ID and user for debugging
+    print(
+        f"DELETE request for transaction_id: {transaction_id}, user_id: {current_user.id}"
+    )
+
     # Find the transaction
     db_transaction = (
         db.query(Transaction)
@@ -164,16 +170,189 @@ async def delete_transaction(
     )
 
     if db_transaction is None:
+        print(f"Transaction not found: {transaction_id}")
         raise HTTPException(status_code=404, detail="Transaction not found")
+
+    # Log the transaction details before deletion
+    print(
+        f"Deleting transaction: {db_transaction.id}, {db_transaction.description}, {db_transaction.amount}"
+    )
 
     # Delete the transaction
     db.delete(db_transaction)
     db.commit()
 
+    print(f"Transaction {transaction_id} deleted successfully")
+
     return {"success": True, "message": "Transaction deleted successfully"}
 
 
-@router.get("/transactions/summary/")
+# Add a test endpoint for deletion that doesn't require authentication and can be accessed via GET
+@router.get("/test-delete-transaction/{transaction_id}")
+async def test_delete_transaction_get(
+    transaction_id: int,
+    db: Session = Depends(get_db),
+    response: Response = None,
+):
+    # Find the transaction
+    db_transaction = (
+        db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    )
+
+    if db_transaction is None:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    # Log the transaction details
+    print(
+        f"Test deleting transaction (GET): {db_transaction.id}, {db_transaction.description}, {db_transaction.amount}"
+    )
+
+    # Delete the transaction
+    db.delete(db_transaction)
+    db.commit()
+
+    # Return HTML with a success message
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Transaction Deleted</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #1e1e2e;
+                color: #cdd6f4;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                margin: 0;
+                padding: 20px;
+                text-align: center;
+            }
+            .success-icon {
+                color: #a6e3a1;
+                font-size: 48px;
+                margin-bottom: 20px;
+            }
+            h1 {
+                margin-bottom: 10px;
+            }
+            p {
+                margin-top: 0;
+                color: #bac2de;
+            }
+            .container {
+                background-color: #313244;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                max-width: 500px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="success-icon">✓</div>
+            <h1>Transaction Deleted Successfully</h1>
+            <p>You can now close this tab and return to the dashboard.</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    # Set the content type to HTML
+    if response:
+        response.headers["Content-Type"] = "text/html"
+
+    return HTMLResponse(content=html_content)
+
+
+# Keep the DELETE version for compatibility
+@router.delete("/test-delete-transaction/{transaction_id}")
+async def test_delete_transaction(
+    transaction_id: int,
+    db: Session = Depends(get_db),
+    response: Response = None,
+):
+    # Find the transaction
+    db_transaction = (
+        db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    )
+
+    if db_transaction is None:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    # Log the transaction details
+    print(
+        f"Test deleting transaction (DELETE): {db_transaction.id}, {db_transaction.description}, {db_transaction.amount}"
+    )
+
+    # Delete the transaction
+    db.delete(db_transaction)
+    db.commit()
+
+    # Return HTML with a success message (same as GET version)
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Transaction Deleted</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #1e1e2e;
+                color: #cdd6f4;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                margin: 0;
+                padding: 20px;
+                text-align: center;
+            }
+            .success-icon {
+                color: #a6e3a1;
+                font-size: 48px;
+                margin-bottom: 20px;
+            }
+            h1 {
+                margin-bottom: 10px;
+            }
+            p {
+                margin-top: 0;
+                color: #bac2de;
+            }
+            .container {
+                background-color: #313244;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                max-width: 500px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="success-icon">✓</div>
+            <h1>Transaction Deleted Successfully</h1>
+            <p>You can now close this tab and return to the dashboard.</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    # Set the content type to HTML
+    if response:
+        response.headers["Content-Type"] = "text/html"
+
+    return HTMLResponse(content=html_content)
+
+
+# Define a separate route for transaction summary to avoid conflicts with the transaction_id route
+@router.get("/transactions-summary/")
 async def get_transaction_summary(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
@@ -201,3 +380,21 @@ async def get_transaction_summary(
         "net_income": income - expenses,
         "transaction_count": len(transactions),
     }
+
+
+# Keep the old route for backward compatibility
+@router.get("/transactions/summary/")
+async def get_transaction_summary_legacy(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    category_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await get_transaction_summary(
+        start_date=start_date,
+        end_date=end_date,
+        category_id=category_id,
+        db=db,
+        current_user=current_user,
+    )

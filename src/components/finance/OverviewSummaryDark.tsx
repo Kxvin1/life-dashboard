@@ -53,6 +53,82 @@ export default function OverviewSummary({
   // Use the shared utility function for date formatting
   const formatDate = formatDateWithTimezoneOffset;
 
+  // Handle transaction updates
+  const handleTransactionUpdated = () => {
+    // Refetch data
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const token = Cookies.get("token");
+
+        // Fetch transactions
+        const transactionsResponse = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL
+          }/api/v1/transactions/?year=${year}${month ? `&month=${month}` : ""}${
+            categoryId ? `&category_id=${categoryId}` : ""
+          }`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!transactionsResponse.ok)
+          throw new Error("Failed to fetch transactions");
+        const transactionsData = await transactionsResponse.json();
+        // Sort transactions by date in descending order (newest first)
+        const sortedTransactions = sortTransactionsByDate(transactionsData);
+        setTransactions(sortedTransactions);
+
+        // Fetch summary data based on view mode
+        if (viewMode === "monthly") {
+          const response = await fetch(
+            `${
+              process.env.NEXT_PUBLIC_API_URL
+            }/api/v1/summaries/monthly?year=${year}${
+              month ? `&month=${month}` : ""
+            }${categoryId ? `&category_id=${categoryId}` : ""}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (!response.ok) throw new Error("Failed to fetch monthly summary");
+          const data = await response.json();
+          setMonthlyData(data.summary);
+        } else {
+          const response = await fetch(
+            `${
+              process.env.NEXT_PUBLIC_API_URL
+            }/api/v1/summaries/yearly?year=${year}${
+              categoryId ? `&category_id=${categoryId}` : ""
+            }`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (!response.ok) throw new Error("Failed to fetch yearly summary");
+          const data = await response.json();
+          setYearlyData(data);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -540,82 +616,6 @@ export default function OverviewSummary({
         </div>
       </div>
     );
-  };
-
-  // Handle transaction updates
-  const handleTransactionUpdated = () => {
-    // Refetch data
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const token = Cookies.get("token");
-
-        // Fetch transactions
-        const transactionsResponse = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_URL
-          }/api/v1/transactions/?year=${year}${month ? `&month=${month}` : ""}${
-            categoryId ? `&category_id=${categoryId}` : ""
-          }`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!transactionsResponse.ok)
-          throw new Error("Failed to fetch transactions");
-        const transactionsData = await transactionsResponse.json();
-        // Sort transactions by date in descending order (newest first)
-        const sortedTransactions = sortTransactionsByDate(transactionsData);
-        setTransactions(sortedTransactions);
-
-        // Fetch summary data based on view mode
-        if (viewMode === "monthly") {
-          const response = await fetch(
-            `${
-              process.env.NEXT_PUBLIC_API_URL
-            }/api/v1/summaries/monthly?year=${year}${
-              month ? `&month=${month}` : ""
-            }${categoryId ? `&category_id=${categoryId}` : ""}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-          if (!response.ok) throw new Error("Failed to fetch monthly summary");
-          const data = await response.json();
-          setMonthlyData(data.summary);
-        } else {
-          const response = await fetch(
-            `${
-              process.env.NEXT_PUBLIC_API_URL
-            }/api/v1/summaries/yearly?year=${year}${
-              categoryId ? `&category_id=${categoryId}` : ""
-            }`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-          if (!response.ok) throw new Error("Failed to fetch yearly summary");
-          const data = await response.json();
-          setYearlyData(data);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
   };
 
   return (

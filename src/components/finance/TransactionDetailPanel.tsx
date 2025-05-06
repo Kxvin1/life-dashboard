@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Transaction, Category } from "@/types/finance";
+import { Transaction } from "@/types/finance";
 import Cookies from "js-cookie";
 import { formatDateWithTimezoneOffset, formatCurrency } from "@/lib/utils";
 import {
@@ -24,7 +24,6 @@ const TransactionDetailPanel = ({
   onTransactionUpdated,
 }: TransactionDetailPanelProps) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +67,6 @@ const TransactionDetailPanel = ({
   // Reset panel state when closed
   useEffect(() => {
     if (!isOpen) {
-      setIsDeleting(false);
       setIsEditing(false);
       setError(null);
     }
@@ -81,13 +79,7 @@ const TransactionDetailPanel = ({
         panelRef.current &&
         !panelRef.current.contains(event.target as Node)
       ) {
-        // If delete confirmation is open, just close that
-        if (isDeleting) {
-          setIsDeleting(false);
-          return;
-        }
-
-        // Otherwise handle normal panel closing
+        // Handle normal panel closing
         if (hasChanges) {
           // Show confirmation before closing
           if (
@@ -110,7 +102,7 @@ const TransactionDetailPanel = ({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isOpen, onClose, hasChanges, isDeleting]);
+  }, [isOpen, onClose, hasChanges]);
 
   // Track form changes
   useEffect(() => {
@@ -194,9 +186,15 @@ const TransactionDetailPanel = ({
         updateData.recurring_frequency = null;
       }
 
+      // Convert string ID to number if needed
+      const transactionId =
+        typeof transaction.id === "string"
+          ? parseInt(transaction.id, 10)
+          : transaction.id;
+
       const token = Cookies.get("token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/${transaction.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/${transactionId}`,
         {
           method: "PUT",
           headers: {
@@ -214,7 +212,6 @@ const TransactionDetailPanel = ({
         try {
           // Try to parse as JSON first
           errorData = await response.json();
-          console.error("Update transaction error:", JSON.stringify(errorData));
 
           // Check if it's a date format error
           if (
@@ -242,7 +239,6 @@ const TransactionDetailPanel = ({
           ) {
             try {
               errorData = await response.text();
-              console.error("Update transaction error (text):", errorData);
             } catch {
               errorData = "Unknown error";
             }
@@ -286,21 +282,29 @@ const TransactionDetailPanel = ({
   };
 
   const handleDeleteTransaction = async () => {
-    if (!transaction || !localTransaction) return;
+    if (!transaction || !localTransaction) {
+      setError("No transaction to delete");
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
 
     try {
-      console.log(
-        `Attempting to delete transaction with ID: ${localTransaction.id}`
-      );
+      // Get the transaction ID
+      const transactionId = localTransaction.id;
 
+      // Get the token
       const token = Cookies.get("token");
-      console.log(`Using token: ${token ? "Token exists" : "No token found"}`);
+      if (!token) {
+        setError("Authentication token missing");
+        return;
+      }
 
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/${localTransaction.id}`;
-      console.log(`DELETE request to: ${url}`);
+      // Use the regular DELETE endpoint
+      const baseUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const url = `${baseUrl}/api/v1/transactions/${transactionId}`;
 
       const response = await fetch(url, {
         method: "DELETE",
@@ -309,32 +313,24 @@ const TransactionDetailPanel = ({
         },
       });
 
-      console.log(`Delete response status: ${response.status}`);
-
       if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.text();
-          console.error("Delete transaction error response:", errorData);
-        } catch (e) {
-          console.error("Error parsing error response:", e);
-          errorData = "Could not parse error response";
-        }
-
-        throw new Error(`Failed to delete transaction: ${errorData}`);
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to delete transaction: ${response.status} ${response.statusText} - ${errorText}`
+        );
       }
 
-      console.log("Transaction deleted successfully");
-      onClose();
+      // Refresh the data in the parent component
       onTransactionUpdated();
+
+      // Close the panel
+      onClose();
     } catch (err) {
-      console.error("Delete transaction error:", err);
       setError(
         err instanceof Error ? err.message : "An unexpected error occurred"
       );
     } finally {
       setIsLoading(false);
-      setIsDeleting(false);
     }
   };
 
@@ -345,12 +341,12 @@ const TransactionDetailPanel = ({
       <div className="absolute inset-y-0 right-0 flex max-w-full">
         <div
           ref={panelRef}
-          className="relative w-screen max-w-md transform transition-all duration-300 ease-in-out"
+          className="relative w-screen max-w-md transition-all duration-300 ease-in-out transform"
           style={{ transform: isOpen ? "translateX(0)" : "translateX(100%)" }}
         >
-          <div className="flex h-full flex-col overflow-y-auto bg-card shadow-xl border-l border-border">
+          <div className="flex flex-col h-full overflow-y-auto border-l shadow-xl bg-card border-border">
             {/* Header */}
-            <div className="px-4 py-6 sm:px-6 border-b border-border">
+            <div className="px-4 py-6 border-b sm:px-6 border-border">
               <div className="flex items-start justify-between">
                 <h2 className="text-xl font-semibold text-foreground">
                   {isEditing ? "Edit Transaction" : "Transaction Details"}
@@ -359,13 +355,7 @@ const TransactionDetailPanel = ({
                   type="button"
                   className="rounded-md bg-card text-muted-foreground hover:text-foreground focus:outline-none"
                   onClick={() => {
-                    // If delete confirmation is open, close it first
-                    if (isDeleting) {
-                      setIsDeleting(false);
-                      return;
-                    }
-
-                    // Otherwise handle normal panel closing
+                    // Handle panel closing
                     if (hasChanges) {
                       if (
                         window.confirm(
@@ -381,7 +371,7 @@ const TransactionDetailPanel = ({
                 >
                   <span className="sr-only">Close panel</span>
                   <svg
-                    className="h-6 w-6"
+                    className="w-6 h-6"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth="1.5"
@@ -400,7 +390,7 @@ const TransactionDetailPanel = ({
             {/* Content */}
             <div className="relative flex-1 px-4 py-6 sm:px-6">
               {error && (
-                <div className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive">
+                <div className="p-3 mb-4 border rounded-md bg-destructive/10 border-destructive/20 text-destructive">
                   {error}
                 </div>
               )}
@@ -533,7 +523,7 @@ const TransactionDetailPanel = ({
                     />
                   </div>
 
-                  <div className="flex space-x-2 pt-4">
+                  <div className="flex pt-4 space-x-2">
                     <button
                       type="button"
                       onClick={handleUpdateTransaction}
@@ -554,7 +544,7 @@ const TransactionDetailPanel = ({
               ) : (
                 // View details
                 <div className="space-y-6">
-                  <div className="flex justify-between items-center">
+                  <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium text-foreground">
                       {localTransaction.description}
                     </h3>
@@ -570,9 +560,9 @@ const TransactionDetailPanel = ({
                     </span>
                   </div>
 
-                  <div className="border-t border-border pt-4">
+                  <div className="pt-4 border-t border-border">
                     <dl className="divide-y divide-border">
-                      <div className="py-3 flex justify-between">
+                      <div className="flex justify-between py-3">
                         <dt className="text-sm font-medium text-muted-foreground">
                           Amount
                         </dt>
@@ -587,7 +577,7 @@ const TransactionDetailPanel = ({
                         </dd>
                       </div>
 
-                      <div className="py-3 flex justify-between">
+                      <div className="flex justify-between py-3">
                         <dt className="text-sm font-medium text-muted-foreground">
                           Date
                         </dt>
@@ -596,7 +586,7 @@ const TransactionDetailPanel = ({
                         </dd>
                       </div>
 
-                      <div className="py-3 flex justify-between">
+                      <div className="flex justify-between py-3">
                         <dt className="text-sm font-medium text-muted-foreground">
                           Category
                         </dt>
@@ -605,7 +595,7 @@ const TransactionDetailPanel = ({
                         </dd>
                       </div>
 
-                      <div className="py-3 flex justify-between">
+                      <div className="flex justify-between py-3">
                         <dt className="text-sm font-medium text-muted-foreground">
                           Payment Method
                         </dt>
@@ -622,10 +612,10 @@ const TransactionDetailPanel = ({
 
                       {localTransaction.notes && (
                         <div className="py-3">
-                          <dt className="text-sm font-medium text-muted-foreground mb-1">
+                          <dt className="mb-1 text-sm font-medium text-muted-foreground">
                             Notes
                           </dt>
-                          <dd className="text-sm text-foreground mt-1 whitespace-pre-wrap">
+                          <dd className="mt-1 text-sm whitespace-pre-wrap text-foreground">
                             {localTransaction.notes}
                           </dd>
                         </div>
@@ -633,7 +623,7 @@ const TransactionDetailPanel = ({
                     </dl>
                   </div>
 
-                  <div className="flex space-x-2 pt-4">
+                  <div className="flex pt-4 space-x-2">
                     <button
                       type="button"
                       onClick={() => setIsEditing(true)}
@@ -643,10 +633,11 @@ const TransactionDetailPanel = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setIsDeleting(true)}
-                      className="flex-1 px-4 py-2 text-sm font-medium border rounded-md shadow-sm text-destructive bg-destructive/10 hover:bg-destructive/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-destructive"
+                      className="flex-1 px-4 py-2 text-sm font-medium text-center border rounded-md shadow-sm text-destructive bg-destructive/10 hover:bg-destructive/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-destructive"
+                      onClick={handleDeleteTransaction}
+                      disabled={isLoading}
                     >
-                      Delete
+                      {isLoading ? "Deleting..." : "Delete"}
                     </button>
                   </div>
                 </div>
@@ -655,69 +646,6 @@ const TransactionDetailPanel = ({
           </div>
         </div>
       </div>
-
-      {/* Delete confirmation modal */}
-      {isDeleting && (
-        <div
-          className="fixed inset-0 z-50 overflow-y-auto"
-          onClick={(e) => {
-            // Close the modal when clicking the backdrop
-            if (e.target === e.currentTarget) {
-              setIsDeleting(false);
-            }
-          }}
-        >
-          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-            <div className="relative transform overflow-hidden rounded-lg bg-card px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-              <div className="sm:flex sm:items-start">
-                <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-destructive/10 sm:mx-0 sm:h-10 sm:w-10">
-                  <svg
-                    className="h-6 w-6 text-destructive"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth="1.5"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-                    />
-                  </svg>
-                </div>
-                <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
-                  <h3 className="text-lg font-medium leading-6 text-foreground">
-                    Delete Transaction
-                  </h3>
-                  <div className="mt-2">
-                    <p className="text-sm text-muted-foreground">
-                      Are you sure you want to delete this transaction? This
-                      action cannot be undone.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
-                  className="inline-flex w-full justify-center rounded-md border border-transparent bg-destructive px-4 py-2 text-base font-medium text-destructive-foreground shadow-sm hover:bg-destructive/90 focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm"
-                  onClick={handleDeleteTransaction}
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Deleting..." : "Delete"}
-                </button>
-                <button
-                  type="button"
-                  className="mt-3 inline-flex w-full justify-center rounded-md border border-border bg-card px-4 py-2 text-base font-medium text-foreground shadow-sm hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 sm:mt-0 sm:w-auto sm:text-sm"
-                  onClick={() => setIsDeleting(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

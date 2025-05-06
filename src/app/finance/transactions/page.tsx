@@ -1,15 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import TransactionForm from "@/components/finance/TransactionForm";
-import TransactionList from "@/components/finance/TransactionListDark";
 import BackToHome from "@/components/common/BackToHome";
 
 const TransactionsPage = () => {
-  const [refreshKey, setRefreshKey] = useState(0);
-
   const handleTransactionAdded = () => {
-    setRefreshKey((prev) => prev + 1);
+    // This function is kept for future use if needed
   };
 
   return (
@@ -23,27 +19,19 @@ const TransactionsPage = () => {
         {/* Header */}
         <div className="p-6 border shadow-md bg-card rounded-xl border-border">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Income & Expenses
+            Add Transaction
           </h1>
           <p className="mt-2 text-base leading-relaxed text-muted-foreground">
-            Add your income and expenses
+            Record your income and expenses
           </p>
         </div>
 
         {/* Transaction Form */}
         <div className="p-6 border shadow-md bg-card rounded-xl border-border">
           <h2 className="mb-6 text-xl font-semibold text-foreground">
-            Add Transaction
+            Transaction Details
           </h2>
           <TransactionForm onTransactionAdded={handleTransactionAdded} />
-        </div>
-
-        {/* Transaction List */}
-        <div className="p-6 border shadow-md bg-card rounded-xl border-border">
-          <h2 className="mb-6 text-xl font-semibold text-foreground">
-            Recent Transactions
-          </h2>
-          <TransactionList key={`list-${refreshKey}`} />
         </div>
       </div>
     </div>

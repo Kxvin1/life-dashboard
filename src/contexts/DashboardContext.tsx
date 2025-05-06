@@ -53,8 +53,9 @@ const defaultCards: DashboardCard[] = [
   },
   {
     id: "finance-income-expense",
-    title: "Income & Expenses",
-    description: "Track your income and expenses with customizable categories.",
+    title: "Add Transaction",
+    description:
+      "Record your income and expenses with customizable categories.",
     href: "/finance/transactions",
     category: "finance",
     isImplemented: true,
@@ -244,7 +245,6 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
 
         setQuickAccessCards(cards);
       } catch (error) {
-        console.error("Error parsing saved quick access cards:", error);
         setQuickAccessCards(
           defaultCards.filter((card) => defaultQuickAccess.includes(card.id))
         );

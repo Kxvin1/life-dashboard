@@ -92,7 +92,6 @@ export default function DashboardAccountSummary() {
         setError(
           err instanceof Error ? err.message : "Failed to fetch financial data"
         );
-        console.error("Error fetching financial data:", err);
       } finally {
         setLoading(false);
       }
