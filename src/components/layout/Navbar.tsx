@@ -17,8 +17,9 @@ const Navbar = () => {
   // Determine page title based on pathname
   const getPageTitle = () => {
     if (pathname === "/") return "Dashboard";
-    if (pathname === "/overview") return "Financial Overview";
-    if (pathname === "/finance") return "Income & Expenses";
+    if (pathname === "/finance") return "Finance"; // Redirect page
+    if (pathname === "/finance/overview") return "Financial Overview";
+    if (pathname === "/finance/transactions") return "Income & Expenses";
     if (pathname === "/finance/budgeting") return "Budgeting";
     if (pathname === "/finance/subscriptions") return "Subscriptions";
     if (pathname === "/finance/savings") return "Savings Goals";

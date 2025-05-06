@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import OverviewSummary from "@/components/finance/OverviewSummaryDark";
 import CategorySelect from "@/components/finance/CategorySelect";
+import BackToHome from "@/components/common/BackToHome";
 
 export default function OverviewPage() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -31,10 +32,15 @@ export default function OverviewPage() {
 
   return (
     <div className="p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto max-w-7xl">
+        {/* Back to Home button */}
+        <div className="mb-4">
+          <BackToHome />
+        </div>
+
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground">
-            Transactions Overview
+            Finance Overview
           </h1>
           <p className="mt-2 text-muted-foreground">
             View your financial summary by month or year
@@ -42,20 +48,20 @@ export default function OverviewPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-card rounded-xl shadow-md border border-border p-6 mb-6">
-          <h2 className="text-lg font-semibold text-foreground mb-4">
+        <div className="p-6 mb-6 border shadow-md bg-card rounded-xl border-border">
+          <h2 className="mb-4 text-lg font-semibold text-foreground">
             Filters
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+              <label className="block mb-2 text-sm font-medium text-foreground">
                 Year
               </label>
               <div className="relative">
                 <select
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="w-full px-3 py-2 text-sm border rounded-md border-input bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   {Array.from(
                     { length: 5 },
@@ -70,7 +76,7 @@ export default function OverviewPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+              <label className="block mb-2 text-sm font-medium text-foreground">
                 Month
               </label>
               <div className="relative">
@@ -81,7 +87,7 @@ export default function OverviewPage() {
                       e.target.value ? Number(e.target.value) : null
                     )
                   }
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="w-full px-3 py-2 text-sm border rounded-md border-input bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <option value="">All Months</option>
                   {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
@@ -96,7 +102,7 @@ export default function OverviewPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+              <label className="block mb-2 text-sm font-medium text-foreground">
                 Category
               </label>
               <div className="relative">
@@ -108,7 +114,7 @@ export default function OverviewPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+              <label className="block mb-2 text-sm font-medium text-foreground">
                 View Mode
               </label>
               <div className="relative">
@@ -117,7 +123,7 @@ export default function OverviewPage() {
                   onChange={(e) =>
                     setViewMode(e.target.value as "monthly" | "yearly")
                   }
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="w-full px-3 py-2 text-sm border rounded-md border-input bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <option value="monthly">Monthly View</option>
                   <option value="yearly">Yearly View</option>
