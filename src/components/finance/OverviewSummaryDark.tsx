@@ -199,7 +199,7 @@ export default function OverviewSummary({
                 </div>
                 <div className="bg-card/80 rounded-lg p-6 border border-border">
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                    Net
+                    Net Income
                   </h3>
                   <p
                     className={`text-2xl md:text-3xl font-bold truncate ${
@@ -252,7 +252,7 @@ export default function OverviewSummary({
                       </div>
                       <div className="flex justify-between items-center pt-2 border-t border-border">
                         <span className="text-sm font-medium text-foreground">
-                          Net
+                          Net Income
                         </span>
                         <span
                           className={`font-medium ${

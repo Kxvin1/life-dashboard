@@ -129,7 +129,7 @@ export default function TransactionSummary({
 
         <div className="p-6 transition-shadow duration-300 border shadow-md bg-card rounded-xl hover:shadow-lg border-border">
           <h3 className="mb-1 text-sm font-medium text-muted-foreground">
-            Net
+            Net Income
           </h3>
           <p
             className={`text-2xl md:text-3xl font-bold truncate ${

@@ -199,7 +199,7 @@ export default function OverviewSummary({
                   }`}
                 >
                   <h3 className="text-sm font-medium text-gray-500 mb-1">
-                    Net
+                    Net Income
                   </h3>
                   <p
                     className={`text-3xl font-bold ${
@@ -248,7 +248,7 @@ export default function OverviewSummary({
                       </div>
                       <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                         <span className="text-sm font-medium text-gray-700">
-                          Net
+                          Net Income
                         </span>
                         <span
                           className={`font-medium ${

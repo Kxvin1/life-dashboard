@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import QuickAccess from "@/components/dashboard/QuickAccess";
 import AllTools from "@/components/dashboard/AllTools";
+import DashboardAccountSummary from "@/components/dashboard/DashboardAccountSummary";
 
 const HomePage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -49,25 +50,7 @@ const HomePage = () => {
           </div>
         </div>
 
-        <div className="bg-card rounded-xl shadow-md border border-border p-6">
-          <h2 className="text-xl font-semibold text-foreground mb-4">
-            Account Summary
-          </h2>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Total Balance</span>
-              <span className="text-foreground font-medium">$24,731.54</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Monthly Income</span>
-              <span className="text-[#4ade80] font-medium">$5,230.00</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Monthly Expenses</span>
-              <span className="text-red-500 font-medium">$3,450.75</span>
-            </div>
-          </div>
-        </div>
+        <DashboardAccountSummary />
       </div>
 
       {/* Quick Access Section */}
