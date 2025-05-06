@@ -113,19 +113,19 @@ export default function DashboardAccountSummary() {
               <div className="w-24 h-4 rounded bg-secondary"></div>
               <div className="w-20 h-4 rounded bg-secondary"></div>
             </div>
-            <div className="h-1 w-full bg-secondary/30 rounded-full"></div>
+            <div className="w-full h-1 rounded-full bg-secondary/30"></div>
           </div>
 
           {/* Year to Date Skeleton */}
           <div>
-            <div className="w-28 h-4 mb-2 rounded bg-secondary"></div>
+            <div className="h-4 mb-2 rounded w-28 bg-secondary"></div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="w-24 h-4 rounded bg-secondary"></div>
                 <div className="w-20 h-4 rounded bg-secondary"></div>
               </div>
               <div className="flex items-center justify-between">
-                <div className="w-28 h-4 rounded bg-secondary"></div>
+                <div className="h-4 rounded w-28 bg-secondary"></div>
                 <div className="w-20 h-4 rounded bg-secondary"></div>
               </div>
               <div className="flex items-center justify-between">
@@ -138,7 +138,7 @@ export default function DashboardAccountSummary() {
           {/* Subscriptions Skeleton */}
           <div className="pt-2 mt-2 border-t border-border">
             <div className="flex items-center justify-between">
-              <div className="w-28 h-4 rounded bg-secondary"></div>
+              <div className="h-4 rounded w-28 bg-secondary"></div>
               <div className="w-24 h-4 rounded bg-secondary"></div>
             </div>
           </div>
@@ -181,7 +181,7 @@ export default function DashboardAccountSummary() {
               {formatCurrency(financialData.netWorth)}
             </span>
           </div>
-          <div className="h-1 w-full bg-secondary/50 rounded-full overflow-hidden">
+          <div className="w-full h-1 overflow-hidden rounded-full bg-secondary/50">
             <div
               className={`h-full ${
                 financialData.netWorth >= 0 ? "bg-[#4ade80]" : "bg-red-500"
@@ -200,7 +200,7 @@ export default function DashboardAccountSummary() {
 
         {/* Year to Date */}
         <div>
-          <h3 className="text-sm font-medium text-foreground mb-2">
+          <h3 className="mb-2 text-sm font-medium text-foreground">
             {currentYear} Summary
           </h3>
           <div className="space-y-2">
@@ -214,20 +214,6 @@ export default function DashboardAccountSummary() {
               <span className="text-muted-foreground">Total Expenses</span>
               <span className="font-medium text-red-500">
                 {formatCurrency(financialData.ytdExpenses)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Net Income</span>
-              <span
-                className={`font-medium ${
-                  financialData.ytdIncome - financialData.ytdExpenses >= 0
-                    ? "text-[#4ade80]"
-                    : "text-red-500"
-                }`}
-              >
-                {formatCurrency(
-                  financialData.ytdIncome - financialData.ytdExpenses
-                )}
               </span>
             </div>
           </div>
