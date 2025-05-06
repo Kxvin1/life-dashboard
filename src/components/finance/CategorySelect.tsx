@@ -5,11 +5,16 @@ import Cookies from "js-cookie";
 import { Category } from "@/types/finance";
 
 interface CategorySelectProps {
-  value: number | null;
-  onChange: (value: number | null) => void;
+  selectedCategoryId: number | null;
+  onCategoryChange: (value: number | null) => void;
+  transactionType?: string;
 }
 
-const CategorySelect = ({ value, onChange }: CategorySelectProps) => {
+const CategorySelect = ({
+  selectedCategoryId,
+  onCategoryChange,
+  transactionType,
+}: CategorySelectProps) => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,35 +74,65 @@ const CategorySelect = ({ value, onChange }: CategorySelectProps) => {
   const incomeCategories = categories.filter((cat) => cat.type === "income");
   const expenseCategories = categories.filter((cat) => cat.type === "expense");
 
+  // Filter categories based on transaction type if provided
+  let filteredCategories = categories;
+  if (transactionType) {
+    filteredCategories = categories.filter(
+      (cat) => cat.type === transactionType
+    );
+  }
+
   return (
     <select
-      value={value || ""}
-      onChange={(e) => onChange(Number(e.target.value))}
+      value={selectedCategoryId || ""}
+      onChange={(e) => {
+        const value = e.target.value;
+        onCategoryChange(value ? Number(value) : null);
+      }}
       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
-      <option value="">All Categories</option>
-      <optgroup label="Income">
-        {incomeCategories.map((category) => (
+      <option value="">Select a Category</option>
+
+      {transactionType ? (
+        // If transaction type is provided, show only relevant categories
+        filteredCategories.map((category) => (
           <option
             key={category.id}
             value={category.id}
-            className="text-green-600"
+            className={
+              category.type === "income" ? "text-green-600" : "text-red-600"
+            }
           >
             {category.name}
           </option>
-        ))}
-      </optgroup>
-      <optgroup label="Expenses">
-        {expenseCategories.map((category) => (
-          <option
-            key={category.id}
-            value={category.id}
-            className="text-red-600"
-          >
-            {category.name}
-          </option>
-        ))}
-      </optgroup>
+        ))
+      ) : (
+        // Otherwise show all categories grouped by type
+        <>
+          <optgroup label="Income">
+            {incomeCategories.map((category) => (
+              <option
+                key={category.id}
+                value={category.id}
+                className="text-green-600"
+              >
+                {category.name}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label="Expenses">
+            {expenseCategories.map((category) => (
+              <option
+                key={category.id}
+                value={category.id}
+                className="text-red-600"
+              >
+                {category.name}
+              </option>
+            ))}
+          </optgroup>
+        </>
+      )}
     </select>
   );
 };

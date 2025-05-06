@@ -8,6 +8,7 @@ import {
   formatDateWithTimezoneOffset,
 } from "@/lib/utils";
 import { Transaction } from "@/types/finance";
+import TransactionDetailPanel from "./TransactionDetailPanel";
 
 interface MonthlySummary {
   income: number;
@@ -45,6 +46,9 @@ export default function OverviewSummary({
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const transactionsPerPage = 10;
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<Transaction | null>(null);
+  const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
 
   // Use the shared utility function for date formatting
   const formatDate = formatDateWithTimezoneOffset;
@@ -488,7 +492,14 @@ export default function OverviewSummary({
               </thead>
               <tbody className="bg-card divide-y divide-border">
                 {paginatedTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-accent/30">
+                  <tr
+                    key={transaction.id}
+                    className="hover:bg-accent/30 cursor-pointer"
+                    onClick={() => {
+                      setSelectedTransaction(transaction);
+                      setIsDetailPanelOpen(true);
+                    }}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {formatDate(transaction.date)}
                     </td>
@@ -502,8 +513,8 @@ export default function OverviewSummary({
                       <span
                         className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           transaction.type === "income"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                            : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
                         }`}
                       >
                         {transaction.type.charAt(0).toUpperCase() +
@@ -531,10 +542,94 @@ export default function OverviewSummary({
     );
   };
 
+  // Handle transaction updates
+  const handleTransactionUpdated = () => {
+    // Refetch data
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const token = Cookies.get("token");
+
+        // Fetch transactions
+        const transactionsResponse = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL
+          }/api/v1/transactions/?year=${year}${month ? `&month=${month}` : ""}${
+            categoryId ? `&category_id=${categoryId}` : ""
+          }`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!transactionsResponse.ok)
+          throw new Error("Failed to fetch transactions");
+        const transactionsData = await transactionsResponse.json();
+        // Sort transactions by date in descending order (newest first)
+        const sortedTransactions = sortTransactionsByDate(transactionsData);
+        setTransactions(sortedTransactions);
+
+        // Fetch summary data based on view mode
+        if (viewMode === "monthly") {
+          const response = await fetch(
+            `${
+              process.env.NEXT_PUBLIC_API_URL
+            }/api/v1/summaries/monthly?year=${year}${
+              month ? `&month=${month}` : ""
+            }${categoryId ? `&category_id=${categoryId}` : ""}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (!response.ok) throw new Error("Failed to fetch monthly summary");
+          const data = await response.json();
+          setMonthlyData(data.summary);
+        } else {
+          const response = await fetch(
+            `${
+              process.env.NEXT_PUBLIC_API_URL
+            }/api/v1/summaries/yearly?year=${year}${
+              categoryId ? `&category_id=${categoryId}` : ""
+            }`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (!response.ok) throw new Error("Failed to fetch yearly summary");
+          const data = await response.json();
+          setYearlyData(data);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  };
+
   return (
     <div className="space-y-6">
       {renderSummary()}
       {renderTransactions()}
+
+      {/* Transaction Detail Panel */}
+      <TransactionDetailPanel
+        transaction={selectedTransaction}
+        isOpen={isDetailPanelOpen}
+        onClose={() => setIsDetailPanelOpen(false)}
+        onTransactionUpdated={handleTransactionUpdated}
+      />
     </div>
   );
 }
