@@ -3,21 +3,21 @@
 import { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import { formatCurrency } from "@/lib/utils";
-import { Transaction, MonthlySummary } from "@/types/finance";
+import { Transaction } from "@/types/finance";
 
 interface FinancialData {
-  totalBalance: number;
-  monthlyIncome: number;
-  monthlyExpenses: number;
+  netWorth: number;
+  ytdIncome: number;
+  ytdExpenses: number;
 }
 
 export default function DashboardAccountSummary() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [financialData, setFinancialData] = useState<FinancialData>({
-    totalBalance: 0,
-    monthlyIncome: 0,
-    monthlyExpenses: 0,
+    netWorth: 0,
+    ytdIncome: 0,
+    ytdExpenses: 0,
   });
 
   useEffect(() => {
@@ -27,35 +27,10 @@ export default function DashboardAccountSummary() {
         setError(null);
         const token = Cookies.get("token");
 
-        // Get current date info for fetching current month's data
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
+        // Get current year for fetching data
+        const currentYear = new Date().getFullYear();
 
-        // Fetch monthly summary for current month
-        const monthlySummaryResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/summaries/monthly?year=${currentYear}&month=${currentMonth}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!monthlySummaryResponse.ok) {
-          throw new Error("Failed to fetch monthly summary");
-        }
-
-        const monthlySummaryData = await monthlySummaryResponse.json();
-        const monthData: MonthlySummary = monthlySummaryData.summary[
-          currentMonth
-        ] || {
-          income: 0,
-          expense: 0,
-          net: 0,
-        };
-
-        // Fetch all transactions to calculate total balance
+        // Fetch all transactions to calculate net worth
         const transactionsResponse = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/`,
           {
@@ -71,7 +46,7 @@ export default function DashboardAccountSummary() {
 
         const transactions: Transaction[] = await transactionsResponse.json();
 
-        // Calculate lifetime totals from all transactions
+        // Calculate lifetime totals from all transactions (net worth)
         const lifetimeIncome = transactions
           .filter((t: Transaction) => t.type === "income")
           .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
@@ -80,13 +55,38 @@ export default function DashboardAccountSummary() {
           .filter((t: Transaction) => t.type === "expense")
           .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
 
-        // Calculate net worth (all time income minus all time expenses)
         const netWorth = lifetimeIncome - lifetimeExpenses;
 
+        // Fetch current year's monthly summaries for YTD calculations
+        const yearSummaryResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/summaries/monthly?year=${currentYear}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!yearSummaryResponse.ok) {
+          throw new Error("Failed to fetch yearly summary");
+        }
+
+        const yearSummaryData = await yearSummaryResponse.json();
+
+        // Calculate YTD income and expenses
+        let ytdIncome = 0;
+        let ytdExpenses = 0;
+
+        Object.values(yearSummaryData.summary).forEach((monthData: any) => {
+          ytdIncome += monthData.income || 0;
+          ytdExpenses += monthData.expense || 0;
+        });
+
+        // Set the financial data with just what we need
         setFinancialData({
-          totalBalance: netWorth,
-          monthlyIncome: monthData.income,
-          monthlyExpenses: monthData.expense,
+          netWorth,
+          ytdIncome,
+          ytdExpenses,
         });
       } catch (err) {
         setError(
@@ -107,23 +107,40 @@ export default function DashboardAccountSummary() {
         <h2 className="mb-4 text-xl font-semibold text-foreground">
           Account Summary
         </h2>
-        <div className="space-y-4">
-          <div className="space-y-2 animate-pulse">
-            <div className="flex items-center justify-between">
+        <div className="space-y-4 animate-pulse">
+          {/* Net Worth Skeleton */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
               <div className="w-24 h-4 rounded bg-secondary"></div>
               <div className="w-20 h-4 rounded bg-secondary"></div>
             </div>
-            <div className="flex items-center justify-between">
-              <div className="h-4 rounded bg-secondary w-28"></div>
-              <div className="w-16 h-4 rounded bg-secondary"></div>
+            <div className="h-1 w-full bg-secondary/30 rounded-full"></div>
+          </div>
+
+          {/* Year to Date Skeleton */}
+          <div>
+            <div className="w-28 h-4 mb-2 rounded bg-secondary"></div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="w-24 h-4 rounded bg-secondary"></div>
+                <div className="w-20 h-4 rounded bg-secondary"></div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="w-28 h-4 rounded bg-secondary"></div>
+                <div className="w-20 h-4 rounded bg-secondary"></div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="w-24 h-4 rounded bg-secondary"></div>
+                <div className="w-20 h-4 rounded bg-secondary"></div>
+              </div>
             </div>
+          </div>
+
+          {/* Subscriptions Skeleton */}
+          <div className="pt-2 mt-2 border-t border-border">
             <div className="flex items-center justify-between">
-              <div className="w-32 h-4 rounded bg-secondary"></div>
+              <div className="w-28 h-4 rounded bg-secondary"></div>
               <div className="w-24 h-4 rounded bg-secondary"></div>
-            </div>
-            <div className="flex items-center justify-between pt-2 border-t border-border">
-              <div className="w-24 h-4 rounded bg-secondary"></div>
-              <div className="w-20 h-4 rounded bg-secondary"></div>
             </div>
           </div>
         </div>
@@ -144,39 +161,85 @@ export default function DashboardAccountSummary() {
     );
   }
 
+  // Get current year for display
+  const currentYear = new Date().getFullYear();
+
   return (
     <div className="p-6 border shadow-md bg-card rounded-xl border-border">
       <h2 className="mb-4 text-xl font-semibold text-foreground">
         Account Summary
       </h2>
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Net Worth</span>
-          <span
-            className={`font-medium ${
-              financialData.totalBalance >= 0
-                ? "text-[#4ade80]"
-                : "text-red-500"
-            }`}
-          >
-            {formatCurrency(financialData.totalBalance)}
-          </span>
+      <div className="space-y-4">
+        {/* Net Worth */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-muted-foreground">Net Worth</span>
+            <span
+              className={`font-medium ${
+                financialData.netWorth >= 0 ? "text-[#4ade80]" : "text-red-500"
+              }`}
+            >
+              {formatCurrency(financialData.netWorth)}
+            </span>
+          </div>
+          <div className="h-1 w-full bg-secondary/50 rounded-full overflow-hidden">
+            <div
+              className={`h-full ${
+                financialData.netWorth >= 0 ? "bg-[#4ade80]" : "bg-red-500"
+              }`}
+              style={{
+                width: `${Math.min(
+                  (Math.abs(financialData.netWorth) /
+                    (financialData.ytdIncome || 1)) *
+                    100,
+                  100
+                )}%`,
+              }}
+            ></div>
+          </div>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Monthly Income</span>
-          <span className="text-[#4ade80] font-medium">
-            {formatCurrency(financialData.monthlyIncome)}
-          </span>
+
+        {/* Year to Date */}
+        <div>
+          <h3 className="text-sm font-medium text-foreground mb-2">
+            {currentYear} Summary
+          </h3>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Total Income</span>
+              <span className="text-[#4ade80] font-medium">
+                {formatCurrency(financialData.ytdIncome)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Total Expenses</span>
+              <span className="font-medium text-red-500">
+                {formatCurrency(financialData.ytdExpenses)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Net Income</span>
+              <span
+                className={`font-medium ${
+                  financialData.ytdIncome - financialData.ytdExpenses >= 0
+                    ? "text-[#4ade80]"
+                    : "text-red-500"
+                }`}
+              >
+                {formatCurrency(
+                  financialData.ytdIncome - financialData.ytdExpenses
+                )}
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Monthly Expenses</span>
-          <span className="font-medium text-red-500">
-            {formatCurrency(financialData.monthlyExpenses)}
-          </span>
-        </div>
-        <div className="flex items-center justify-between pt-2 mt-2 border-t border-border">
-          <span className="text-muted-foreground">Subscriptions</span>
-          <span className="font-medium text-foreground">Coming Soon</span>
+
+        {/* Subscriptions */}
+        <div className="pt-2 mt-2 border-t border-border">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Subscriptions</span>
+            <span className="font-medium text-foreground">Coming Soon</span>
+          </div>
         </div>
       </div>
     </div>
