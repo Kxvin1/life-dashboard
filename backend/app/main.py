@@ -13,8 +13,8 @@ from app.db.seed_categories import seed_categories, verify_categories
 import asyncio
 
 app = FastAPI(
-    title="Finance Tracker API",
-    description="API for managing personal finances",
+    title="Life Dashboard API",
+    description="API for managing personal finances, productivity, and more",
     version="1.0.0",
 )
 
