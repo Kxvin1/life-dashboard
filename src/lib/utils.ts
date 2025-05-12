@@ -32,3 +32,50 @@ export const formatDateWithTimezoneOffset = (dateString: string): string => {
   const adjustedDate = new Date(date.getTime() + timezoneOffset);
   return adjustedDate.toLocaleDateString();
 };
+
+/**
+ * Calculates and formats the duration between a start date and the current date
+ * Returns formatted string like "8 months", "1 year", "1 year and 1 month", etc.
+ */
+export const formatSubscriptionDuration = (startDateString: string): string => {
+  if (!startDateString) return "N/A";
+
+  // Parse the date string (format: YYYY-MM-DD)
+  const [year, month, day] = startDateString
+    .split("-")
+    .map((num) => parseInt(num, 10));
+
+  const startDate = new Date(year, month - 1, day); // month is 0-indexed in JS Date
+  const currentDate = new Date();
+
+  // Calculate total months between dates
+  const yearDiff = currentDate.getFullYear() - startDate.getFullYear();
+  const monthDiff = currentDate.getMonth() - startDate.getMonth();
+
+  // Total months is years * 12 + month difference
+  let totalMonths = yearDiff * 12 + monthDiff;
+
+  // Adjust for day of month (if current day is earlier than start day, subtract 1 month)
+  if (currentDate.getDate() < startDate.getDate()) {
+    totalMonths -= 1;
+  }
+
+  // Handle negative or zero duration (future dates or today)
+  if (totalMonths <= 0) {
+    return "Less than a month";
+  }
+
+  // Format the duration
+  const years = Math.floor(totalMonths / 12);
+  const months = totalMonths % 12;
+
+  if (years === 0) {
+    return `${months} ${months === 1 ? "month" : "months"}`;
+  } else if (months === 0) {
+    return `${years} ${years === 1 ? "year" : "years"}`;
+  } else {
+    return `${years} ${years === 1 ? "year" : "years"} and ${months} ${
+      months === 1 ? "month" : "months"
+    }`;
+  }
+};

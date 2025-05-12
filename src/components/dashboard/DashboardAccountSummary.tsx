@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import { formatCurrency } from "@/lib/utils";
 import { Transaction } from "@/types/finance";
+import { fetchSubscriptionSummary } from "@/services/subscriptionService";
 
 interface FinancialData {
   netWorth: number;
   ytdIncome: number;
   ytdExpenses: number;
+  monthlySubscriptionCost: number;
 }
 
 export default function DashboardAccountSummary() {
@@ -18,6 +20,7 @@ export default function DashboardAccountSummary() {
     netWorth: 0,
     ytdIncome: 0,
     ytdExpenses: 0,
+    monthlySubscriptionCost: 0,
   });
 
   useEffect(() => {
@@ -82,11 +85,25 @@ export default function DashboardAccountSummary() {
           ytdExpenses += monthData.expense || 0;
         });
 
+        // Fetch subscription summary
+        let monthlySubscriptionCost = 0;
+        try {
+          const subscriptionSummary = await fetchSubscriptionSummary();
+          monthlySubscriptionCost = subscriptionSummary.total_monthly_cost;
+        } catch (subscriptionError) {
+          console.error(
+            "Failed to fetch subscription data:",
+            subscriptionError
+          );
+          // Continue with zero cost if there's an error
+        }
+
         // Set the financial data with just what we need
         setFinancialData({
           netWorth,
           ytdIncome,
           ytdExpenses,
+          monthlySubscriptionCost,
         });
       } catch (err) {
         setError(
@@ -223,7 +240,9 @@ export default function DashboardAccountSummary() {
         <div className="pt-2 mt-2 border-t border-border">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Subscriptions</span>
-            <span className="font-medium text-foreground">Coming Soon</span>
+            <span className="font-medium text-foreground">
+              {formatCurrency(financialData.monthlySubscriptionCost)}/mo
+            </span>
           </div>
         </div>
       </div>

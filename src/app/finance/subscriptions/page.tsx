@@ -1,19 +1,38 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import BackToHome from "@/components/common/BackToHome";
+import SubscriptionForm from "@/components/finance/SubscriptionForm";
+import SubscriptionTabs from "@/components/finance/SubscriptionTabs";
+import SubscriptionSummary from "@/components/finance/SubscriptionSummary";
+import Toast from "@/components/ui/Toast";
 
 const SubscriptionsPage = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push("/login");
     }
   }, [isAuthenticated, isLoading, router]);
+
+  const handleSubscriptionAdded = () => {
+    setShowAddForm(false);
+    setShowSuccessToast(true);
+    setRefreshKey((prev) => prev + 1);
+  };
+
+  const handleSubscriptionDeleted = () => {
+    // Refresh the subscription summary only
+    // The SubscriptionList component will handle its own refresh
+    setRefreshKey((prev) => prev + 1);
+  };
 
   if (isLoading) {
     return (
@@ -34,39 +53,100 @@ const SubscriptionsPage = () => {
         <BackToHome />
       </div>
 
-      <div className="bg-card rounded-xl shadow-md border border-border p-6 mb-6">
-        <h2 className="text-xl font-semibold text-foreground mb-4">
-          Subscription Tracker
-        </h2>
-        <p className="text-muted-foreground mb-6">
-          Track your recurring subscription payments and never miss a due date.
-        </p>
-
-        <div className="bg-secondary/30 rounded-lg p-6 flex items-center justify-center">
-          <div className="text-center">
-            <svg
-              className="h-12 w-12 text-primary mx-auto mb-4"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              Subscription Tracker Coming Soon
-            </h3>
+      {/* Desktop Header - Hidden on mobile */}
+      <div className="hidden p-6 mb-6 border shadow-md lg:block bg-card rounded-xl border-border">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="mb-2 text-xl font-semibold text-foreground">
+              Subscription Tracker
+            </h2>
             <p className="text-muted-foreground">
-              This feature is currently under development. Check back soon!
+              Track your recurring subscription payments and never miss a due
+              date.
             </p>
+          </div>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="px-4 py-2 text-sm font-medium text-white rounded-md bg-primary hover:bg-primary/90 whitespace-nowrap"
+          >
+            Add Subscription
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Subscription Summary - Shown first on mobile, right side on desktop */}
+        <div className="order-first lg:order-last lg:col-span-1">
+          <SubscriptionSummary key={refreshKey} />
+        </div>
+
+        {/* Mobile Add Subscription Form - Only visible on mobile, shown BEFORE the header */}
+        {showAddForm && (
+          <div className="block p-6 mb-6 border shadow-md lg:hidden bg-card rounded-xl border-border">
+            <h3 className="mb-4 text-lg font-medium text-foreground">
+              Add New Subscription
+            </h3>
+            <SubscriptionForm
+              onSubscriptionAdded={handleSubscriptionAdded}
+              onCancel={() => setShowAddForm(false)}
+            />
+          </div>
+        )}
+
+        {/* Mobile Header - Only visible on mobile, shown after subscription summary */}
+        <div className="block p-6 mb-6 border shadow-md lg:hidden bg-card rounded-xl border-border">
+          <div className="flex flex-col gap-4">
+            <div>
+              <h2 className="mb-2 text-xl font-semibold text-foreground">
+                Subscription Tracker
+              </h2>
+              <p className="text-muted-foreground">
+                Track your recurring subscription payments and never miss a due
+                date.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="px-4 py-2 text-sm font-medium text-white rounded-md bg-primary hover:bg-primary/90 whitespace-nowrap"
+            >
+              Add Subscription
+            </button>
+          </div>
+        </div>
+
+        {/* Subscription List - Shown after form on mobile, left side on desktop */}
+        <div className="order-last space-y-6 lg:order-first lg:col-span-2">
+          {/* Desktop Add Subscription Form - Only visible on desktop, shown at the top */}
+          {showAddForm && (
+            <div className="hidden p-6 mb-6 border shadow-md lg:block bg-card rounded-xl border-border">
+              <h3 className="mb-4 text-lg font-medium text-foreground">
+                Add New Subscription
+              </h3>
+              <SubscriptionForm
+                onSubscriptionAdded={handleSubscriptionAdded}
+                onCancel={() => setShowAddForm(false)}
+              />
+            </div>
+          )}
+
+          <div className="p-6 border shadow-md bg-card rounded-xl border-border">
+            <SubscriptionTabs
+              key={refreshKey}
+              onSubscriptionDeleted={handleSubscriptionDeleted}
+            />
           </div>
         </div>
       </div>
+
+      {/* Success Toast */}
+      {showSuccessToast && (
+        <Toast
+          message="Subscription added successfully!"
+          type="success"
+          onClose={() => setShowSuccessToast(false)}
+        />
+      )}
     </div>
   );
 };

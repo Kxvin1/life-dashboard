@@ -4,16 +4,46 @@ export interface Transaction {
   description: string;
   category: Category | null;
   date: string;
-  type: 'income' | 'expense';
-  payment_method: 'cash' | 'credit_card' | 'debit_card' | 'bank_transfer' | 'other';
+  type: "income" | "expense";
+  payment_method:
+    | "cash"
+    | "credit_card"
+    | "debit_card"
+    | "bank_transfer"
+    | "other";
   notes: string | null;
 }
 
 export interface Category {
   id: string;
   name: string;
-  type: 'income' | 'expense';
+  type: "income" | "expense";
   color: string;
+}
+
+export type SubscriptionStatus = "active" | "inactive";
+export type BillingFrequency = "monthly" | "yearly" | "quarterly" | "weekly";
+
+export interface Subscription {
+  id: string;
+  name: string;
+  amount: number;
+  billing_frequency: BillingFrequency;
+  start_date: string;
+  status: SubscriptionStatus;
+  next_payment_date: string | null;
+  last_active_date: string | null;
+  notes: string | null;
+}
+
+export interface SubscriptionSummary {
+  total_monthly_cost: number;
+  future_monthly_cost: number;
+  total_combined_monthly_cost: number;
+  active_subscriptions_count: number;
+  future_subscriptions_count: number;
+  total_subscriptions_count: number;
+  yearly_total?: number;
 }
 
 export interface MonthlySummary {
@@ -38,4 +68,4 @@ export interface FinancialSummary {
     expenses: number;
     balance: number;
   }[];
-} 
+}
