@@ -95,15 +95,7 @@ const Navbar = ({ onMenuToggle }: NavbarProps) => {
         </h1>
       </div>
 
-      <div className="flex items-center space-x-3 relative" ref={optionsRef}>
-        {/* User's full name - clickable */}
-        <span
-          className="text-foreground hover:text-primary cursor-pointer"
-          onClick={() => setShowOptions(!showOptions)}
-        >
-          {user?.full_name || "User"}
-        </span>
-
+      <div className="flex items-center relative" ref={optionsRef}>
         {/* Profile picture icon - clickable */}
         <button
           onClick={() => setShowOptions(!showOptions)}
@@ -129,6 +121,10 @@ const Navbar = ({ onMenuToggle }: NavbarProps) => {
         {showOptions && (
           <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-popover border border-border z-50">
             <div className="py-1">
+              {/* Personalized greeting */}
+              <div className="px-4 py-2 text-sm font-medium text-foreground border-b border-border">
+                Hello, {user?.full_name || "User"}
+              </div>
               <Link
                 href="/settings"
                 className="block px-4 py-2 text-sm text-foreground hover:bg-secondary"

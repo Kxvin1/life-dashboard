@@ -27,11 +27,12 @@ const HomePage = () => {
   }, [theme]);
 
   return (
-    <>
+    <div className="relative">
       <AnimatedGradient />
-      <div className="flex flex-col w-full min-h-screen">
-        {/* Navigation */}
-        <nav className="bg-white/80 backdrop-blur-sm dark:bg-[#0d1117]/80 border-b border-gray-200 dark:border-gray-800">
+
+      {/* Fixed position navbar */}
+      <div className="fixed top-0 left-0 right-0 z-50">
+        <nav className="bg-white/90 backdrop-blur-sm dark:bg-[#0d1117]/90 border-b border-gray-200 dark:border-gray-800">
           <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
               <div className="flex items-center">
@@ -94,7 +95,10 @@ const HomePage = () => {
             </div>
           </div>
         </nav>
+      </div>
 
+      {/* Main content with padding to account for fixed navbar */}
+      <div className="flex flex-col w-full min-h-screen pt-16">
         {/* Hero Section */}
         <section className="py-12 sm:py-16 md:py-20 lg:py-24">
           <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -107,9 +111,11 @@ const HomePage = () => {
                   </span>
                 </h1>
                 <p className="mt-3 text-base text-gray-500 dark:text-gray-300 sm:mt-5 sm:text-xl lg:text-lg xl:text-xl">
-                  Life Dashboard helps you organize your finances, track your
-                  productivity, monitor your health, and manage your personal
-                  life with a beautiful, intuitive interface, all with your data
+                  Use AI-powered tools to organize your money, time, and health
+                  — and uncover insights you might miss on your own.
+                  <br />
+                  <br />
+                  All through a beautiful, intuitive interface with your data
                   kept private and protected.
                 </p>
                 <div className="mt-8 sm:max-w-lg sm:mx-auto sm:text-center lg:text-left">
@@ -151,11 +157,11 @@ const HomePage = () => {
                 Features
               </h2>
               <p className="mt-2 text-3xl font-extrabold leading-8 tracking-tight text-gray-900 dark:text-white sm:text-4xl">
-                Everything you need to stay organized
+                Simple tools. Supercharged by AI.
               </p>
               <p className="max-w-2xl mt-4 text-xl text-gray-500 dark:text-gray-300 lg:mx-auto">
-                Life Dashboard combines multiple tools into one seamless
-                experience.
+                Turns everyday tasks into AI enhanced experiences — helping you
+                make smarter decisions, stay organized, and feel in control.
               </p>
             </div>
 
@@ -184,8 +190,8 @@ const HomePage = () => {
                       Finance Tracking
                     </h3>
                     <p className="mt-2 text-base text-gray-500 dark:text-gray-300">
-                      Track your income, expenses, and net worth. Set budgets
-                      and monitor your financial health.
+                      See where your money goes, get smart budgeting tips, and
+                      track your net worth with AI-powered insights.
                     </p>
                   </div>
                 </div>
@@ -213,8 +219,8 @@ const HomePage = () => {
                       Productivity Tools
                     </h3>
                     <p className="mt-2 text-base text-gray-500 dark:text-gray-300">
-                      Manage tasks, track habits, set goals, and measure your
-                      time effectively.
+                      Stay focused and consistent with goal tracking, habit
+                      suggestions, and time use analysis tailored to you.
                     </p>
                   </div>
                 </div>
@@ -242,8 +248,8 @@ const HomePage = () => {
                       Health Monitoring
                     </h3>
                     <p className="mt-2 text-base text-gray-500 dark:text-gray-300">
-                      Track your mood, practice gratitude, log sleep, and
-                      maintain mindfulness.
+                      Understand your mood, sleep, and mental well-being through
+                      AI enhanced, personalized tracking.
                     </p>
                   </div>
                 </div>
@@ -271,8 +277,8 @@ const HomePage = () => {
                       Personal Organization
                     </h3>
                     <p className="mt-2 text-base text-gray-500 dark:text-gray-300">
-                      Keep notes, manage reading lists, organize files, and
-                      track skills development.
+                      Effortlessly manage notes, files, reading, and skills —
+                      with AI that keeps everything in sync.
                     </p>
                   </div>
                 </div>
@@ -309,13 +315,11 @@ const HomePage = () => {
                     Seamless Experience
                   </h2>
                   <p className="mt-2 text-3xl font-extrabold leading-8 tracking-tight text-gray-900 dark:text-white sm:text-4xl">
-                    Designed for Your Daily Life
+                    Designed for everyday life, enhanced by AI
                   </p>
                   <p className="mt-4 text-lg text-gray-500 dark:text-gray-300">
-                    Our intuitive interface makes it easy to manage all aspects
-                    of your life. Whether you&apos;re tracking finances,
-                    organizing tasks, or monitoring your health, Life Dashboard
-                    provides a seamless experience across all your devices.
+                    With a clean interface and smart automation that makes
+                    managing your life effortless, across all your devices.
                   </p>
                   <div className="mt-6">
                     <Link
@@ -341,13 +345,12 @@ const HomePage = () => {
                     Powerful Analytics
                   </h2>
                   <p className="mt-2 text-3xl font-extrabold leading-8 tracking-tight text-gray-900 dark:text-white sm:text-4xl">
-                    Gain Valuable Insights
+                    Clear insights. Smarter decisions.
                   </p>
                   <p className="mt-4 text-lg text-gray-500 dark:text-gray-300">
-                    Visualize your progress with beautiful charts and reports.
-                    Understand your spending patterns, track your productivity
-                    trends, and monitor your health metrics over time to make
-                    informed decisions about your life.
+                    AI-driven insights surface hidden patterns and trends —
+                    helping you make smarter decisions, spot opportunities, and
+                    stay one step ahead.
                   </p>
                   <div className="mt-6">
                     <Link
@@ -624,7 +627,7 @@ const HomePage = () => {
           </div>
         </footer>
       </div>
-    </>
+    </div>
   );
 };
 
