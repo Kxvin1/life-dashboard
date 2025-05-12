@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { DashboardProvider } from "@/contexts/DashboardContext";
 import ScrollToTop from "@/components/common/ScrollToTop";
+import AuthNavbar from "@/components/layout/AuthNavbar";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   // Add useEffect to ensure theme is applied correctly
@@ -33,7 +34,8 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <ThemeProvider>
           <DashboardProvider>
             <ScrollToTop />
-            {children}
+            <AuthNavbar />
+            <div className="pt-16">{children}</div>
           </DashboardProvider>
         </ThemeProvider>
       </AuthProvider>

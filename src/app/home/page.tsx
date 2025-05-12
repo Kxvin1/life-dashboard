@@ -2,12 +2,19 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import AnimatedGradient from "@/components/layout/AnimatedGradient";
 import { useTheme } from "@/contexts/ThemeContext";
+import MobileMenu from "@/components/layout/MobileMenu";
 
 const HomePage = () => {
   const { theme, toggleTheme } = useTheme();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Toggle mobile menu
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
 
   // Ensure theme toggle works immediately on page load
   useEffect(() => {
@@ -40,7 +47,9 @@ const HomePage = () => {
                   Life Dashboard
                 </span>
               </div>
-              <div className="flex items-center space-x-4">
+
+              {/* Desktop Navigation */}
+              <div className="hidden md:flex items-center space-x-4">
                 {/* Theme Toggle Button */}
                 <button
                   onClick={toggleTheme}
@@ -92,10 +101,40 @@ const HomePage = () => {
                   Sign Up
                 </Link>
               </div>
+
+              {/* Mobile Hamburger Button */}
+              <div className="flex md:hidden items-center">
+                <button
+                  onClick={toggleMobileMenu}
+                  className="p-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  aria-label="Open menu"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </nav>
       </div>
+
+      {/* Mobile Menu */}
+      <MobileMenu
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+      />
 
       {/* Main content with padding to account for fixed navbar */}
       <div className="flex flex-col w-full min-h-screen pt-16">
