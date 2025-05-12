@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { DashboardCard as DashboardCardType } from "@/contexts/DashboardContext";
 
 interface DashboardCardProps {
@@ -11,6 +12,34 @@ interface DashboardCardProps {
 }
 
 const DashboardCard = ({ card, onRemove, onAdd }: DashboardCardProps) => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect if we're on a mobile device
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    // Check on initial load
+    checkIfMobile();
+
+    // Add event listener for window resize
+    window.addEventListener("resize", checkIfMobile);
+
+    // Cleanup
+    return () => window.removeEventListener("resize", checkIfMobile);
+  }, []);
+
+  // Helper function to handle card navigation
+  const handleCardNavigation = (e: React.MouseEvent) => {
+    // Check if the click target is a button or inside a button
+    const target = e.target as HTMLElement;
+    if (target.closest("button")) {
+      // If clicked on a button, prevent navigation
+      e.preventDefault();
+    }
+  };
+
   const CardContent = () => (
     <div className="relative group">
       {/* Card content */}
@@ -41,10 +70,14 @@ const DashboardCard = ({ card, onRemove, onAdd }: DashboardCardProps) => {
           </span>
         </div>
 
-        {/* Action buttons */}
+        {/* Action buttons - visible on mobile, hover on desktop */}
         {(onRemove || onAdd) && (
           <div
-            className={`absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
+            className={`absolute bottom-2 right-2 z-30 ${
+              isMobile
+                ? "opacity-100" // Always visible on mobile
+                : "opacity-0 group-hover:opacity-100 transition-opacity duration-200" // Hover effect on desktop
+            }`}
           >
             {onRemove && (
               <button
@@ -53,11 +86,11 @@ const DashboardCard = ({ card, onRemove, onAdd }: DashboardCardProps) => {
                   e.stopPropagation();
                   onRemove(card.id);
                 }}
-                className="p-1 rounded-full bg-secondary text-foreground hover:bg-secondary/80"
+                className="p-2 rounded-full bg-secondary text-foreground hover:bg-secondary/80 shadow-md"
                 aria-label="Remove from Quick Access"
               >
                 <svg
-                  className="w-4 h-4"
+                  className="w-5 h-5"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -79,11 +112,11 @@ const DashboardCard = ({ card, onRemove, onAdd }: DashboardCardProps) => {
                   e.stopPropagation();
                   onAdd(card.id);
                 }}
-                className="p-1 rounded-full bg-secondary text-foreground hover:bg-secondary/80"
+                className="p-2 rounded-full bg-primary text-white hover:bg-primary/90 shadow-md"
                 aria-label="Add to Quick Access"
               >
                 <svg
-                  className="w-4 h-4"
+                  className="w-5 h-5"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -114,7 +147,7 @@ const DashboardCard = ({ card, onRemove, onAdd }: DashboardCardProps) => {
   );
 
   return card.isImplemented ? (
-    <Link href={card.href}>
+    <Link href={card.href} onClick={handleCardNavigation}>
       <CardContent />
     </Link>
   ) : (

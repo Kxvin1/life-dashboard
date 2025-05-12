@@ -56,8 +56,8 @@ const HomePage = () => {
               <div className="flex items-start">
                 <span className="mr-2 font-medium text-primary">3.</span>
                 <span className="text-foreground">
-                  Add tools to Quick Access by clicking the <strong>+</strong>{" "}
-                  button
+                  Add tools to Quick Access by tapping the <strong>+</strong>{" "}
+                  button on any tool
                 </span>
               </div>
               <div className="flex items-start">

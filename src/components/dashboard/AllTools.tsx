@@ -29,7 +29,7 @@ const AllTools = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-foreground">All Tools</h2>
         <div className="text-xs text-muted-foreground">
-          Click + to add to Quick Access
+          Tap the + button to add to Quick Access
         </div>
       </div>
 
