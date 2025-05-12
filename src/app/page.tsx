@@ -31,39 +31,37 @@ const HomePage = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold text-foreground mb-6">Dashboard</h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div className="bg-card rounded-xl shadow-md border border-border p-6">
-          <h2 className="text-xl font-semibold text-foreground mb-4">
+      <div className="grid grid-cols-1 gap-6 mb-6 md:grid-cols-2">
+        <div className="p-6 border shadow-md bg-card rounded-xl border-border">
+          <h2 className="mb-4 text-xl font-semibold text-foreground">
             Welcome to Life Dashboard
           </h2>
           <div className="space-y-3">
             <p className="text-foreground">
-              Hi {user?.full_name}, here's how to get started:
+              Hi {user?.full_name}, here&apos;s how to get started:
             </p>
             <div className="space-y-2">
               <div className="flex items-start">
-                <span className="text-primary font-medium mr-2">1.</span>
+                <span className="mr-2 font-medium text-primary">1.</span>
                 <span className="text-foreground">
                   Use <strong>Quick Access</strong> for your favorite tools
                 </span>
               </div>
               <div className="flex items-start">
-                <span className="text-primary font-medium mr-2">2.</span>
+                <span className="mr-2 font-medium text-primary">2.</span>
                 <span className="text-foreground">
                   Explore <strong>All Tools</strong> to discover more features
                 </span>
               </div>
               <div className="flex items-start">
-                <span className="text-primary font-medium mr-2">3.</span>
+                <span className="mr-2 font-medium text-primary">3.</span>
                 <span className="text-foreground">
                   Add tools to Quick Access by clicking the <strong>+</strong>{" "}
                   button
                 </span>
               </div>
               <div className="flex items-start">
-                <span className="text-primary font-medium mr-2">4.</span>
+                <span className="mr-2 font-medium text-primary">4.</span>
                 <span className="text-foreground">
                   Track your finances in the <strong>Finance</strong> section
                 </span>
