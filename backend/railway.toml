@@ -3,8 +3,8 @@ builder = "nixpacks"
 buildCommand = "pip install -r requirements.txt"
 
 [deploy]
-startCommand = "python -c 'import os; from app.core.config import settings; from alembic.config import Config; from alembic import command; config = Config(\"alembic.ini\"); config.set_main_option(\"sqlalchemy.url\", settings.DATABASE_URL); command.upgrade(config, \"head\")' && uvicorn app.main:app --host 0.0.0.0 --port $PORT --reload"
+startCommand = "python -c 'import os; from app.core.config import settings; from alembic.config import Config; from alembic import command; config = Config(\"alembic.ini\"); config.set_main_option(\"sqlalchemy.url\", settings.DATABASE_URL); command.upgrade(config, \"heads\")' && uvicorn app.main:app --host 0.0.0.0 --port $PORT --reload"
 healthcheckPath = "/"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 10 
+restartPolicyMaxRetries = 10
