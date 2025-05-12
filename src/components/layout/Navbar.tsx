@@ -6,7 +6,11 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
-const Navbar = () => {
+interface NavbarProps {
+  onMenuToggle?: () => void;
+}
+
+const Navbar = ({ onMenuToggle }: NavbarProps) => {
   const { logout, isAuthenticated, isLoading, user } = useAuth();
   // Theme context is imported but not currently used
   useTheme();
@@ -52,15 +56,56 @@ const Navbar = () => {
     };
   }, []);
 
-  if (isLoading || !isAuthenticated) {
+  // For public pages like /home, we need a simplified navbar
+  if (!isAuthenticated) {
+    // Only render a navbar for the home page
+    if (pathname === "/home") {
+      return (
+        <header className="bg-card border-b border-border h-16 flex items-center justify-between px-6 sticky top-0 z-10">
+          <div className="flex items-center">
+            <h1 className="text-xl font-semibold text-foreground">
+              Life Dashboard
+            </h1>
+          </div>
+        </header>
+      );
+    }
+    return null;
+  }
+
+  if (isLoading) {
     return null;
   }
 
   return (
     <header className="bg-card border-b border-border h-16 flex items-center justify-between px-6 sticky top-0 z-10">
-      <h1 className="text-xl font-semibold text-foreground">
-        {getPageTitle()}
-      </h1>
+      <div className="flex items-center">
+        {/* Hamburger menu button - only visible on mobile */}
+        <button
+          className="md:hidden mr-4 p-2 rounded-md text-foreground hover:bg-secondary"
+          onClick={onMenuToggle}
+          aria-label="Toggle menu"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </button>
+
+        <h1 className="text-xl font-semibold text-foreground">
+          {getPageTitle()}
+        </h1>
+      </div>
 
       <div className="flex items-center space-x-3 relative" ref={optionsRef}>
         {/* User's full name - clickable */}

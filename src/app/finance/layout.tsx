@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
+import ScrollToTop from "@/components/common/ScrollToTop";
 
 interface FinanceLayoutProps {
   children: ReactNode;
@@ -32,5 +33,10 @@ export default function FinanceLayout({ children }: FinanceLayoutProps) {
     return null;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <ScrollToTop />
+      {children}
+    </>
+  );
 }

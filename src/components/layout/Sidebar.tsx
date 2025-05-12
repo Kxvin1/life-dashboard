@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useEffect } from "react";
 
 // Define main categories
 const mainCategories = [
@@ -61,128 +62,129 @@ const futureCategories = [
   },
 ];
 
-const Sidebar = () => {
+interface SidebarProps {
+  isMobile?: boolean;
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+const Sidebar = ({
+  isMobile = false,
+  isOpen = false,
+  onClose,
+}: SidebarProps) => {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
 
-  return (
-    <div className="flex-shrink-0 w-64 h-full flex flex-col border-r dark:bg-[#0d1117] bg-white border-border">
-      {/* Search bar and settings */}
-      <div className="p-4 dark:bg-[#0d1117] bg-white">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-full bg-secondary text-foreground hover:bg-secondary/80"
-              aria-label="Toggle theme"
-            >
-              {theme === "dark" ? (
-                <svg
-                  className="w-5 h-5"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="w-5 h-5"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                  />
-                </svg>
-              )}
-            </button>
-            <Link
-              href="/settings"
-              className={`p-2 rounded-full ${
-                pathname === "/settings"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-foreground hover:bg-secondary/80"
-              }`}
-              aria-label="Settings"
-            >
-              <svg
-                className="w-5 h-5"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-            </Link>
-          </div>
-        </div>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <svg
-              className="w-5 h-5 text-muted-foreground"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
-          <input
-            type="text"
-            placeholder="Search"
-            className="w-full py-2 pl-10 pr-4 border-none rounded-md bg-secondary text-foreground focus:ring-2 focus:ring-primary"
-          />
-        </div>
-      </div>
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    if (isMobile) {
+      const handleClickOutside = (event: MouseEvent) => {
+        // Check if the click is outside the sidebar
+        const sidebar = document.getElementById("mobile-sidebar");
+        if (sidebar && !sidebar.contains(event.target as Node)) {
+          onClose?.();
+        }
+      };
 
-      {/* Main menu */}
-      <nav className="mt-2 overflow-y-auto dark:bg-[#0d1117] bg-white flex-1">
-        {/* Main categories */}
-        <ul>
-          {mainCategories.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <li key={item.name}>
-                <Link
-                  href={item.href}
-                  className={`flex items-center px-4 py-3 text-sm ${
-                    isActive
-                      ? "bg-primary/10 text-primary border-l-4 border-primary"
-                      : "text-foreground hover:bg-secondary"
-                  }`}
+      if (isOpen) {
+        document.addEventListener("mousedown", handleClickOutside);
+      }
+
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [isMobile, isOpen, onClose]);
+
+  // Handle ESC key to close sidebar on mobile
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isMobile && isOpen) {
+        onClose?.();
+      }
+    };
+
+    if (isMobile && isOpen) {
+      document.addEventListener("keydown", handleEscKey);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEscKey);
+    };
+  }, [isMobile, isOpen, onClose]);
+
+  // Prevent scrolling of the body when mobile sidebar is open
+  useEffect(() => {
+    if (isMobile && isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobile, isOpen]);
+
+  // Base classes for the sidebar
+  const sidebarClasses = isMobile
+    ? `fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out ${
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      } flex flex-col border-r dark:bg-[#0d1117] bg-white border-border shadow-lg`
+    : "hidden md:flex md:sticky md:top-0 md:flex-shrink-0 md:w-64 md:h-screen md:flex-col border-r dark:bg-[#0d1117] bg-white border-border";
+
+  return (
+    <>
+      {/* Overlay for mobile */}
+      {isMobile && isOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300 ease-in-out"
+          aria-hidden="true"
+        />
+      )}
+
+      <div
+        id={isMobile ? "mobile-sidebar" : "desktop-sidebar"}
+        className={sidebarClasses}
+      >
+        {/* Search bar and settings */}
+        <div className="p-4 dark:bg-[#0d1117] bg-white">
+          {isMobile && (
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Menu</h2>
+              <button
+                onClick={onClose}
+                className="p-2 rounded-full bg-secondary text-foreground hover:bg-secondary/80"
+                aria-label="Close sidebar"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          )}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-full bg-secondary text-foreground hover:bg-secondary/80"
+                aria-label="Toggle theme"
+              >
+                {theme === "dark" ? (
                   <svg
-                    className={`mr-3 h-5 w-5 ${
-                      isActive ? "text-primary" : "text-muted-foreground"
-                    }`}
+                    className="w-5 h-5"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -192,33 +194,97 @@ const Sidebar = () => {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d={item.icon}
+                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
                     />
                   </svg>
-                  {item.name}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+                ) : (
+                  <svg
+                    className="w-5 h-5"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                    />
+                  </svg>
+                )}
+              </button>
+              <Link
+                href="/settings"
+                className={`p-2 rounded-full ${
+                  pathname === "/settings"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-foreground hover:bg-secondary/80"
+                }`}
+                aria-label="Settings"
+              >
+                <svg
+                  className="w-5 h-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+              </Link>
+            </div>
+          </div>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <svg
+                className="w-5 h-5 text-muted-foreground"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <input
+              type="text"
+              placeholder="Search"
+              className="w-full py-2 pl-10 pr-4 border-none rounded-md bg-secondary text-foreground focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        </div>
 
-        {/* Finance section */}
-        <div className="mt-6">
-          <h3 className="px-4 mb-2 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
-            Finance
-          </h3>
+        {/* Main menu */}
+        <nav className="mt-2 overflow-y-auto dark:bg-[#0d1117] bg-white flex-1 max-h-[calc(100vh-120px)]">
+          {/* Main categories */}
           <ul>
-            {financeFeatures.map((item) => {
+            {mainCategories.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <li key={item.name}>
                   <Link
                     href={item.href}
-                    className={`flex items-center px-4 py-2 text-sm ${
+                    className={`flex items-center px-4 py-3 text-sm ${
                       isActive
                         ? "bg-primary/10 text-primary border-l-4 border-primary"
                         : "text-foreground hover:bg-secondary"
                     }`}
+                    onClick={isMobile ? onClose : undefined}
                   >
                     <svg
                       className={`mr-3 h-5 w-5 ${
@@ -242,39 +308,82 @@ const Sidebar = () => {
               );
             })}
           </ul>
-        </div>
 
-        {/* Future categories */}
-        <div className="mt-6">
-          <h3 className="px-4 mb-2 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
-            Coming Soon
-          </h3>
-          <ul>
-            {futureCategories.map((item) => (
-              <li key={item.name}>
-                <span className="flex items-center px-4 py-2 text-sm cursor-not-allowed text-muted-foreground">
-                  <svg
-                    className="w-5 h-5 mr-3 text-muted-foreground"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d={item.icon}
-                    />
-                  </svg>
-                  {item.name}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </nav>
-    </div>
+          {/* Finance section */}
+          <div className="mt-6">
+            <h3 className="px-4 mb-2 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+              Finance
+            </h3>
+            <ul>
+              {financeFeatures.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <li key={item.name}>
+                    <Link
+                      href={item.href}
+                      className={`flex items-center px-4 py-2 text-sm ${
+                        isActive
+                          ? "bg-primary/10 text-primary border-l-4 border-primary"
+                          : "text-foreground hover:bg-secondary"
+                      }`}
+                      onClick={isMobile ? onClose : undefined}
+                    >
+                      <svg
+                        className={`mr-3 h-5 w-5 ${
+                          isActive ? "text-primary" : "text-muted-foreground"
+                        }`}
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d={item.icon}
+                        />
+                      </svg>
+                      {item.name}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          {/* Future categories */}
+          <div className="mt-6">
+            <h3 className="px-4 mb-2 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+              Coming Soon
+            </h3>
+            <ul>
+              {futureCategories.map((item) => (
+                <li key={item.name}>
+                  <span className="flex items-center px-4 py-2 text-sm cursor-not-allowed text-muted-foreground">
+                    <svg
+                      className="w-5 h-5 mr-3 text-muted-foreground"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d={item.icon}
+                      />
+                    </svg>
+                    {item.name}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </nav>
+      </div>
+    </>
   );
 };
 

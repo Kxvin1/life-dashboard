@@ -2,9 +2,30 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect } from "react";
 import AnimatedGradient from "@/components/layout/AnimatedGradient";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const HomePage = () => {
+  const { theme, toggleTheme } = useTheme();
+
+  // Ensure theme toggle works immediately on page load
+  useEffect(() => {
+    // Force a re-render of the theme state to ensure it's in sync with localStorage
+    const currentTheme = localStorage.getItem("theme") as
+      | "light"
+      | "dark"
+      | null;
+    if (currentTheme && currentTheme !== theme) {
+      // This will update the theme state to match localStorage
+      if (currentTheme === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    }
+  }, [theme]);
+
   return (
     <>
       <AnimatedGradient />
@@ -19,6 +40,44 @@ const HomePage = () => {
                 </span>
               </div>
               <div className="flex items-center space-x-4">
+                {/* Theme Toggle Button */}
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 text-gray-700 bg-gray-200 rounded-full dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
+                  aria-label="Toggle theme"
+                >
+                  {theme === "dark" ? (
+                    <svg
+                      className="w-5 h-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      className="w-5 h-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                      />
+                    </svg>
+                  )}
+                </button>
                 <Link
                   href="/login"
                   className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white"
@@ -219,29 +278,230 @@ const HomePage = () => {
           </div>
         </section>
 
+        {/* How It Works Section */}
+        <section className="py-16 bg-white dark:bg-[#0d1117]">
+          <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
+            <div className="lg:text-center">
+              <h2 className="text-base font-semibold tracking-wide text-blue-600 uppercase">
+                Getting Started
+              </h2>
+              <p className="mt-2 text-3xl font-extrabold leading-8 tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+                How Life Dashboard Works
+              </p>
+              <p className="max-w-2xl mt-4 text-xl text-gray-500 dark:text-gray-300 lg:mx-auto">
+                Start organizing your life in just a few simple steps
+              </p>
+            </div>
+
+            <div className="mt-16">
+              <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+                {/* Step 1 */}
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center w-16 h-16 mb-4 bg-blue-100 rounded-full dark:bg-blue-900">
+                    <span className="text-2xl font-bold text-blue-600 dark:text-blue-300">
+                      1
+                    </span>
+                  </div>
+                  <h3 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">
+                    Create an Account
+                  </h3>
+                  <p className="text-center text-gray-500 dark:text-gray-300">
+                    Sign up in seconds with just your name and email. No credit
+                    card required.
+                  </p>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center w-16 h-16 mb-4 bg-blue-100 rounded-full dark:bg-blue-900">
+                    <span className="text-2xl font-bold text-blue-600 dark:text-blue-300">
+                      2
+                    </span>
+                  </div>
+                  <h3 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">
+                    Customize Your Dashboard
+                  </h3>
+                  <p className="text-center text-gray-500 dark:text-gray-300">
+                    Add your favorite tools to Quick Access for a personalized
+                    experience.
+                  </p>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center w-16 h-16 mb-4 bg-blue-100 rounded-full dark:bg-blue-900">
+                    <span className="text-2xl font-bold text-blue-600 dark:text-blue-300">
+                      3
+                    </span>
+                  </div>
+                  <h3 className="mb-2 text-xl font-bold text-gray-900 dark:text-white">
+                    Start Organizing
+                  </h3>
+                  <p className="text-center text-gray-500 dark:text-gray-300">
+                    Begin tracking your finances, tasks, health metrics, and
+                    personal goals all in one place.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Key Benefits Section */}
+        <section className="py-16 bg-gray-50 dark:bg-gray-900">
+          <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
+            <div className="lg:text-center">
+              <h2 className="text-base font-semibold tracking-wide text-blue-600 uppercase">
+                Key Benefits
+              </h2>
+              <p className="mt-2 text-3xl font-extrabold leading-8 tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+                Why Choose Life Dashboard
+              </p>
+              <p className="max-w-2xl mt-4 text-xl text-gray-500 dark:text-gray-300 lg:mx-auto">
+                Discover how our all-in-one platform can transform your daily
+                life
+              </p>
+            </div>
+
+            <div className="mt-16">
+              <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+                {/* Benefit 1 */}
+                <div className="flex flex-col items-center p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                  <div className="flex items-center justify-center w-16 h-16 mb-4 text-white bg-blue-500 rounded-full">
+                    <svg
+                      className="w-8 h-8"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="mb-3 text-xl font-bold text-center text-gray-900 dark:text-white">
+                    All-in-One Solution
+                  </h3>
+                  <p className="text-center text-gray-600 dark:text-gray-300">
+                    Combine multiple apps into one seamless platform. No more
+                    switching between different tools.
+                  </p>
+                </div>
+
+                {/* Benefit 2 */}
+                <div className="flex flex-col items-center p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                  <div className="flex items-center justify-center w-16 h-16 mb-4 text-white bg-blue-500 rounded-full">
+                    <svg
+                      className="w-8 h-8"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="mb-3 text-xl font-bold text-center text-gray-900 dark:text-white">
+                    Privacy Focused
+                  </h3>
+                  <p className="text-center text-gray-600 dark:text-gray-300">
+                    Your data stays private and secure. We don&apos;t sell your
+                    information or show ads.
+                  </p>
+                </div>
+
+                {/* Benefit 3 */}
+                <div className="flex flex-col items-center p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                  <div className="flex items-center justify-center w-16 h-16 mb-4 text-white bg-blue-500 rounded-full">
+                    <svg
+                      className="w-8 h-8"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="mb-3 text-xl font-bold text-center text-gray-900 dark:text-white">
+                    Customizable Interface
+                  </h3>
+                  <p className="text-center text-gray-600 dark:text-gray-300">
+                    Personalize your dashboard with the tools you use most.
+                    Create a workspace that works for you.
+                  </p>
+                </div>
+
+                {/* Benefit 4 */}
+                <div className="flex flex-col items-center p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                  <div className="flex items-center justify-center w-16 h-16 mb-4 text-white bg-blue-500 rounded-full">
+                    <svg
+                      className="w-8 h-8"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="mb-3 text-xl font-bold text-center text-gray-900 dark:text-white">
+                    Boost Productivity
+                  </h3>
+                  <p className="text-center text-gray-600 dark:text-gray-300">
+                    Save time and reduce stress by having all your important
+                    tools and information in one place.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* CTA Section */}
         <section className="py-12 bg-blue-600">
           <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
-              <span className="block">Ready to get started?</span>
-              <span className="block">Create your account today.</span>
-            </h2>
-            <div className="flex mt-8 lg:mt-0 lg:flex-shrink-0">
-              <div className="inline-flex rounded-md shadow">
-                <Link
-                  href="/register"
-                  className="inline-flex items-center justify-center px-5 py-3 text-base font-medium text-blue-600 bg-white border border-transparent rounded-md hover:bg-gray-50"
-                >
-                  Get Started
-                </Link>
-              </div>
-              <div className="inline-flex ml-3 rounded-md shadow">
-                <Link
-                  href="/login"
-                  className="inline-flex items-center justify-center px-5 py-3 text-base font-medium text-white bg-blue-700 border border-transparent rounded-md hover:bg-blue-800"
-                >
-                  Sign In
-                </Link>
+            <div className="text-center">
+              <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
+                <span className="block">Ready to get started?</span>
+                <span className="block">Create your account today.</span>
+              </h2>
+              <div className="flex justify-center mt-8 space-x-4">
+                <div className="inline-flex rounded-md shadow">
+                  <Link
+                    href="/register"
+                    className="inline-flex items-center justify-center px-5 py-3 text-base font-medium text-blue-600 bg-white border border-transparent rounded-md hover:bg-gray-50"
+                  >
+                    Get Started
+                  </Link>
+                </div>
+                <div className="inline-flex rounded-md shadow">
+                  <Link
+                    href="/login"
+                    className="inline-flex items-center justify-center px-5 py-3 text-base font-medium text-white bg-blue-700 border border-transparent rounded-md hover:bg-blue-800"
+                  >
+                    Sign In
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

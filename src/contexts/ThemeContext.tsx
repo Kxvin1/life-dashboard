@@ -1,8 +1,14 @@
-'use client';
+"use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 
-type Theme = 'light' | 'dark';
+type Theme = "light" | "dark";
 
 interface ThemeContextType {
   theme: Theme;
@@ -15,7 +21,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    throw new Error("useTheme must be used within a ThemeProvider");
   }
   return context;
 };
@@ -25,34 +31,47 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider = ({ children }: ThemeProviderProps) => {
-  const [theme, setTheme] = useState<Theme>('dark'); // Default to dark mode
+  // Initialize with a function to avoid the state being set to 'dark' on every render
+  const [theme, setTheme] = useState<Theme>("dark"); // Always default to dark initially
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // First effect: Initialize theme from localStorage on client-side
   useEffect(() => {
-    // Check for stored theme preference
-    const storedTheme = localStorage.getItem('theme') as Theme | null;
-    if (storedTheme) {
-      setTheme(storedTheme);
-    } else {
-      // Use system preference as fallback
-      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setTheme(systemPrefersDark ? 'dark' : 'light');
+    // We can't access localStorage during SSR, so we need to check if window is defined
+    if (typeof window !== "undefined") {
+      const storedTheme = localStorage.getItem("theme") as Theme | null;
+
+      // If there's a stored theme, use it
+      if (storedTheme) {
+        setTheme(storedTheme);
+      } else {
+        // No stored theme, set to dark mode as default
+        setTheme("dark");
+        localStorage.setItem("theme", "dark");
+      }
+
+      // Mark as initialized
+      setIsInitialized(true);
     }
   }, []);
 
+  // Second effect: Apply theme to document when theme changes or on initialization
   useEffect(() => {
-    // Update HTML class when theme changes
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
+    // Apply theme to document
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
     } else {
-      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.remove("dark");
     }
-    
-    // Store theme preference
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+
+    // Only store in localStorage if we're initialized (client-side)
+    if (isInitialized && typeof window !== "undefined") {
+      localStorage.setItem("theme", theme);
+    }
+  }, [theme, isInitialized]);
 
   const toggleTheme = () => {
-    setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
+    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
   };
 
   return (
