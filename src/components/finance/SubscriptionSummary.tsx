@@ -123,18 +123,9 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
     }
   };
 
-  // Set up polling to refresh data periodically
+  // Load data when component mounts
   useEffect(() => {
-    // Load data immediately
     loadData();
-
-    // Set up an interval to refresh data every 5 seconds
-    const intervalId = setInterval(() => {
-      loadData();
-    }, 5000);
-
-    // Clean up the interval when the component unmounts
-    return () => clearInterval(intervalId);
   }, []);
 
   if (isLoading) {
