@@ -2,9 +2,9 @@
 module.exports = {
   darkMode: ["class"],
   content: [
-    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     container: {
@@ -15,6 +15,9 @@ module.exports = {
       },
     },
     extend: {
+      screens: {
+        "3xl": "2440px",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -67,20 +70,20 @@ module.exports = {
         "gradient-xy": {
           "0%, 100%": {
             "background-size": "400% 400%",
-            "background-position": "0% 50%"
+            "background-position": "0% 50%",
           },
           "50%": {
             "background-size": "200% 200%",
-            "background-position": "100% 50%"
-          }
-        }
+            "background-position": "100% 50%",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "gradient-xy": "gradient-xy 15s ease infinite"
+        "gradient-xy": "gradient-xy 15s ease infinite",
       },
     },
   },
   plugins: [],
-} 
+};

@@ -4,6 +4,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -14,6 +15,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    
+
     # Relationships
-    transactions = relationship("Transaction", back_populates="user", lazy="dynamic") 
+    transactions = relationship("Transaction", back_populates="user", lazy="dynamic")
+    subscriptions = relationship("Subscription", back_populates="user", lazy="dynamic")
