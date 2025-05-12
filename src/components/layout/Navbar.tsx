@@ -22,7 +22,7 @@ const Navbar = ({ onMenuToggle }: NavbarProps) => {
   const getPageTitle = () => {
     if (pathname === "/") return "Life Dashboard";
     if (pathname === "/finance") return "Finance"; // Redirect page
-    if (pathname === "/finance/overview") return "Financial Overview";
+    if (pathname === "/finance/overview") return "Transactions Overview";
     if (pathname === "/finance/transactions") return "Add Transaction";
     if (pathname === "/finance/budgeting") return "Budgeting";
     if (pathname === "/finance/subscriptions") return "Subscriptions";

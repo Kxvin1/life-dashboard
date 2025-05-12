@@ -19,10 +19,30 @@ const AllTools = () => {
     { id: "personal", label: "Personal" },
   ];
 
-  const filteredCards =
+  // Filter cards by category and sort by implementation status
+  const filteredCards = (
     activeCategory === "all"
-      ? allCards
-      : allCards.filter((card) => card.category === activeCategory);
+      ? [...allCards] // Create a copy to avoid mutating the original array
+      : [...allCards].filter((card) => card.category === activeCategory)
+  ).sort((a, b) => {
+    // Sort by implementation status (implemented first)
+    if (a.isImplemented && !b.isImplemented) return -1;
+    if (!a.isImplemented && b.isImplemented) return 1;
+
+    // If both have the same implementation status, sort by category
+    if (a.category !== b.category) {
+      const categoryOrder = {
+        finance: 1,
+        productivity: 2,
+        health: 3,
+        personal: 4,
+      };
+      return categoryOrder[a.category] - categoryOrder[b.category];
+    }
+
+    // If both are in the same category, maintain original order
+    return 0;
+  });
 
   return (
     <div className="bg-card rounded-xl shadow-md border border-border p-6">
@@ -57,7 +77,8 @@ const AllTools = () => {
             key={card.id}
             card={card}
             onAdd={
-              quickAccessCards.some((qc) => qc.id === card.id)
+              quickAccessCards.some((qc) => qc.id === card.id) ||
+              !card.isImplemented
                 ? undefined
                 : addToQuickAccess
             }

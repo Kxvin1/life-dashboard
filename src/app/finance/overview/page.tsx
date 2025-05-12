@@ -40,10 +40,11 @@ export default function OverviewPage() {
 
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground">
-            Finance Overview
+            Transactions Overview
           </h1>
           <p className="mt-2 text-muted-foreground">
-            View your financial summary by month or year
+            View your transaction history and analyze spending patterns by month
+            or year
           </p>
         </div>
 

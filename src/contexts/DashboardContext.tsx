@@ -45,8 +45,8 @@ const defaultCards: DashboardCard[] = [
   // Finance Cards
   {
     id: "finance-overview",
-    title: "Financial Overview",
-    description: "View your financial summary and analyze spending patterns.",
+    title: "Transactions Overview",
+    description: "View your transaction history and analyze spending patterns.",
     href: "/finance/overview",
     category: "finance",
     isImplemented: true,
@@ -61,14 +61,6 @@ const defaultCards: DashboardCard[] = [
     isImplemented: true,
   },
   {
-    id: "finance-budgeting",
-    title: "Budgeting",
-    description: "Plan your monthly budget and track your spending.",
-    href: "/finance/budgeting",
-    category: "finance",
-    isImplemented: true,
-  },
-  {
     id: "finance-subscriptions",
     title: "Subscriptions",
     description: "Track your recurring subscription payments and due dates.",
@@ -77,12 +69,20 @@ const defaultCards: DashboardCard[] = [
     isImplemented: true,
   },
   {
+    id: "finance-budgeting",
+    title: "Budgeting",
+    description: "Plan your monthly budget and track your spending.",
+    href: "/finance/budgeting",
+    category: "finance",
+    isImplemented: false,
+  },
+  {
     id: "finance-savings",
     title: "Savings Goals",
     description: "Set and track your savings goals to reach financial targets.",
     href: "/finance/savings",
     category: "finance",
-    isImplemented: true,
+    isImplemented: false,
   },
 
   // Productivity Cards
@@ -216,11 +216,11 @@ const defaultCards: DashboardCard[] = [
   },
 ];
 
-// Default quick access cards (first 3 finance cards)
+// Default quick access cards (implemented finance cards only)
 const defaultQuickAccess = [
   "finance-overview",
   "finance-income-expense",
-  "finance-budgeting",
+  "finance-subscriptions",
 ];
 
 interface DashboardProviderProps {

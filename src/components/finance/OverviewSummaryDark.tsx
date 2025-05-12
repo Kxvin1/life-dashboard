@@ -298,7 +298,7 @@ export default function OverviewSummary({
           <div className="bg-card rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-border backdrop-blur-sm">
             <div className="p-6">
               <h2 className="text-xl font-semibold text-foreground mb-4">
-                {year} Monthly Overview
+                {year} Monthly Transactions
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {Object.entries(monthlyData).map(([monthNum, data]) => (
@@ -355,7 +355,7 @@ export default function OverviewSummary({
         <div className="bg-card rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-border backdrop-blur-sm">
           <div className="p-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">
-              {year} Yearly Overview
+              {year} Yearly Transactions Summary
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-card/80 rounded-lg p-6 border border-border">
