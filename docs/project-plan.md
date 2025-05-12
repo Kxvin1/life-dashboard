@@ -184,7 +184,7 @@ Simplified Data Flow:
 │ │                 │   │                 │   │                 │           │
 │ │• Pages/Routes   ├──►│• TanStack Query ├──►│• Axios/Fetch    │           │
 │ │• Components     │   │• Local Storage  │   │• Error Handling │           │
-│ │• shadcn/ui      │   │• Auth Context   │   │• Rate Limiting  │           │
+│ │• UI             │   │• Auth Context   │   │• Rate Limiting  │           │
 │ └────────┬────────┘   └─────────────────┘   └────────┬────────┘           │
 │          │                                           │                    │
 └──────────┼───────────────────────────────────────────┼────────────────────┘
@@ -241,7 +241,7 @@ Simplified Data Flow:
 
 Detailed Data Flow:
 
-User interaction begins in the Client Layer, where the Next.js App displays UI built with shadcn/ui Components.
+User interaction begins in the Client Layer, where the Next.js App displays UI built with UI Components.
 User actions trigger interactions with the React State managed by TanStack Query, which handles fetching and caching server data.
 The API Client (e.g., Axios/Fetch) makes HTTP requests, potentially handling basic error handling and rate limiting on the client side. These requests target Next.js API Routes.
 Requests traverse the Vercel Layer. Edge Cache might serve static assets or cached routes. Requests requiring backend processing hit the Next.js API Routes.
@@ -267,7 +267,7 @@ Responses from External Services, and Database are processed by Data Services an
 - Framework: React (latest stable version) with Next.js (latest stable version) - Utilizing App Router for structure and data fetching.
 - Language: TypeScript (latest stable version)
 - Styling: Tailwind CSS (latest stable version)
-- UI Components: shadcn/ui (Built on Radix UI primitives)
+- UI Components: Clean UI
 - State Management: TanStack Query (React Query) (latest stable version) - For server state management, caching, and background updates.
 - Authentication: Custom implementation using standard practices (e.g., JWT with secure cookie storage, or session-based authentication). Frontend handles storing/sending tokens or managing session cookies.
 
@@ -314,7 +314,7 @@ Ensure the generated plan emphasizes adherence to current, industry-standard bes
 **Key principles to highlight in the generated plan:**
 
 - **Python/Backend:** Maintainability (PEP 8, type hints, clear structure, context managers), performance (async/await where appropriate), robustness (error handling, logging), security (input validation).
-- **TypeScript/Frontend:** Type safety (strict mode), modern React patterns (hooks, functional components, performance optimizations like memoization where needed), efficient state management (TanStack Query for server state, appropriate client state solutions), component-based architecture (shadcn/ui patterns), utility-first CSS (Tailwind).
+- **TypeScript/Frontend:** Type safety (strict mode), modern React patterns (hooks, functional components, performance optimizations like memoization where needed), efficient state management (TanStack Query for server state, appropriate client state solutions), component-based architecture (UI patterns), utility-first CSS (Tailwind).
 - **Next.js:** App Router conventions (Server Components, Server Actions where appropriate), optimized data fetching, performance focus (code splitting, image optimization, caching).
 - **General:** Clean code, clear documentation (docstrings/JSDoc), effective use of frameworks and libraries, modular design, security considerations throughout.
 
@@ -345,7 +345,7 @@ Ensure the generated plan emphasizes adherence to current, industry-standard bes
   3. **Health and Wellness Module:** Includes tools for Mood Journaling, maintaining a Gratitude Log, tracking Sleep, and using a Mindfulness/Breathing Exercise Timer.
   4. **Personal Organization Module:** Includes tools for Notes/Digital Scratchpad, Reading List Tracking, basic Digital Filing (metadata), Skill Progress Monitoring, Recipe Management, and Shopping Lists.
 - User authentication and basic profile management.
-- Simple, clean UI using shadcn/ui and Tailwind CSS, ensuring each tool feels integrated but usable on its own page or section.
+- Simple, clean UI using UI and Tailwind CSS, ensuring each tool feels integrated but usable on its own page or section.
 - Clear navigation between modules and access to individual tools within modules.
 - Basic AI summarization feature integrated into the Notes tool.
 
@@ -625,7 +625,7 @@ Ensure the generated plan emphasizes adherence to current, industry-standard bes
      - Production: Railway (Serverless PostgreSQL) setup and connection details.
      - Production Backup Strategy: State reliance on Railway's built-in automated backup features.
    - Backend Implementation: Outline the development process for FastAPI, SQLAlchemy models, business logic services for each tool, and API routers. Include details on configuring Uvicorn for production within Render.
-   - Frontend Implementation: Outline the development process for Next.js pages/components for each module/tool, using shadcn/ui, integrating TanStack Query for data fetching.
+   - Frontend Implementation: Outline the development process for Next.js pages/components for each module/tool, using UI, integrating TanStack Query for data fetching.
    - Backend Deployment (Render):
      - Detail steps for deploying the FastAPI app to Render (e.g., connecting GitHub repo, configuring build command `pip install -r requirements.txt`, start command `uvicorn main:app --host 0.0.0.0 --port $PORT`).
      - Explain how to set environment variables (Database URL, OpenAI key, Python version) using Render's environment groups or `.env` file handling.

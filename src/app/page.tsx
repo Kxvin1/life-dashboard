@@ -13,7 +13,7 @@ const HomePage = () => {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push("/login");
+      router.push("/home");
     }
   }, [isAuthenticated, isLoading, router]);
 

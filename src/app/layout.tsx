@@ -26,7 +26,9 @@ export default function RootLayout({
           <ThemeProvider>
             <DashboardProvider>
               <div className="flex min-h-screen">
-                <Sidebar />
+                <div className="sticky top-0 h-screen">
+                  <Sidebar />
+                </div>
                 <div className="flex-1 flex flex-col">
                   <Navbar />
                   <main className="flex-1 min-h-screen bg-background overflow-y-auto">
