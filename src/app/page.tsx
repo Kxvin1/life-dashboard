@@ -36,16 +36,38 @@ const HomePage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className="bg-card rounded-xl shadow-md border border-border p-6">
           <h2 className="text-xl font-semibold text-foreground mb-4">
-            Your Profile
+            Welcome to Life Dashboard
           </h2>
-          <div className="space-y-2">
-            <div className="flex items-center">
-              <span className="text-muted-foreground w-24">Email:</span>
-              <span className="text-foreground">{user?.email}</span>
-            </div>
-            <div className="flex items-center">
-              <span className="text-muted-foreground w-24">Name:</span>
-              <span className="text-foreground">{user?.full_name}</span>
+          <div className="space-y-3">
+            <p className="text-foreground">
+              Hi {user?.full_name}, here's how to get started:
+            </p>
+            <div className="space-y-2">
+              <div className="flex items-start">
+                <span className="text-primary font-medium mr-2">1.</span>
+                <span className="text-foreground">
+                  Use <strong>Quick Access</strong> for your favorite tools
+                </span>
+              </div>
+              <div className="flex items-start">
+                <span className="text-primary font-medium mr-2">2.</span>
+                <span className="text-foreground">
+                  Explore <strong>All Tools</strong> to discover more features
+                </span>
+              </div>
+              <div className="flex items-start">
+                <span className="text-primary font-medium mr-2">3.</span>
+                <span className="text-foreground">
+                  Add tools to Quick Access by clicking the <strong>+</strong>{" "}
+                  button
+                </span>
+              </div>
+              <div className="flex items-start">
+                <span className="text-primary font-medium mr-2">4.</span>
+                <span className="text-foreground">
+                  Track your finances in the <strong>Finance</strong> section
+                </span>
+              </div>
             </div>
           </div>
         </div>

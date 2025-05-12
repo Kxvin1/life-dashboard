@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
 const Navbar = () => {
-  const { logout, isAuthenticated, isLoading } = useAuth();
+  const { logout, isAuthenticated, isLoading, user } = useAuth();
   // Theme context is imported but not currently used
   useTheme();
   const [showOptions, setShowOptions] = useState(false);
@@ -16,7 +16,7 @@ const Navbar = () => {
 
   // Determine page title based on pathname
   const getPageTitle = () => {
-    if (pathname === "/") return "Dashboard";
+    if (pathname === "/") return "Life Dashboard";
     if (pathname === "/finance") return "Finance"; // Redirect page
     if (pathname === "/finance/overview") return "Financial Overview";
     if (pathname === "/finance/transactions") return "Add Transaction";
@@ -62,11 +62,20 @@ const Navbar = () => {
         {getPageTitle()}
       </h1>
 
-      <div className="relative" ref={optionsRef}>
+      <div className="flex items-center space-x-3 relative" ref={optionsRef}>
+        {/* User's full name - clickable */}
+        <span
+          className="text-foreground hover:text-primary cursor-pointer"
+          onClick={() => setShowOptions(!showOptions)}
+        >
+          {user?.full_name || "User"}
+        </span>
+
+        {/* Profile picture icon - clickable */}
         <button
           onClick={() => setShowOptions(!showOptions)}
           className="p-2 rounded-full hover:bg-secondary text-foreground"
-          aria-label="Options"
+          aria-label="User profile"
         >
           <svg
             className="h-6 w-6"
@@ -79,13 +88,13 @@ const Navbar = () => {
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+              d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
         </button>
 
         {showOptions && (
-          <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-popover border border-border z-50">
+          <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-popover border border-border z-50">
             <div className="py-1">
               <Link
                 href="/settings"

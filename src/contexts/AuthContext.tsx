@@ -235,7 +235,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     Cookies.remove("token");
     setUser(null);
     setIsAuthenticated(false);
-    router.push("/login");
+    router.push("/home");
   };
 
   const value = {
