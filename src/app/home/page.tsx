@@ -100,14 +100,17 @@ const HomePage = () => {
           <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
             <div className="lg:grid lg:grid-cols-12 lg:gap-8">
               <div className="sm:text-center md:max-w-2xl md:mx-auto lg:col-span-6 lg:text-left">
-                <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-5xl md:text-6xl">
-                  <span className="block">Manage your life</span>
-                  <span className="block text-blue-600">all in one place</span>
+                <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white sm:text-5xl md:text-5xl">
+                  <span className="block">Take control of your life</span>
+                  <span className="block text-blue-600">
+                    all in one secure place
+                  </span>
                 </h1>
                 <p className="mt-3 text-base text-gray-500 dark:text-gray-300 sm:mt-5 sm:text-xl lg:text-lg xl:text-xl">
                   Life Dashboard helps you organize your finances, track your
                   productivity, monitor your health, and manage your personal
-                  life with a beautiful, intuitive interface.
+                  life with a beautiful, intuitive interface, all with your data
+                  kept private and protected.
                 </p>
                 <div className="mt-8 sm:max-w-lg sm:mx-auto sm:text-center lg:text-left">
                   <Link
@@ -124,7 +127,7 @@ const HomePage = () => {
                     <div className="relative mx-auto overflow-hidden rounded-lg">
                       <div className="aspect-[2/3] w-full max-w-md">
                         <Image
-                          src="/images/dashboard-landing-image.png"
+                          src="/images/dashboard-landing-image-1.png"
                           alt="Dashboard Preview"
                           fill
                           sizes="(max-width: 768px) 100vw, 400px"
@@ -271,6 +274,106 @@ const HomePage = () => {
                       Keep notes, manage reading lists, organize files, and
                       track skills development.
                     </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Image | Text Section */}
+        <section className="py-16 bg-white dark:bg-[#0d1117]">
+          <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
+            <div className="lg:grid lg:grid-cols-12 lg:gap-8">
+              <div className="relative mt-12 sm:max-w-lg sm:mx-auto lg:mt-0 lg:max-w-none lg:mx-0 lg:col-span-6 lg:flex lg:items-center">
+                <div className="relative w-full mx-auto rounded-lg shadow-lg lg:max-w-md">
+                  <div className="relative block w-full overflow-hidden bg-white rounded-lg dark:bg-gray-800">
+                    <div className="relative mx-auto overflow-hidden rounded-lg">
+                      <div className="aspect-[2/3] w-full max-w-md">
+                        <Image
+                          src="/images/dashboard-landing-image-4.png"
+                          alt="Dashboard Preview"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 400px"
+                          className="object-cover"
+                          priority
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="sm:text-center md:max-w-2xl md:mx-auto lg:col-span-6 lg:text-left lg:flex lg:items-center">
+                <div>
+                  <h2 className="text-base font-semibold tracking-wide text-blue-600 uppercase">
+                    Seamless Experience
+                  </h2>
+                  <p className="mt-2 text-3xl font-extrabold leading-8 tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+                    Designed for Your Daily Life
+                  </p>
+                  <p className="mt-4 text-lg text-gray-500 dark:text-gray-300">
+                    Our intuitive interface makes it easy to manage all aspects
+                    of your life. Whether you&apos;re tracking finances,
+                    organizing tasks, or monitoring your health, Life Dashboard
+                    provides a seamless experience across all your devices.
+                  </p>
+                  <div className="mt-6">
+                    <Link
+                      href="/register"
+                      className="inline-flex items-center justify-center px-5 py-3 text-base font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
+                    >
+                      Get Started
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Text | Image Section */}
+        <section className="py-16 bg-gray-50 dark:bg-gray-900">
+          <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
+            <div className="lg:grid lg:grid-cols-12 lg:gap-8">
+              <div className="sm:text-center md:max-w-2xl md:mx-auto lg:col-span-6 lg:text-left lg:flex lg:items-center">
+                <div>
+                  <h2 className="text-base font-semibold tracking-wide text-blue-600 uppercase">
+                    Powerful Analytics
+                  </h2>
+                  <p className="mt-2 text-3xl font-extrabold leading-8 tracking-tight text-gray-900 dark:text-white sm:text-4xl">
+                    Gain Valuable Insights
+                  </p>
+                  <p className="mt-4 text-lg text-gray-500 dark:text-gray-300">
+                    Visualize your progress with beautiful charts and reports.
+                    Understand your spending patterns, track your productivity
+                    trends, and monitor your health metrics over time to make
+                    informed decisions about your life.
+                  </p>
+                  <div className="mt-6">
+                    <Link
+                      href="/register"
+                      className="inline-flex items-center justify-center px-5 py-3 text-base font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
+                    >
+                      Learn More
+                    </Link>
+                  </div>
+                </div>
+              </div>
+              <div className="relative mt-12 sm:max-w-lg sm:mx-auto lg:mt-0 lg:max-w-none lg:mx-0 lg:col-span-6 lg:flex lg:items-center">
+                <div className="relative w-full mx-auto rounded-lg shadow-lg lg:max-w-md">
+                  <div className="relative block w-full overflow-hidden bg-white rounded-lg dark:bg-gray-800">
+                    <div className="relative mx-auto overflow-hidden rounded-lg">
+                      <div className="aspect-[2/3] w-full max-w-md">
+                        <Image
+                          src="/images/dashboard-landing-image-7.png"
+                          alt="Analytics Preview"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 400px"
+                          className="object-cover"
+                          priority
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

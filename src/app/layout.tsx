@@ -54,9 +54,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       )}
 
       <div className="flex-1 flex flex-col w-full">
-        <Navbar
-          onMenuToggle={isAuthenticated ? toggleMobileSidebar : undefined}
-        />
+        {isAuthenticated && <Navbar onMenuToggle={toggleMobileSidebar} />}
         <main className="flex-1 min-h-screen bg-background overflow-y-auto">
           {children}
         </main>
