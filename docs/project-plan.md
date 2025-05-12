@@ -160,7 +160,7 @@ Example Use Cases:
             │
             ▼
 ┌───────────────────────┐
-│ Neon PostgreSQL       │
+│ Railway PostgreSQL       │
 │                       │
 │ • User Data           ├
 │ • Module Data         │
@@ -173,7 +173,7 @@ Simplified Data Flow:
 1. The user interacts with the Client (Browser) running the Next.js application.
 2. Requests from the Client go through Vercel (Frontend), which hosts the Next.js app and handles serving assets and routing API calls.
 3. API requests are forwarded from Vercel to the FastAPI Backend hosted on Render.
-4. The Render-hosted Backend processes the requests, interacting with the Neon PostgreSQL database for persistent data storage (user data, module data).
+4. The Render-hosted Backend processes the requests, interacting with the Railway PostgreSQL database for persistent data storage (user data, module data).
 
 ```text
 ┌───────────────────────────────────────────────────────────────────────────┐
@@ -229,7 +229,7 @@ Simplified Data Flow:
 │                             External Services                               │
 │                                                                             │
 │ ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐             │
-│ │  Neon Postgres  │   │  OpenAI API     │   │ Other 3rd Party │             │
+│ │  Railway Postgres  │   │  OpenAI API     │   │ Other 3rd Party │             │
 │ │                 │   │                 │   │ APIs (Future)   │             │
 │ │• User Data      │   │• GPT Models     │   │                 │             │
 │ │• Module Data    │   │• Embeddings     │   │• Finance APIs   │             │
@@ -248,7 +248,7 @@ Requests traverse the Vercel Layer. Edge Cache might serve static assets or cach
 Authenticated requests are forwarded to the FastAPI Backend layer, hosted on Render.
 The FastAPI App running on Render handles routing. Incoming data is validated by Pydantic.
 Validated requests are processed by Data Services, which contain the core business logic for each module (Finance, Productivity, etc.).
-Data Services interact with the Neon PostgreSQL database via SQLAlchemy for all persistent data operations (CRUD for module data, user profile storage).
+Data Services interact with the Railway PostgreSQL database via SQLAlchemy for all persistent data operations (CRUD for module data, user profile storage).
 External Services include the OpenAI API (called by Data Services or Background Tasks for AI features like summarization) and potentially Other 3rd Party APIs in the future (e.g., for finance integration, calendar sync).
 Responses from External Services, and Database are processed by Data Services and sent back through the FastAPI App, Vercel Layer, and finally to the Client Layer to update the UI.
 
@@ -283,11 +283,11 @@ Responses from External Services, and Database are processed by Data Services an
 
 ### Database & Storage
 
-- Primary Database: Neon (Serverless PostgreSQL)
+- Primary Database: Railway (Serverless PostgreSQL)
   - Database Environments:
     - Development: Local PostgreSQL Instance - Recommended for faster iteration during development.
-    - Production: Neon (Serverless PostgreSQL) - Provides a scalable, serverless solution.
-    - Production Backup Strategy: Rely on Neon's built-in automated backup features (e.g., Point-in-Time Recovery) available within the chosen service tier. No custom backup scripts planned for MVP.
+    - Production: Railway (Serverless PostgreSQL) - Provides a scalable, serverless solution.
+    - Production Backup Strategy: Rely on Railway's built-in automated backup features (e.g., Point-in-Time Recovery) available within the chosen service tier. No custom backup scripts planned for MVP.
 
 ### AI/ML Integration
 
@@ -302,8 +302,8 @@ Responses from External Services, and Database are processed by Data Services an
 ### Deployment
 
 - Frontend Hosting: Vercel (Hobby tier) - Ideal for Next.js applications, providing automatic deployment and scaling.
-- Backend Hosting: Render (Free/Hobby Tier) - Chosen for its ease of deployment from Git, native support for Python/FastAPI (using standard WSGI servers like Uvicorn), integrated PostgreSQL (alternative to Neon if preferred, though Neon is specified).
-- Database: Neon (Free tier)
+- Backend Hosting: Render (Free/Hobby Tier) - Chosen for its ease of deployment from Git, native support for Python/FastAPI (using standard WSGI servers like Uvicorn), integrated PostgreSQL (alternative to Railway if preferred, though Railway is specified).
+- Database: Railway (Free tier)
 
 ## Best Practices & Standards
 
@@ -622,8 +622,8 @@ Ensure the generated plan emphasizes adherence to current, industry-standard bes
      - Secrets management guidance for development and production.
    - Database Technology:
      - Development: Local PostgreSQL Instance setup and configuration.
-     - Production: Neon (Serverless PostgreSQL) setup and connection details.
-     - Production Backup Strategy: State reliance on Neon's built-in automated backup features.
+     - Production: Railway (Serverless PostgreSQL) setup and connection details.
+     - Production Backup Strategy: State reliance on Railway's built-in automated backup features.
    - Backend Implementation: Outline the development process for FastAPI, SQLAlchemy models, business logic services for each tool, and API routers. Include details on configuring Uvicorn for production within Render.
    - Frontend Implementation: Outline the development process for Next.js pages/components for each module/tool, using shadcn/ui, integrating TanStack Query for data fetching.
    - Backend Deployment (Render):
@@ -708,7 +708,7 @@ Ensure the generated plan emphasizes adherence to current, industry-standard bes
      - Choose cost-effective models (`gpt-4o-mini`).
      - Monitor token usage via the OpenAI dashboard and potentially log usage server-side.
      - Inform users about potential limitations if usage becomes high (future).
-   - Neon Database Constraints:
+   - Railway Database Constraints:
      - Monitor storage usage to stay within the free tier limit, especially considering file metadata and potential growth from many small entries across tools.
      - Monitor compute hours. Optimize queries to reduce compute time.
      - Implement basic data retention policies if data grows large (e.g., archive or prune old, less important data - _post-MVP consideration_).
@@ -854,7 +854,7 @@ Ensure the generated plan emphasizes adherence to current, industry-standard bes
    - Historical data management: Strategies for handling growing amounts of user data over time, including archiving or data tiering.
    - Processing pipeline optimization: Improving the efficiency of data processing and AI integration as usage grows and features become more complex.
    - Real-time update capabilities: Exploring technologies like WebSockets for real-time data synchronization between devices or users (if collaboration features added later).
-   - Database scaling (beyond Neon Free Tier): Migrating to larger Neon plans or other PostgreSQL hosting solutions.
+   - Database scaling (beyond Railway Free Tier): Migrating to larger Railway plans or other PostgreSQL hosting solutions.
    - Backend scaling: Deploying multiple instances of the FastAPI application behind a load balancer.
    - File Storage Solution: Implementing a more robust solution for Digital Filing (e.g., S3-compatible storage) if file uploads become a core feature.
 3. Monetization (Transitioning from Freemium MVP):
@@ -888,7 +888,7 @@ The generated plan should:
 4. Generate a logical file structure for both frontend and backend. Code should follow standard formatting conventions (PEP 8 for Python, Prettier for TS/JS) and demonstrate modularity.
 5. Code should demonstrate adherence to specified best practices (type safety, basic error handling, framework conventions). Explain design choices where relevant (e.g., why a specific hook was used, how SQLAlchemy models map to the database).
 6. Implement foundational error handling for common scenarios (API request failures, basic input validation). Describe the overall error handling strategy and acknowledge potential unaddressed edge cases (e.g., complex data migration errors).
-7. Explicitly address the specified free tier limitations (Vercel, Render, Neon, OpenAI) and API constraints (OpenAI) in the design and implementation plan, suggesting strategies to mitigate them.
+7. Explicitly address the specified free tier limitations (Vercel, Render, Railway, OpenAI) and API constraints (OpenAI) in the design and implementation plan, suggesting strategies to mitigate them.
 8. Ensure setup instructions and the overall plan are feasible for a solo developer with intermediate experience in the specified technologies.
 9. Focus on MVP features as defined in the scope, clearly listing each tool.
 10. Include clear progression paths for future development based on the "Future Considerations" section.
