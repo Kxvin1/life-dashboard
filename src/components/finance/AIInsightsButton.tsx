@@ -40,14 +40,12 @@ export default function AIInsightsButton({
   const [insightData, setInsightData] = useState<any>(null);
   const [remainingUses, setRemainingUses] = useState<number | null>(null);
   const [totalAllowed, setTotalAllowed] = useState<number | null>(null);
-  // Initialize with the prop and log it
-  console.log("AIInsightsButton - Initial timePeriod prop:", timePeriod);
+  // Initialize with the prop
   const [selectedTimePeriod, setSelectedTimePeriod] =
     useState<string>(timePeriod);
 
-  // Log when the timePeriod prop changes
+  // Update selectedTimePeriod when the prop changes
   useEffect(() => {
-    console.log("AIInsightsButton - timePeriod prop changed to:", timePeriod);
     setSelectedTimePeriod(timePeriod);
   }, [timePeriod]);
 
@@ -65,12 +63,9 @@ export default function AIInsightsButton({
     setLoading(true);
     setError(null);
 
-    console.log("Generating insights for time period:", selectedTimePeriod);
-
     try {
       // Get AI insights using the selected time period
       const data = await getAIInsights(selectedTimePeriod);
-      console.log("Received data with time period:", data.time_period);
       setInsightData(data);
       setRemainingUses(data.remaining_uses);
       setTotalAllowed(data.total_uses_allowed);
@@ -91,7 +86,6 @@ export default function AIInsightsButton({
 
   // Handle time period selection
   const handleTimePeriodSelect = (period: string) => {
-    console.log("Selected time period:", period);
     setSelectedTimePeriod(period);
   };
 

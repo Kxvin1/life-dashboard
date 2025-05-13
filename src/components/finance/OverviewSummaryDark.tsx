@@ -653,15 +653,6 @@ export default function OverviewSummary({
 
       {/* AI Insights Button */}
       <div className="flex justify-center my-6">
-        {/* Debug time period */}
-        {console.log(
-          "OverviewSummaryDark - viewMode:",
-          viewMode,
-          "month:",
-          month,
-          "timePeriod:",
-          viewMode === "yearly" ? "year" : month ? "month" : "year"
-        )}
         <AIInsightsButton
           timePeriod={viewMode === "yearly" ? "year" : month ? "month" : "year"}
         />

@@ -204,51 +204,29 @@ class AIInsightService:
         # Get ALL transactions without pagination limit
         transactions = query.all()
 
-        # Log the number of transactions for debugging
-        print(
-            f"Analyzing {len(transactions)} transactions for time period: {time_period}"
-        )
-
         # Get categories
         categories = self.db.query(Category).all()
 
-        # Convert to dictionaries with proper formatting for large numbers
+        # Convert to dictionaries with minimal data to reduce token usage
         transaction_dicts = [
             {
-                "id": t.id,
                 "amount": t.amount,  # Keep the original amount value
-                "amount_formatted": f"{t.amount:,.2f}",  # Format with commas for readability
-                "amount_millions": (
-                    t.amount / 1000000 if abs(t.amount) >= 1000000 else None
-                ),  # Express in millions for large numbers
-                "amount_billions": (
-                    t.amount / 1000000000 if abs(t.amount) >= 1000000000 else None
-                ),  # Express in billions for very large numbers
-                "description": t.description,
                 "date": t.date.isoformat(),
                 "type": t.type.value,
-                "category_id": t.category_id,
                 "category_name": t.category.name if t.category else None,
-                "payment_method": t.payment_method.value,
             }
             for t in transactions
         ]
 
-        category_dicts = [
-            {"id": c.id, "name": c.name, "type": c.type.value} for c in categories
-        ]
+        # Simplify category data to reduce token usage
+        category_dicts = [{"name": c.name, "type": c.type.value} for c in categories]
 
-        # Debug: Print transaction amounts to see what's being passed
+        # Calculate totals for the OpenAI prompt
         income_total = sum(
             t["amount"] for t in transaction_dicts if t["type"] == "income"
         )
         expense_total = sum(
             t["amount"] for t in transaction_dicts if t["type"] == "expense"
-        )
-        print(f"DEBUG - Total income: {income_total}")
-        print(f"DEBUG - Total expenses: {expense_total}")
-        print(
-            f"DEBUG - First 3 transactions: {transaction_dicts[:3] if len(transaction_dicts) >= 3 else transaction_dicts}"
         )
 
         # Call OpenAI service to analyze transactions
