@@ -9,6 +9,7 @@ from app.api import (
     categories_router,
     summaries_router,
     subscriptions_router,
+    ai_insights_router,
 )
 from app.db.seed_categories import seed_categories, verify_categories
 import asyncio
@@ -66,6 +67,7 @@ app.include_router(transactions_router, prefix="/api/v1", tags=["transactions"])
 app.include_router(categories_router, prefix="/api/v1/categories", tags=["categories"])
 app.include_router(summaries_router, prefix="/api/v1/summaries", tags=["summaries"])
 app.include_router(subscriptions_router, prefix="/api/v1", tags=["subscriptions"])
+app.include_router(ai_insights_router, prefix="/api/v1", tags=["ai_insights"])
 app.include_router(health_router, tags=["health"])
 
 

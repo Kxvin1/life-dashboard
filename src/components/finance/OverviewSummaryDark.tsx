@@ -9,6 +9,7 @@ import {
 } from "@/lib/utils";
 import { Transaction } from "@/types/finance";
 import TransactionDetailPanel from "./TransactionDetailPanel";
+import AIInsightsButton from "./AIInsightsButton";
 
 interface MonthlySummary {
   income: number;
@@ -649,6 +650,23 @@ export default function OverviewSummary({
   return (
     <div className="space-y-6">
       {renderSummary()}
+
+      {/* AI Insights Button */}
+      <div className="flex justify-center my-6">
+        {/* Debug time period */}
+        {console.log(
+          "OverviewSummaryDark - viewMode:",
+          viewMode,
+          "month:",
+          month,
+          "timePeriod:",
+          viewMode === "yearly" ? "year" : month ? "month" : "year"
+        )}
+        <AIInsightsButton
+          timePeriod={viewMode === "yearly" ? "year" : month ? "month" : "year"}
+        />
+      </div>
+
       {renderTransactions()}
 
       {/* Transaction Detail Panel */}

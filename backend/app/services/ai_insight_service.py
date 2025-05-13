@@ -1,0 +1,365 @@
+from datetime import datetime, date, time, timedelta
+from typing import Dict, Any, List, Optional, Tuple
+from sqlalchemy.orm import Session
+from sqlalchemy import func, and_, desc
+import pytz
+import json
+from app.models.ai_insight import AIInsightUsage, SystemSetting, AIInsightHistory
+from app.models.user import User
+from app.models.transaction import Transaction, TransactionType
+from app.models.category import Category
+from app.services.openai_service import OpenAIService
+
+
+class AIInsightService:
+    """Service for managing AI insights"""
+
+    def __init__(self, db: Session):
+        self.db = db
+        self.openai_service = OpenAIService()
+        self.super_user_email = "kevinzy17@gmail.com"
+        self.default_usage_limit = 3
+
+    def _get_pst_date(self) -> date:
+        """Get the current date in PST timezone"""
+        pst = pytz.timezone("America/Los_Angeles")
+        return datetime.now(pst).date()
+
+    def _get_midnight_pst(self) -> datetime:
+        """Get the next midnight in PST timezone"""
+        pst = pytz.timezone("America/Los_Angeles")
+        now = datetime.now(pst)
+        tomorrow = now.date() + timedelta(days=1)
+        midnight = datetime.combine(tomorrow, time.min)
+        return pst.localize(midnight)
+
+    def _get_usage_limit(self) -> int:
+        """Get the usage limit from system settings or use default"""
+        setting = (
+            self.db.query(SystemSetting)
+            .filter(SystemSetting.key == "default_ai_usage_limit")
+            .first()
+        )
+
+        if setting:
+            try:
+                return int(setting.value)
+            except (ValueError, TypeError):
+                return self.default_usage_limit
+
+        # If setting doesn't exist, create it with the default value
+        new_setting = SystemSetting(
+            key="default_ai_usage_limit",
+            value=str(self.default_usage_limit),
+            description="Default daily limit for AI insights usage",
+        )
+        self.db.add(new_setting)
+        self.db.commit()
+
+        return self.default_usage_limit
+
+    def get_remaining_uses(self, user: User) -> Tuple[int, int]:
+        """
+        Get the number of remaining AI insight uses for a user
+
+        Returns:
+            Tuple of (remaining_uses, total_allowed_uses)
+        """
+        # Super user has unlimited uses
+        if user.email == self.super_user_email:
+            return (999, 999)  # Effectively unlimited
+
+        # Get the usage limit
+        usage_limit = self._get_usage_limit()
+
+        # Get today's date in PST
+        today = self._get_pst_date()
+
+        # Check if user has used AI insights today
+        usage = (
+            self.db.query(AIInsightUsage)
+            .filter(AIInsightUsage.user_id == user.id, AIInsightUsage.date == today)
+            .first()
+        )
+
+        if not usage:
+            return (usage_limit, usage_limit)
+
+        remaining = max(0, usage_limit - usage.count)
+        return (remaining, usage_limit)
+
+    def increment_usage(self, user: User) -> bool:
+        """
+        Increment the usage count for a user
+
+        Returns:
+            True if successful, False if user has reached their limit
+        """
+        # Super user has unlimited uses
+        if user.email == self.super_user_email:
+            return True
+
+        # Get today's date in PST
+        today = self._get_pst_date()
+
+        # Check if user has used AI insights today
+        usage = (
+            self.db.query(AIInsightUsage)
+            .filter(AIInsightUsage.user_id == user.id, AIInsightUsage.date == today)
+            .first()
+        )
+
+        if not usage:
+            # Create new usage record
+            usage = AIInsightUsage(user_id=user.id, date=today, count=1)
+            self.db.add(usage)
+            self.db.commit()
+            return True
+
+        # Check if user has reached their limit
+        usage_limit = self._get_usage_limit()
+        if usage.count >= usage_limit:
+            return False
+
+        # Increment usage count
+        usage.count += 1
+        self.db.commit()
+        return True
+
+    async def analyze_transactions(
+        self, user: User, time_period: str = "all"
+    ) -> Dict[str, Any]:
+        """
+        Analyze transactions for a user and return insights
+
+        Args:
+            user: User object
+            time_period: Time period for analysis ("month", "quarter", "year", "all")
+
+        Returns:
+            Dictionary containing analysis results
+        """
+        # Check if user has remaining uses
+        remaining_uses, total_uses = self.get_remaining_uses(user)
+
+        if remaining_uses <= 0 and user.email != self.super_user_email:
+            return {
+                "error": "You have reached your daily limit for AI insights",
+                "remaining_uses": 0,
+                "total_uses_allowed": total_uses,
+            }
+
+        # Get ALL transactions for the user (no pagination limit)
+        query = self.db.query(Transaction).filter(Transaction.user_id == user.id)
+
+        # Apply time period filter
+        today = self._get_pst_date()
+
+        if time_period == "month":
+            # Current month
+            start_date = date(today.year, today.month, 1)
+            query = query.filter(Transaction.date >= start_date)
+
+        elif time_period == "prev_month":
+            # Previous month
+            if today.month == 1:
+                # If current month is January, previous month is December of last year
+                prev_month = 12
+                prev_year = today.year - 1
+            else:
+                prev_month = today.month - 1
+                prev_year = today.year
+
+            start_date = date(prev_year, prev_month, 1)
+
+            # Calculate end date (last day of previous month)
+            if prev_month == 12:
+                end_date = date(prev_year, 12, 31)
+            else:
+                end_date = date(prev_year, prev_month + 1, 1) - timedelta(days=1)
+
+            query = query.filter(
+                Transaction.date >= start_date, Transaction.date <= end_date
+            )
+
+        elif time_period == "quarter":
+            quarter_start_month = ((today.month - 1) // 3) * 3 + 1
+            start_date = date(today.year, quarter_start_month, 1)
+            query = query.filter(Transaction.date >= start_date)
+
+        elif time_period == "year":
+            # Current year
+            start_date = date(today.year, 1, 1)
+            query = query.filter(Transaction.date >= start_date)
+
+        elif time_period == "prev_year":
+            # Previous year
+            prev_year = today.year - 1
+            start_date = date(prev_year, 1, 1)
+            end_date = date(prev_year, 12, 31)
+            query = query.filter(
+                Transaction.date >= start_date, Transaction.date <= end_date
+            )
+
+        # Get ALL transactions without pagination limit
+        transactions = query.all()
+
+        # Log the number of transactions for debugging
+        print(
+            f"Analyzing {len(transactions)} transactions for time period: {time_period}"
+        )
+
+        # Get categories
+        categories = self.db.query(Category).all()
+
+        # Convert to dictionaries with proper formatting for large numbers
+        transaction_dicts = [
+            {
+                "id": t.id,
+                "amount": t.amount,  # Keep the original amount value
+                "amount_formatted": f"{t.amount:,.2f}",  # Format with commas for readability
+                "amount_millions": (
+                    t.amount / 1000000 if abs(t.amount) >= 1000000 else None
+                ),  # Express in millions for large numbers
+                "amount_billions": (
+                    t.amount / 1000000000 if abs(t.amount) >= 1000000000 else None
+                ),  # Express in billions for very large numbers
+                "description": t.description,
+                "date": t.date.isoformat(),
+                "type": t.type.value,
+                "category_id": t.category_id,
+                "category_name": t.category.name if t.category else None,
+                "payment_method": t.payment_method.value,
+            }
+            for t in transactions
+        ]
+
+        category_dicts = [
+            {"id": c.id, "name": c.name, "type": c.type.value} for c in categories
+        ]
+
+        # Debug: Print transaction amounts to see what's being passed
+        income_total = sum(
+            t["amount"] for t in transaction_dicts if t["type"] == "income"
+        )
+        expense_total = sum(
+            t["amount"] for t in transaction_dicts if t["type"] == "expense"
+        )
+        print(f"DEBUG - Total income: {income_total}")
+        print(f"DEBUG - Total expenses: {expense_total}")
+        print(
+            f"DEBUG - First 3 transactions: {transaction_dicts[:3] if len(transaction_dicts) >= 3 else transaction_dicts}"
+        )
+
+        # Call OpenAI service to analyze transactions
+        result = await self.openai_service.analyze_transactions(
+            transaction_dicts, category_dicts, time_period
+        )
+
+        # Save the insight to history
+        history_id = self.save_insight_to_history(
+            user=user,
+            time_period=time_period,
+            summary=result["summary"],
+            insights=result["insights"],
+            recommendations=result["recommendations"],
+            charts_data=result["charts"],
+        )
+
+        # Increment usage count (except for super user)
+        if user.email != self.super_user_email:
+            self.increment_usage(user)
+
+            # Recalculate remaining uses
+            remaining_uses, total_uses = self.get_remaining_uses(user)
+
+        # Add remaining uses, history ID, and time period to result
+        result["remaining_uses"] = remaining_uses
+        result["total_uses_allowed"] = total_uses
+        result["history_id"] = history_id
+        result["time_period"] = time_period  # Include the time period in the response
+
+        return result
+
+    def save_insight_to_history(
+        self,
+        user: User,
+        time_period: str,
+        summary: str,
+        insights: List[str],
+        recommendations: List[str],
+        charts_data: Dict[str, Any],
+    ) -> int:
+        """
+        Save an AI insight to the history
+
+        Args:
+            user: User object
+            time_period: Time period for analysis
+            summary: Summary text
+            insights: List of insights
+            recommendations: List of recommendations
+            charts_data: Chart data
+
+        Returns:
+            ID of the created history record
+        """
+        # Create new history record
+        history = AIInsightHistory(
+            user_id=user.id,
+            time_period=time_period,
+            summary=summary,
+            insights=insights,
+            recommendations=recommendations,
+            charts_data=charts_data,
+        )
+
+        self.db.add(history)
+        self.db.commit()
+        self.db.refresh(history)
+
+        return history.id
+
+    def get_user_insight_history(
+        self, user: User, limit: int = 10, skip: int = 0
+    ) -> List[AIInsightHistory]:
+        """
+        Get a user's AI insight history
+
+        Args:
+            user: User object
+            limit: Maximum number of records to return
+            skip: Number of records to skip
+
+        Returns:
+            List of AIInsightHistory objects
+        """
+        return (
+            self.db.query(AIInsightHistory)
+            .filter(AIInsightHistory.user_id == user.id)
+            .order_by(desc(AIInsightHistory.created_at))
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def get_insight_by_id(
+        self, insight_id: int, user_id: int
+    ) -> Optional[AIInsightHistory]:
+        """
+        Get an AI insight by ID
+
+        Args:
+            insight_id: ID of the insight
+            user_id: ID of the user
+
+        Returns:
+            AIInsightHistory object if found, None otherwise
+        """
+        return (
+            self.db.query(AIInsightHistory)
+            .filter(
+                AIInsightHistory.id == insight_id, AIInsightHistory.user_id == user_id
+            )
+            .first()
+        )

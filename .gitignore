@@ -1,6 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 .augment-guidelines
+AI_INSIGHTS_README.md
 
 # dependencies
 /node_modules
