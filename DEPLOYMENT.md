@@ -33,10 +33,18 @@ python fix_migrations.py
 ```
 
 This script will:
-- Show the current migration state
-- Attempt to merge all migration heads
-- Stamp the database with the final migration head if needed
+
+- Wait for the database to be available
+- Try multiple approaches to fix the migration issues
 - Show the final migration state
+
+The script tries the following approaches in order:
+
+1. Upgrade to heads directly
+2. Upgrade to the final merge head
+3. Stamp the database with the final merge head
+4. Stamp with the latest revision
+5. Create a new merge migration and upgrade
 
 If the script doesn't resolve the issue, you can try these manual steps:
 
@@ -66,11 +74,13 @@ alembic merge heads -m "merge_all_heads"
 alembic upgrade heads
 ```
 
-5. If all else fails, you can stamp the database with the latest revision:
+5. If all else fails, you can use the emergency fix script:
 
 ```bash
-alembic stamp head
+python emergency_fix.py
 ```
+
+This emergency script directly manipulates the alembic_version table in the database to set the current version to the latest revision. Only use this as a last resort if all other approaches fail.
 
 ## Frontend Deployment
 
@@ -94,6 +104,7 @@ This indicates that there's a missing migration file or a reference to a migrati
 ### OpenAI API Errors
 
 If you encounter OpenAI API errors, check:
+
 1. Your OpenAI API key is correctly set in the environment variables
 2. Your OpenAI account has sufficient credits
 3. The API version in your code matches the one you're subscribed to
