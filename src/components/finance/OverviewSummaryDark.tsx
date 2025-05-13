@@ -204,11 +204,11 @@ export default function OverviewSummary({
 
   if (loading) {
     return (
-      <div className="bg-card/70 backdrop-blur-lg rounded-xl border border-border shadow-md p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-secondary rounded w-3/4"></div>
-          <div className="h-4 bg-secondary rounded"></div>
-          <div className="h-4 bg-secondary rounded w-1/2"></div>
+      <div className="p-6 border shadow-md bg-card/70 backdrop-blur-lg rounded-xl border-border">
+        <div className="space-y-4 animate-pulse">
+          <div className="w-3/4 h-4 rounded bg-secondary"></div>
+          <div className="h-4 rounded bg-secondary"></div>
+          <div className="w-1/2 h-4 rounded bg-secondary"></div>
         </div>
       </div>
     );
@@ -216,7 +216,7 @@ export default function OverviewSummary({
 
   if (error) {
     return (
-      <div className="bg-card/70 backdrop-blur-lg rounded-xl border border-border shadow-md p-6">
+      <div className="p-6 border shadow-md bg-card/70 backdrop-blur-lg rounded-xl border-border">
         <div className="text-destructive">Error: {error}</div>
       </div>
     );
@@ -231,7 +231,7 @@ export default function OverviewSummary({
           net: 0,
         };
         return (
-          <div className="bg-card rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-border backdrop-blur-sm">
+          <div className="transition-shadow duration-300 border shadow-md bg-card rounded-xl hover:shadow-lg border-border backdrop-blur-sm">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-foreground">
@@ -242,7 +242,7 @@ export default function OverviewSummary({
                 </h2>
                 <button
                   onClick={() => onMonthSelect(0)}
-                  className="inline-flex items-center px-4 py-2 rounded-lg bg-primary hover:bg-primary/80 text-primary-foreground font-medium transition-colors duration-200 shadow-sm hover:shadow-md active:scale-95 transform"
+                  className="inline-flex items-center px-4 py-2 font-medium transition-colors duration-200 transform rounded-lg shadow-sm bg-primary hover:bg-primary/80 text-primary-foreground hover:shadow-md active:scale-95"
                 >
                   <svg
                     className="h-4 w-4 mr-1.5"
@@ -261,25 +261,25 @@ export default function OverviewSummary({
                   Back to All Months
                 </button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                <div className="bg-card/80 rounded-lg p-6 border border-border">
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="p-6 border rounded-lg bg-card/80 border-border">
+                  <h3 className="mb-1 text-sm font-medium text-muted-foreground">
                     Income
                   </h3>
-                  <p className="text-2xl md:text-3xl font-bold text-green-600 truncate">
+                  <p className="text-2xl font-bold text-green-600 truncate md:text-3xl">
                     {formatCurrency(monthData.income)}
                   </p>
                 </div>
-                <div className="bg-card/80 rounded-lg p-6 border border-border">
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                <div className="p-6 border rounded-lg bg-card/80 border-border">
+                  <h3 className="mb-1 text-sm font-medium text-muted-foreground">
                     Expenses
                   </h3>
-                  <p className="text-2xl md:text-3xl font-bold text-red-600 truncate">
+                  <p className="text-2xl font-bold text-red-600 truncate md:text-3xl">
                     {formatCurrency(monthData.expense)}
                   </p>
                 </div>
-                <div className="bg-card/80 rounded-lg p-6 border border-border">
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                <div className="p-6 border rounded-lg bg-card/80 border-border">
+                  <h3 className="mb-1 text-sm font-medium text-muted-foreground">
                     Net Income
                   </h3>
                   <p
@@ -296,42 +296,42 @@ export default function OverviewSummary({
         );
       } else {
         return (
-          <div className="bg-card rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-border backdrop-blur-sm">
+          <div className="transition-shadow duration-300 border shadow-md bg-card rounded-xl hover:shadow-lg border-border backdrop-blur-sm">
             <div className="p-6">
-              <h2 className="text-xl font-semibold text-foreground mb-4">
+              <h2 className="mb-4 text-xl font-semibold text-foreground">
                 {year} Monthly Transactions
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                 {Object.entries(monthlyData).map(([monthNum, data]) => (
                   <div
                     key={monthNum}
-                    className="bg-card/80 rounded-lg border border-border p-4 hover:bg-accent/50 transition-colors cursor-pointer"
+                    className="p-4 transition-colors border rounded-lg cursor-pointer bg-card/80 border-border hover:bg-accent/50"
                     onClick={() => onMonthSelect(Number(monthNum))}
                   >
-                    <h3 className="text-lg font-medium text-foreground mb-3">
+                    <h3 className="mb-3 text-lg font-medium text-foreground">
                       {new Date(year, Number(monthNum) - 1).toLocaleString(
                         "default",
                         { month: "long" }
                       )}
                     </h3>
                     <div className="space-y-2">
-                      <div className="flex justify-between items-center">
+                      <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">
                           Income
                         </span>
-                        <span className="text-green-600 font-medium">
+                        <span className="font-medium text-green-600">
                           {formatCurrency(data.income)}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center">
+                      <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">
                           Expenses
                         </span>
-                        <span className="text-red-600 font-medium">
+                        <span className="font-medium text-red-600">
                           {formatCurrency(data.expense)}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center pt-2 border-t border-border">
+                      <div className="flex items-center justify-between pt-2 border-t border-border">
                         <span className="text-sm font-medium text-foreground">
                           Net Income
                         </span>
@@ -353,30 +353,30 @@ export default function OverviewSummary({
       }
     } else {
       return (
-        <div className="bg-card rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-border backdrop-blur-sm">
+        <div className="transition-shadow duration-300 border shadow-md bg-card rounded-xl hover:shadow-lg border-border backdrop-blur-sm">
           <div className="p-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">
+            <h2 className="mb-4 text-xl font-semibold text-foreground">
               {year} Yearly Transactions Summary
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-card/80 rounded-lg p-6 border border-border">
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <div className="p-6 border rounded-lg bg-card/80 border-border">
+                <h3 className="mb-1 text-sm font-medium text-muted-foreground">
                   Total Income
                 </h3>
-                <p className="text-2xl md:text-3xl font-bold text-green-600 truncate">
+                <p className="text-2xl font-bold text-green-600 truncate md:text-3xl">
                   {formatCurrency(yearlyData?.total_income || 0)}
                 </p>
               </div>
-              <div className="bg-card/80 rounded-lg p-6 border border-border">
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">
+              <div className="p-6 border rounded-lg bg-card/80 border-border">
+                <h3 className="mb-1 text-sm font-medium text-muted-foreground">
                   Total Expenses
                 </h3>
-                <p className="text-2xl md:text-3xl font-bold text-red-600 truncate">
+                <p className="text-2xl font-bold text-red-600 truncate md:text-3xl">
                   {formatCurrency(yearlyData?.total_expense || 0)}
                 </p>
               </div>
-              <div className="bg-card/80 rounded-lg p-6 border border-border">
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">
+              <div className="p-6 border rounded-lg bg-card/80 border-border">
+                <h3 className="mb-1 text-sm font-medium text-muted-foreground">
                   Net Income
                 </h3>
                 <p
@@ -399,9 +399,9 @@ export default function OverviewSummary({
   const renderTransactions = () => {
     if (transactions.length === 0) {
       return (
-        <div className="bg-card rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-border backdrop-blur-sm">
+        <div className="transition-shadow duration-300 border shadow-md bg-card rounded-xl hover:shadow-lg border-border backdrop-blur-sm">
           <div className="p-6">
-            <p className="text-muted-foreground text-center">
+            <p className="text-center text-muted-foreground">
               No transactions found
             </p>
           </div>
@@ -422,9 +422,9 @@ export default function OverviewSummary({
 
     if (filteredTransactions.length === 0) {
       return (
-        <div className="bg-card rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-border backdrop-blur-sm">
+        <div className="transition-shadow duration-300 border shadow-md bg-card rounded-xl hover:shadow-lg border-border backdrop-blur-sm">
           <div className="p-6">
-            <p className="text-muted-foreground text-center">
+            <p className="text-center text-muted-foreground">
               No transactions found for the selected month
             </p>
           </div>
@@ -443,19 +443,19 @@ export default function OverviewSummary({
     );
 
     return (
-      <div className="bg-card rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 border border-border backdrop-blur-sm">
+      <div className="transition-shadow duration-300 border shadow-md bg-card rounded-xl hover:shadow-lg border-border backdrop-blur-sm">
         <div className="p-6">
           <div className="flex items-center justify-between mb-2">
             <div>
               <h2 className="text-xl font-semibold text-foreground">
                 Transaction History
               </h2>
-              <p className="text-sm text-muted-foreground mt-1 flex items-center">
+              <p className="flex items-center mt-1 text-sm text-muted-foreground">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 20 20"
                   fill="currentColor"
-                  className="w-4 h-4 mr-1 inline-block"
+                  className="inline-block w-4 h-4 mr-1"
                 >
                   <path
                     fillRule="evenodd"
@@ -482,7 +482,7 @@ export default function OverviewSummary({
                   </span>
                 </p>
                 <nav
-                  className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                  className="relative z-0 inline-flex -space-x-px rounded-md shadow-sm"
                   aria-label="Pagination"
                 >
                   <button
@@ -490,11 +490,11 @@ export default function OverviewSummary({
                       setCurrentPage((prev) => Math.max(1, prev - 1))
                     }
                     disabled={currentPage === 1}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-border bg-card text-sm font-medium text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative inline-flex items-center px-2 py-2 text-sm font-medium border rounded-l-md border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="sr-only">Previous</span>
                     <svg
-                      className="h-5 w-5"
+                      className="w-5 h-5"
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 20 20"
                       fill="currentColor"
@@ -527,11 +527,11 @@ export default function OverviewSummary({
                       setCurrentPage((prev) => Math.min(totalPages, prev + 1))
                     }
                     disabled={currentPage === totalPages}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-border bg-card text-sm font-medium text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative inline-flex items-center px-2 py-2 text-sm font-medium border rounded-r-md border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="sr-only">Next</span>
                     <svg
-                      className="h-5 w-5"
+                      className="w-5 h-5"
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 20 20"
                       fill="currentColor"
@@ -554,53 +554,53 @@ export default function OverviewSummary({
                 <tr>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                    className="px-6 py-3 text-xs font-medium tracking-wider text-left uppercase text-muted-foreground"
                   >
                     Date
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                    className="px-6 py-3 text-xs font-medium tracking-wider text-left uppercase text-muted-foreground"
                   >
                     Description
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                    className="px-6 py-3 text-xs font-medium tracking-wider text-left uppercase text-muted-foreground"
                   >
                     Category
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                    className="px-6 py-3 text-xs font-medium tracking-wider text-left uppercase text-muted-foreground"
                   >
                     Type
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                    className="px-6 py-3 text-xs font-medium tracking-wider text-right uppercase text-muted-foreground"
                   >
                     Amount
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-card divide-y divide-border">
+              <tbody className="divide-y bg-card divide-border">
                 {paginatedTransactions.map((transaction) => (
                   <tr
                     key={transaction.id}
-                    className="hover:bg-accent/50 cursor-pointer transition-colors duration-150 group"
+                    className="transition-colors duration-150 cursor-pointer hover:bg-accent/50 group"
                     onClick={() => {
                       setSelectedTransaction(transaction);
                       setIsDetailPanelOpen(true);
                     }}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                    <td className="px-6 py-4 text-sm whitespace-nowrap text-muted-foreground">
                       {formatDate(transaction.date)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
+                    <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-foreground">
                       {transaction.description}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                    <td className="px-6 py-4 text-sm whitespace-nowrap text-muted-foreground">
                       {transaction.category?.name || "Uncategorized"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -615,7 +615,7 @@ export default function OverviewSummary({
                           transaction.type.slice(1)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
+                    <td className="px-6 py-4 text-sm font-medium text-right whitespace-nowrap">
                       <div className="flex items-center justify-end space-x-2">
                         <span
                           className={
@@ -630,7 +630,7 @@ export default function OverviewSummary({
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 20 20"
                           fill="currentColor"
-                          className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+                          className="w-4 h-4 transition-opacity duration-150 opacity-0 text-muted-foreground group-hover:opacity-100"
                         >
                           <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
                           <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
