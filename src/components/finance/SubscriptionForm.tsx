@@ -94,10 +94,19 @@ const SubscriptionForm = ({
           type="number"
           id="amount"
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={(e) => {
+            // Limit the amount to 1 billion
+            const value = parseFloat(e.target.value);
+            if (!isNaN(value) && value <= 1000000000) {
+              setAmount(e.target.value);
+            } else if (e.target.value === "") {
+              setAmount("");
+            }
+          }}
           step="0.01"
           min="0"
-          placeholder="Enter amount"
+          max="1000000000"
+          placeholder="Enter amount (max $1 billion)"
           className="w-full px-3 py-2 text-sm border rounded-md border-input bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           required
         />
@@ -161,19 +170,30 @@ const SubscriptionForm = ({
       </div>
 
       <div>
-        <label
-          htmlFor="notes"
-          className="block text-sm font-medium text-foreground"
-        >
-          Notes (Optional)
-        </label>
+        <div className="flex items-center justify-between">
+          <label
+            htmlFor="notes"
+            className="block text-sm font-medium text-foreground"
+          >
+            Notes (Optional)
+          </label>
+          <span className="text-xs text-muted-foreground">
+            {notes.length}/18 characters
+          </span>
+        </div>
         <textarea
           id="notes"
           value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Additional information"
+          onChange={(e) => {
+            // Limit to 18 characters
+            if (e.target.value.length <= 18) {
+              setNotes(e.target.value);
+            }
+          }}
+          placeholder="Additional information (max 18 chars)"
           className="w-full px-3 py-2 text-sm border rounded-md border-input bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          rows={3}
+          rows={2}
+          maxLength={18}
         />
       </div>
 

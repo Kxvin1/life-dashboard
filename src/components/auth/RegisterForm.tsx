@@ -95,7 +95,12 @@ const RegisterForm = () => {
               className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded relative"
               role="alert"
             >
-              <span className="block sm:inline">{error}</span>
+              {/* Split error messages by period for better formatting */}
+              {error.split(". ").map((message, index) => (
+                <div key={index} className="block mb-1 last:mb-0">
+                  {message}
+                </div>
+              ))}
             </div>
           )}
           <div className="rounded-md shadow-sm -space-y-px">

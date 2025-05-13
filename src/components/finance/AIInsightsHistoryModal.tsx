@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   getInsightHistory,
   getInsightById,
+  getRemainingInsights,
   AIInsightHistoryItem,
 } from "@/services/aiInsightService";
 import AIInsightsModal from "./AIInsightsModal";
@@ -142,6 +143,16 @@ export default function AIInsightsHistoryModal({
 
       // Get the full insight details
       const fullInsight = await getInsightById(insight.id);
+
+      // Get the current remaining uses
+      try {
+        const remainingData = await getRemainingInsights();
+        fullInsight.remaining_uses = remainingData.remaining_uses;
+        fullInsight.total_uses_allowed = remainingData.total_uses_allowed;
+      } catch (error) {
+        console.error("Failed to fetch remaining uses:", error);
+        // Continue even if this fails
+      }
 
       // Set the selected insight after a small delay to ensure clean rendering
       setTimeout(() => {
@@ -340,8 +351,8 @@ export default function AIInsightsHistoryModal({
             insights: selectedInsight.insights,
             recommendations: selectedInsight.recommendations,
             charts: selectedInsight.charts_data,
-            remaining_uses: 0,
-            total_uses_allowed: 0,
+            remaining_uses: selectedInsight.remaining_uses || 0,
+            total_uses_allowed: selectedInsight.total_uses_allowed || 0,
           }}
           selectedTimePeriod={selectedInsight.time_period}
         />

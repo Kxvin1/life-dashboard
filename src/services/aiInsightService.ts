@@ -51,6 +51,8 @@ export interface AIInsightHistoryItem {
     [key: string]: ChartData | undefined;
   };
   created_at: string;
+  remaining_uses?: number;
+  total_uses_allowed?: number;
 }
 
 export const getAIInsights = async (

@@ -185,8 +185,82 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Registration failed");
+        const errorText = await response.text();
+
+        try {
+          // Try to parse the error as JSON
+          const errorData = JSON.parse(errorText);
+
+          // Create user-friendly error messages
+          let userFriendlyMessage =
+            "Please check your information and try again.";
+
+          // Handle common error cases with user-friendly messages
+          if (errorData.detail) {
+            // If detail is an array of validation errors (FastAPI format)
+            if (Array.isArray(errorData.detail)) {
+              const messages = [];
+
+              for (const error of errorData.detail) {
+                // Extract field name from the location path
+                const fieldName =
+                  error.loc && error.loc.length > 1 ? error.loc[1] : "";
+
+                // Create user-friendly messages based on field and error type
+                if (fieldName === "email") {
+                  messages.push("Please enter a valid email address");
+                } else if (fieldName === "password") {
+                  messages.push("Your password doesn't meet the requirements");
+                } else if (fieldName === "full_name") {
+                  messages.push("Please check your name");
+                }
+                // If we can't determine the field, use a generic message
+                else {
+                  messages.push("Please check your information");
+                }
+              }
+
+              if (messages.length > 0) {
+                userFriendlyMessage = messages.join(". ");
+              }
+            }
+            // If detail is a string
+            else if (typeof errorData.detail === "string") {
+              if (errorData.detail.includes("already registered")) {
+                userFriendlyMessage =
+                  "This email is already registered. Please use a different email or try logging in.";
+              } else {
+                userFriendlyMessage = "Registration failed. Please try again.";
+              }
+            }
+          }
+
+          // Handle specific field errors
+          else if (typeof errorData === "object") {
+            const messages = [];
+
+            if (errorData.email) {
+              messages.push("Please enter a valid email address");
+            }
+            if (errorData.password) {
+              messages.push("Your password doesn't meet the requirements");
+            }
+            if (errorData.full_name) {
+              messages.push("Please check your name");
+            }
+
+            if (messages.length > 0) {
+              userFriendlyMessage = messages.join(". ");
+            }
+          }
+
+          throw new Error(userFriendlyMessage);
+        } catch (parseError) {
+          // If we couldn't parse JSON or another error occurred during parsing
+          throw new Error(
+            "Registration failed. Please check your information and try again."
+          );
+        }
       }
 
       const data = await response.json();

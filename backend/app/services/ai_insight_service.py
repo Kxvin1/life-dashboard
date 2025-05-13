@@ -58,6 +58,10 @@ class AIInsightService:
 
         return self.default_usage_limit
 
+    def _get_super_user_limit(self) -> int:
+        """Get the usage limit for super users"""
+        return 50
+
     def get_remaining_uses(self, user: User) -> Tuple[int, int]:
         """
         Get the number of remaining AI insight uses for a user
@@ -65,15 +69,29 @@ class AIInsightService:
         Returns:
             Tuple of (remaining_uses, total_allowed_uses)
         """
-        # Super user has unlimited uses
-        if user.email == self.super_user_email:
-            return (999, 999)  # Effectively unlimited
-
-        # Get the usage limit
-        usage_limit = self._get_usage_limit()
-
         # Get today's date in PST
         today = self._get_pst_date()
+
+        # Check if user is super user
+        if user.email == self.super_user_email:
+            # Super user has higher limit but still tracked
+            usage_limit = self._get_super_user_limit()
+
+            # Check if super user has used AI insights today
+            usage = (
+                self.db.query(AIInsightUsage)
+                .filter(AIInsightUsage.user_id == user.id, AIInsightUsage.date == today)
+                .first()
+            )
+
+            if not usage:
+                return (usage_limit, usage_limit)
+
+            remaining = max(0, usage_limit - usage.count)
+            return (remaining, usage_limit)
+
+        # Regular user logic
+        usage_limit = self._get_usage_limit()
 
         # Check if user has used AI insights today
         usage = (
@@ -95,10 +113,6 @@ class AIInsightService:
         Returns:
             True if successful, False if user has reached their limit
         """
-        # Super user has unlimited uses
-        if user.email == self.super_user_email:
-            return True
-
         # Get today's date in PST
         today = self._get_pst_date()
 
@@ -117,7 +131,12 @@ class AIInsightService:
             return True
 
         # Check if user has reached their limit
-        usage_limit = self._get_usage_limit()
+        # Use super user limit if the user is a super user
+        usage_limit = (
+            self._get_super_user_limit()
+            if user.email == self.super_user_email
+            else self._get_usage_limit()
+        )
         if usage.count >= usage_limit:
             return False
 
@@ -142,7 +161,7 @@ class AIInsightService:
         # Check if user has remaining uses
         remaining_uses, total_uses = self.get_remaining_uses(user)
 
-        if remaining_uses <= 0 and user.email != self.super_user_email:
+        if remaining_uses <= 0:
             return {
                 "error": "You have reached your daily limit for AI insights",
                 "remaining_uses": 0,
@@ -244,12 +263,11 @@ class AIInsightService:
             charts_data=result["charts"],
         )
 
-        # Increment usage count (except for super user)
-        if user.email != self.super_user_email:
-            self.increment_usage(user)
+        # Increment usage count for all users
+        self.increment_usage(user)
 
-            # Recalculate remaining uses
-            remaining_uses, total_uses = self.get_remaining_uses(user)
+        # Recalculate remaining uses
+        remaining_uses, total_uses = self.get_remaining_uses(user)
 
         # Add remaining uses, history ID, and time period to result
         result["remaining_uses"] = remaining_uses

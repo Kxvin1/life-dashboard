@@ -55,7 +55,7 @@ async def analyze_transactions(
     # Check if user has remaining uses
     remaining_uses, total_uses = service.get_remaining_uses(current_user)
 
-    if remaining_uses <= 0 and current_user.email != "kevinzy17@gmail.com":
+    if remaining_uses <= 0:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You have reached your daily limit for AI insights",

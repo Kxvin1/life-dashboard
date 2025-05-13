@@ -100,13 +100,13 @@ export default function AIInsightsButton({
 
   return (
     <div className="flex flex-col items-center">
-      <div className="flex flex-wrap gap-2 mb-2 justify-center">
+      <div className="flex flex-wrap justify-center gap-2 mb-2">
         {/* Time Period Dropdown */}
         <div className="relative">
           <select
             value={selectedTimePeriod}
             onChange={(e) => handleTimePeriodSelect(e.target.value)}
-            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors bg-secondary text-secondary-foreground hover:bg-secondary/80 appearance-none pr-8"
+            className="flex items-center justify-center gap-2 px-4 py-2 pr-8 font-medium transition-colors rounded-lg appearance-none bg-secondary text-secondary-foreground hover:bg-secondary/80"
           >
             <option value="month">Current Month</option>
             <option value="prev_month">Previous Month</option>
@@ -116,7 +116,7 @@ export default function AIInsightsButton({
           </select>
           <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
             <svg
-              className="h-4 w-4 text-secondary-foreground"
+              className="w-4 h-4 text-secondary-foreground"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -146,7 +146,7 @@ export default function AIInsightsButton({
         >
           {loading ? (
             <>
-              <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
+              <span className="w-4 h-4 border-2 border-current rounded-full animate-spin border-t-transparent"></span>
               <span>Analyzing...</span>
             </>
           ) : (
@@ -177,7 +177,7 @@ export default function AIInsightsButton({
         {/* History Button */}
         <button
           onClick={handleHistoryClick}
-          className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors bg-secondary text-secondary-foreground hover:bg-secondary/80"
+          className="flex items-center justify-center gap-2 px-4 py-2 font-medium transition-colors rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -197,19 +197,17 @@ export default function AIInsightsButton({
         </button>
       </div>
 
-      {remainingUses !== null &&
-        totalAllowed !== null &&
-        remainingUses < totalAllowed && (
-          <div className="mt-1 text-xs text-muted-foreground">
-            {remainingUses > 0
-              ? `${remainingUses} of ${totalAllowed} uses remaining today`
-              : "No uses remaining today"}
-          </div>
-        )}
+      {remainingUses !== null && totalAllowed !== null && (
+        <div className="mt-1 text-xs text-muted-foreground">
+          {remainingUses > 0
+            ? `${remainingUses} of ${totalAllowed} uses remaining today`
+            : "No uses remaining today"}
+        </div>
+      )}
 
       {error && (
-        <div className="mt-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-sm text-destructive">
-          <div className="font-medium mb-1">Error:</div>
+        <div className="p-3 mt-2 text-sm border rounded-md bg-destructive/10 border-destructive/20 text-destructive">
+          <div className="mb-1 font-medium">Error:</div>
           <div>{error}</div>
         </div>
       )}

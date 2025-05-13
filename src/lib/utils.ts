@@ -3,14 +3,27 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 export const formatCurrency = (amount: number): string => {
-  // For very large numbers, use compact notation
-  if (Math.abs(amount) >= 1000000) {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      notation: "compact",
-      maximumFractionDigits: 1,
-    }).format(amount);
+  // For extremely large numbers (999+ billion), cap at 999B+
+  if (Math.abs(amount) >= 999_000_000_000) {
+    return "$999B+";
+  }
+
+  // For trillion+ numbers, use T notation with 1 decimal place
+  else if (Math.abs(amount) >= 1_000_000_000_000) {
+    const trillions = amount / 1_000_000_000_000;
+    return `$${trillions.toFixed(1)}T`;
+  }
+
+  // For billion+ numbers, use B notation with 1 decimal place
+  else if (Math.abs(amount) >= 1_000_000_000) {
+    const billions = amount / 1_000_000_000;
+    return `$${billions.toFixed(1)}B`;
+  }
+
+  // For million+ numbers, use M notation with 1 decimal place
+  else if (Math.abs(amount) >= 1_000_000) {
+    const millions = amount / 1_000_000;
+    return `$${millions.toFixed(1)}M`;
   }
 
   // For regular numbers, use standard formatting

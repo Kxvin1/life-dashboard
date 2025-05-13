@@ -477,6 +477,18 @@ const SubscriptionList = ({
                   <div className="text-foreground">
                     {formatBillingFrequency(subscription.billing_frequency)}
                   </div>
+
+                  {/* Display notes if they exist */}
+                  {subscription.notes && (
+                    <>
+                      <div className="text-muted-foreground font-medium">
+                        Note:
+                      </div>
+                      <div className="text-foreground italic">
+                        "{subscription.notes}"
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Actions */}
