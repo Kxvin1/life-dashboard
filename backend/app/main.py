@@ -47,16 +47,31 @@ app.add_middleware(
 async def add_cors_headers(request: Request, call_next):
     if request.method == "OPTIONS":
         response = Response(status_code=200)
-        response.headers["Access-Control-Allow-Origin"] = request.headers.get(
-            "Origin", "*"
-        )
+        # Get the Origin header from the request
+        origin = request.headers.get("Origin", "*")
+
+        # Check if the origin is allowed
+        allowed_origins = [
+            "http://localhost:3000",
+            "https://life-dashboard-eta.vercel.app",
+        ]
+
+        if origin in allowed_origins:
+            response.headers["Access-Control-Allow-Origin"] = origin
+        else:
+            # Default to the Vercel frontend URL
+            response.headers["Access-Control-Allow-Origin"] = (
+                "https://life-dashboard-eta.vercel.app"
+            )
+
         response.headers["Access-Control-Allow-Methods"] = (
-            "GET, POST, PUT, DELETE, OPTIONS"
+            "GET, POST, PUT, DELETE, OPTIONS, PATCH"
         )
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Allow-Headers"] = "*"
         response.headers["Access-Control-Allow-Credentials"] = "true"
         response.headers["Access-Control-Max-Age"] = "600"
         return response
+
     response = await call_next(request)
     return response
 

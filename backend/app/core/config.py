@@ -1,3 +1,4 @@
+import os
 from pydantic_settings import BaseSettings
 from typing import Optional
 
@@ -7,7 +8,10 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ENVIRONMENT: str = "development"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 300
-    FRONTEND_URL: str = "http://localhost:3000"  # Default to localhost in development
+    # Get frontend URL from environment or use default
+    FRONTEND_URL: str = os.environ.get(
+        "FRONTEND_URL", "https://life-dashboard-eta.vercel.app"
+    )
     ALGORITHM: str = "HS256"  # Algorithm for JWT token signing
     OPENAI_API_KEY: Optional[str] = None  # OpenAI API key for AI insights
 
