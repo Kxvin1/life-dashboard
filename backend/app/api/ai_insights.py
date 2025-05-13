@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import List
@@ -15,6 +15,24 @@ from app.schemas.ai_insight import (
 from app.services.ai_insight_service import AIInsightService
 
 router = APIRouter()
+
+
+@router.get("/insights/public-test")
+async def public_test(request: Request):
+    """
+    Public test endpoint that doesn't require authentication.
+    This is used to test if CORS is working correctly.
+    """
+    # Get the origin from the request
+    origin = request.headers.get("Origin", "Unknown")
+
+    return {
+        "message": "CORS is working correctly!",
+        "status": "success",
+        "timestamp": str(datetime.now()),
+        "origin": origin,
+        "headers": {k: v for k, v in request.headers.items()},
+    }
 
 
 @router.post("/insights/transactions", response_model=AIInsightResponse)

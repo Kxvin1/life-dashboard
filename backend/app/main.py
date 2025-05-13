@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from datetime import datetime
 from app.core.config import settings
 from app.api import (
     transactions_router,
@@ -27,7 +28,7 @@ async def startup_event():
     asyncio.create_task(verify_categories())
 
 
-# Configure CORS
+# Configure CORS - Allow specific origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -35,44 +36,63 @@ app.add_middleware(
         "https://life-dashboard-eta.vercel.app",
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+    ],
     expose_headers=["*"],
     max_age=600,
 )
 
 
-# Add OPTIONS handler for all routes
+# Add CORS headers to all responses
 @app.middleware("http")
 async def add_cors_headers(request: Request, call_next):
+    # Get the origin from the request
+    origin = request.headers.get("Origin")
+
+    # List of allowed origins
+    allowed_origins = [
+        "http://localhost:3000",
+        "https://life-dashboard-eta.vercel.app",
+    ]
+
+    # For preflight OPTIONS requests
     if request.method == "OPTIONS":
         response = Response(status_code=200)
-        # Get the Origin header from the request
-        origin = request.headers.get("Origin", "*")
 
-        # Check if the origin is allowed
-        allowed_origins = [
-            "http://localhost:3000",
-            "https://life-dashboard-eta.vercel.app",
-        ]
-
+        # Set CORS headers based on origin
         if origin in allowed_origins:
             response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
         else:
-            # Default to the Vercel frontend URL
-            response.headers["Access-Control-Allow-Origin"] = (
-                "https://life-dashboard-eta.vercel.app"
-            )
+            # For other origins, still allow but without credentials
+            response.headers["Access-Control-Allow-Origin"] = "*"
 
         response.headers["Access-Control-Allow-Methods"] = (
             "GET, POST, PUT, DELETE, OPTIONS, PATCH"
         )
-        response.headers["Access-Control-Allow-Headers"] = "*"
-        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Headers"] = (
+            "Authorization, Content-Type, Accept, Origin, X-Requested-With"
+        )
         response.headers["Access-Control-Max-Age"] = "600"
         return response
 
+    # For all other requests
     response = await call_next(request)
+
+    # Add CORS headers to the response
+    if origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    else:
+        # For other origins, still allow but without credentials
+        response.headers["Access-Control-Allow-Origin"] = "*"
+
     return response
 
 
@@ -89,6 +109,19 @@ app.include_router(health_router, tags=["health"])
 @app.get("/")
 async def root():
     return {"message": "Welcome to Finance Tracker API", "status": "healthy"}
+
+
+@app.get("/cors-test")
+async def cors_test():
+    """
+    Simple endpoint to test CORS configuration.
+    This endpoint should be accessible from the frontend.
+    """
+    return {
+        "message": "CORS is working correctly!",
+        "status": "success",
+        "timestamp": str(datetime.now()),
+    }
 
 
 @app.post("/api/v1/seed-categories")

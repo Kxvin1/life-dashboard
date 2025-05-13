@@ -14,11 +14,18 @@ class OpenAIService:
     def __init__(self):
         self.api_key = settings.OPENAI_API_KEY
         if not self.api_key:
-            logger.error("OpenAI API key not found in settings")
-            raise ValueError("OpenAI API key not found in settings")
+            logger.warning("OpenAI API key not found in settings")
+            # Use a dummy key for initialization, but the service won't work
+            self.api_key = "dummy_key_for_initialization"
 
-        self.client = OpenAI(api_key=self.api_key)
-        self.model = "gpt-3.5-turbo"
+        try:
+            self.client = OpenAI(api_key=self.api_key)
+            self.model = "gpt-3.5-turbo"
+        except Exception as e:
+            logger.error(f"Error initializing OpenAI client: {str(e)}")
+            # Create a placeholder client that will raise appropriate errors when used
+            self.client = None
+            self.model = "gpt-3.5-turbo"
 
     async def analyze_transactions(
         self,
@@ -96,6 +103,13 @@ class OpenAIService:
             """
 
             try:
+                # Check if client is initialized
+                if self.client is None:
+                    logger.error("OpenAI client is not initialized")
+                    return self._generate_fallback_response(
+                        "OpenAI API key is missing or invalid. Please check your API key."
+                    )
+
                 # Call OpenAI API
                 response = self.client.chat.completions.create(
                     model=self.model,
