@@ -1,4 +1,6 @@
 import { Transaction } from "@/types/finance";
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export const formatCurrency = (amount: number): string => {
   // For very large numbers, use compact notation
@@ -79,3 +81,11 @@ export const formatSubscriptionDuration = (startDateString: string): string => {
     }`;
   }
 };
+
+/**
+ * Combines multiple class names into a single string, handling conditional classes
+ * and merging Tailwind CSS classes properly
+ */
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}

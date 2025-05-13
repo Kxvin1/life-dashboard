@@ -19,3 +19,9 @@ class User(Base):
     # Relationships
     transactions = relationship("Transaction", back_populates="user", lazy="dynamic")
     subscriptions = relationship("Subscription", back_populates="user", lazy="dynamic")
+    ai_insight_usage = relationship(
+        "AIInsightUsage", back_populates="user", lazy="dynamic"
+    )
+    ai_insight_history = relationship(
+        "AIInsightHistory", back_populates="user", lazy="dynamic"
+    )
