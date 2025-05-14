@@ -44,6 +44,9 @@ export default function OverviewSummary({
   const transactionsPerPage = 10;
 
   useEffect(() => {
+    // Reset current page to 1 when year, month, categoryId, or viewMode changes
+    setCurrentPage(1);
+
     const fetchData = async () => {
       try {
         setLoading(true);

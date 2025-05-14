@@ -15,16 +15,19 @@ interface User {
   id: number;
   email: string;
   full_name: string;
+  is_demo_user?: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isDemoUser: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
+  loginAsDemo: () => Promise<void>;
   logout: () => void;
-  fetchUser: () => Promise<User | null>; // Add fetchUser to the context type
+  fetchUser: () => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,6 +48,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDemoUser, setIsDemoUser] = useState(false);
   const router = useRouter();
 
   const getApiUrl = useCallback((endpoint: string) => {
@@ -82,6 +86,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       setUser(userData);
       setIsAuthenticated(true);
+
+      // Set demo user state if applicable
+      if (userData.is_demo_user) {
+        setIsDemoUser(true);
+      } else {
+        setIsDemoUser(false);
+      }
+
       return userData; // Return the user data for potential future use
     } catch {
       // If there's an error, clear the token and reset auth state
@@ -138,6 +150,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       // Set authenticated state directly
       setIsAuthenticated(true);
+      setIsDemoUser(false);
 
       try {
         // Fetch user data and wait for it to complete
@@ -274,6 +287,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       // Set authenticated state directly
       setIsAuthenticated(true);
+      setIsDemoUser(false);
 
       try {
         // Fetch user data and wait for it to complete
@@ -305,10 +319,73 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const loginAsDemo = async () => {
+    try {
+      setIsLoading(true);
+
+      const response = await fetch(getApiUrl("/api/v1/auth/demo"), {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to login as demo user");
+      }
+
+      const data = await response.json();
+
+      // Set the token in cookies
+      Cookies.set("token", data.access_token, {
+        expires: 1, // Demo user token expires in 1 day
+        secure: true,
+        sameSite: "lax",
+        path: "/",
+      });
+
+      // Set authenticated state
+      setIsAuthenticated(true);
+      setIsDemoUser(true);
+
+      try {
+        // Fetch user data
+        const token = Cookies.get("token");
+
+        const userResponse = await fetch(getApiUrl("/api/v1/auth/me"), {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: "include",
+        });
+
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          setUser({
+            ...userData,
+            is_demo_user: true, // Ensure this flag is set on the frontend
+          });
+
+          // Redirect to dashboard
+          window.location.href = "/";
+        } else {
+          // Still redirect to home page
+          window.location.href = "/";
+        }
+      } catch {
+        // Still redirect to home page
+        window.location.href = "/";
+      }
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = () => {
     Cookies.remove("token");
     setUser(null);
     setIsAuthenticated(false);
+    setIsDemoUser(false);
     router.push("/home");
   };
 
@@ -316,10 +393,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     user,
     isAuthenticated,
     isLoading,
+    isDemoUser,
     login,
     register,
+    loginAsDemo,
     logout,
-    fetchUser, // Add fetchUser to the context value
+    fetchUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

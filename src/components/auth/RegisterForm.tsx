@@ -10,7 +10,8 @@ const RegisterForm = () => {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const { register, isLoading } = useAuth();
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
+  const { register, loginAsDemo, isLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   // Ensure theme is applied correctly
@@ -41,6 +42,20 @@ const RegisterForm = () => {
           ? err.message
           : "An error occurred during registration"
       );
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    setError(null);
+    setIsDemoLoading(true);
+    try {
+      await loginAsDemo();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to login as demo user"
+      );
+    } finally {
+      setIsDemoLoading(false);
     }
   };
 
@@ -153,13 +168,31 @@ const RegisterForm = () => {
             </div>
           </div>
 
-          <div>
+          <div className="space-y-3">
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || isDemoLoading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? "Creating account..." : "Register"}
+            </button>
+
+            <div className="relative flex items-center">
+              <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
+              <span className="flex-shrink mx-4 text-gray-500 dark:text-gray-400 text-xs">
+                or
+              </span>
+              <div className="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleDemoLogin}
+              disabled={isLoading || isDemoLoading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-green-600 dark:border-green-500 text-sm font-medium rounded-md text-green-600 dark:text-green-500 bg-transparent hover:bg-green-50 dark:hover:bg-green-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Try the app with sample data without creating an account"
+            >
+              {isDemoLoading ? "Loading demo..." : "Try Demo Mode"}
             </button>
           </div>
 

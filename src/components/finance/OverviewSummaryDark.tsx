@@ -56,6 +56,9 @@ export default function OverviewSummary({
 
   // Handle transaction updates
   const handleTransactionUpdated = () => {
+    // Reset current page to 1 when transactions are updated
+    setCurrentPage(1);
+
     // Refetch data
     const fetchData = async () => {
       try {
@@ -131,6 +134,9 @@ export default function OverviewSummary({
   };
 
   useEffect(() => {
+    // Reset current page to 1 when year, month, categoryId, or viewMode changes
+    setCurrentPage(1);
+
     const fetchData = async () => {
       try {
         setLoading(true);

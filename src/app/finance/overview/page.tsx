@@ -18,6 +18,8 @@ export default function OverviewPage() {
   const handleMonthSelect = (month: number) => {
     setSelectedMonth(month);
     setViewMode("monthly");
+    // Note: The currentPage will be reset to 1 in the OverviewSummary component
+    // when the month or viewMode changes
   };
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 import pytz
 from app.db.database import get_db
@@ -50,6 +50,13 @@ async def analyze_transactions(
     3. Calls OpenAI to analyze the transactions
     4. Returns insights, recommendations, and visualization data
     """
+    # Check if user is a demo user
+    if current_user.is_demo_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="AI Financial Analysis is not available in demo mode",
+        )
+
     service = AIInsightService(db)
 
     # Check if user has remaining uses
@@ -100,6 +107,20 @@ async def get_remaining_insights(
     1. Checks how many times the user has used AI insights today
     2. Returns the remaining uses and when the count will reset
     """
+    # Check if user is a demo user
+    if current_user.is_demo_user:
+        # Return 0 uses for demo users
+        pst = pytz.timezone("America/Los_Angeles")
+        reset_time = datetime.now(pst).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ) + timedelta(days=1)
+
+        return {
+            "remaining_uses": 0,
+            "total_uses_allowed": 0,
+            "reset_time": reset_time.isoformat(),
+        }
+
     service = AIInsightService(db)
 
     # Get remaining uses

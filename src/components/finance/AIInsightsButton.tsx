@@ -9,6 +9,7 @@ import {
 } from "@/services/aiInsightService";
 import AIInsightsModal from "./AIInsightsModal";
 import AIInsightsHistoryModal from "./AIInsightsHistoryModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AIInsightsButtonProps {
   timePeriod?: string;
@@ -35,6 +36,7 @@ const formatTimePeriodForDisplay = (period: string): string => {
 export default function AIInsightsButton({
   timePeriod = "all",
 }: AIInsightsButtonProps) {
+  const { isDemoUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -171,12 +173,13 @@ export default function AIInsightsButton({
             onClick={handleClick}
             disabled={
               loading ||
+              isDemoUser ||
               (remainingUses !== null && remainingUses <= 0) ||
               (transactionRequirements !== null &&
                 !transactionRequirements.can_generate_insights)
             }
             className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-              loading
+              loading || isDemoUser
                 ? "bg-secondary text-muted-foreground cursor-not-allowed"
                 : remainingUses !== null && remainingUses <= 0
                 ? "bg-secondary text-muted-foreground cursor-not-allowed"
@@ -216,8 +219,22 @@ export default function AIInsightsButton({
             )}
           </button>
 
+          {/* Tooltip for demo mode */}
+          {isDemoUser && (
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-2 bg-popover text-popover-foreground text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
+              <div className="font-medium mb-1">
+                AI Analysis Unavailable in Demo Mode
+              </div>
+              <p>
+                AI Financial Analysis is not available in demo mode. Sign up for
+                a full account to access this feature.
+              </p>
+            </div>
+          )}
+
           {/* Tooltip for transaction requirements */}
-          {transactionRequirements !== null &&
+          {!isDemoUser &&
+            transactionRequirements !== null &&
             !transactionRequirements.can_generate_insights && (
               <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-2 bg-popover text-popover-foreground text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
                 <div className="font-medium mb-1">AI Analysis Unavailable</div>
@@ -242,7 +259,12 @@ export default function AIInsightsButton({
         {/* History Button */}
         <button
           onClick={handleHistoryClick}
-          className="flex items-center justify-center gap-2 px-4 py-2 font-medium transition-colors rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80"
+          disabled={isDemoUser}
+          className={`flex items-center justify-center gap-2 px-4 py-2 font-medium transition-colors rounded-lg ${
+            isDemoUser
+              ? "bg-secondary text-muted-foreground cursor-not-allowed"
+              : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+          }`}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -264,8 +286,12 @@ export default function AIInsightsButton({
 
       {/* Status message */}
       <div className="mt-1 text-xs text-muted-foreground">
-        {transactionRequirements !== null &&
-        !transactionRequirements.can_generate_insights ? (
+        {isDemoUser ? (
+          <span className="text-amber-500">
+            AI Financial Analysis is not available in demo mode
+          </span>
+        ) : transactionRequirements !== null &&
+          !transactionRequirements.can_generate_insights ? (
           <span className="text-amber-500">
             {!transactionRequirements.has_income &&
             !transactionRequirements.has_expense

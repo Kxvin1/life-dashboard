@@ -11,7 +11,7 @@ interface NavbarProps {
 }
 
 const Navbar = ({ onMenuToggle }: NavbarProps) => {
-  const { logout, isAuthenticated, isLoading, user } = useAuth();
+  const { logout, isAuthenticated, isLoading, user, isDemoUser } = useAuth();
   // Theme context is imported but not currently used
   useTheme();
   const [showOptions, setShowOptions] = useState(false);
@@ -66,86 +66,121 @@ const Navbar = ({ onMenuToggle }: NavbarProps) => {
   }
 
   return (
-    <header className="bg-card border-b border-border h-16 flex items-center justify-between px-6 sticky top-0 z-10">
-      <div className="flex items-center">
-        {/* Hamburger menu button - only visible on mobile */}
-        <button
-          className="md:hidden mr-4 p-2 rounded-md text-foreground hover:bg-secondary"
-          onClick={onMenuToggle}
-          aria-label="Toggle menu"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+    <>
+      {/* Demo mode banner */}
+      {isDemoUser && (
+        <div className="bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 py-2 px-4 text-sm text-center">
+          <p>
+            <strong>Demo Mode:</strong> You can view all data and try
+            adding/editing items, but changes won't be saved. Some features are
+            limited.
+          </p>
+        </div>
+      )}
+      <header className="bg-card border-b border-border h-16 flex items-center justify-between px-6 sticky top-0 z-10">
+        <div className="flex items-center">
+          {/* Hamburger menu button - only visible on mobile */}
+          <button
+            className="md:hidden mr-4 p-2 rounded-md text-foreground hover:bg-secondary"
+            onClick={onMenuToggle}
+            aria-label="Toggle menu"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          </svg>
-        </button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            </svg>
+          </button>
 
-        <h1 className="text-xl font-semibold text-foreground">
-          {getPageTitle()}
-        </h1>
-      </div>
+          <div className="flex items-center">
+            <h1 className="text-xl font-semibold text-foreground">
+              {getPageTitle()}
+            </h1>
 
-      <div className="flex items-center relative" ref={optionsRef}>
-        {/* Profile picture icon - clickable */}
-        <button
-          onClick={() => setShowOptions(!showOptions)}
-          className="p-2 rounded-full hover:bg-secondary text-foreground"
-          aria-label="User profile"
-        >
-          <svg
-            className="h-6 w-6"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        </button>
-
-        {showOptions && (
-          <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-popover border border-border z-50">
-            <div className="py-1">
-              {/* Personalized greeting */}
-              <div className="px-4 py-2 text-sm font-medium text-foreground border-b border-border">
-                Hello, {user?.full_name || "User"}
+            {/* Demo mode indicator */}
+            {isDemoUser && (
+              <div className="ml-4 px-2 py-1 text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 rounded-md flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-3 w-3 mr-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                Demo Mode
               </div>
-              <Link
-                href="/settings"
-                className="block px-4 py-2 text-sm text-foreground hover:bg-secondary"
-                onClick={() => setShowOptions(false)}
-              >
-                Settings
-              </Link>
-              <button
-                onClick={() => {
-                  logout();
-                  setShowOptions(false);
-                }}
-                className="block w-full text-left px-4 py-2 text-sm text-destructive hover:bg-secondary"
-              >
-                Sign Out
-              </button>
-            </div>
+            )}
           </div>
-        )}
-      </div>
-    </header>
+        </div>
+
+        <div className="flex items-center relative" ref={optionsRef}>
+          {/* Profile picture icon - clickable */}
+          <button
+            onClick={() => setShowOptions(!showOptions)}
+            className="p-2 rounded-full hover:bg-secondary text-foreground"
+            aria-label="User profile"
+          >
+            <svg
+              className="h-6 w-6"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </button>
+
+          {showOptions && (
+            <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-popover border border-border z-50">
+              <div className="py-1">
+                {/* Personalized greeting */}
+                <div className="px-4 py-2 text-sm font-medium text-foreground border-b border-border">
+                  Hello, {user?.full_name || "User"}
+                </div>
+                <Link
+                  href="/settings"
+                  className="block px-4 py-2 text-sm text-foreground hover:bg-secondary"
+                  onClick={() => setShowOptions(false)}
+                >
+                  Settings
+                </Link>
+                <button
+                  onClick={() => {
+                    logout();
+                    setShowOptions(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 text-sm text-destructive hover:bg-secondary"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </header>
+    </>
   );
 };
 

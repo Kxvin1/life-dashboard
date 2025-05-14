@@ -13,6 +13,7 @@ from app.api import (
     ai_insights_router,
 )
 from app.db.seed_categories import seed_categories, verify_categories
+from app.core.demo_middleware import DemoUserMiddleware
 import asyncio
 
 app = FastAPI(
@@ -27,6 +28,9 @@ app = FastAPI(
 async def startup_event():
     asyncio.create_task(verify_categories())
 
+
+# Add demo user middleware
+app.add_middleware(DemoUserMiddleware)
 
 # Configure CORS - Allow specific origins
 app.add_middleware(
