@@ -32,6 +32,19 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+
+    // Validate amount
+    const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
+    if (isNaN(numAmount) || numAmount <= 0) {
+      setError("Amount must be greater than 0");
+      return;
+    }
+
+    if (numAmount > 999999999999) {
+      setError("Amount cannot exceed 999 billion");
+      return;
+    }
+
     setIsLoading(true);
 
     // Get the token
@@ -44,7 +57,7 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
 
     // Create the request data
     const requestData = {
-      amount: typeof amount === "string" ? parseFloat(amount) || 0 : amount,
+      amount: numAmount,
       description,
       type,
       payment_method: paymentMethod,
@@ -114,10 +127,19 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
           type="number"
           id="amount"
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={(e) => {
+            // Limit the amount to 999 billion and ensure it's greater than 0
+            const value = parseFloat(e.target.value);
+            if (e.target.value === "") {
+              setAmount("");
+            } else if (!isNaN(value) && value > 0 && value <= 999999999999) {
+              setAmount(e.target.value);
+            }
+          }}
           step="0.01"
-          min="0"
-          placeholder="Enter amount"
+          min="0.01"
+          max="999999999999"
+          placeholder="Enter amount (greater than 0)"
           className="w-full px-3 py-2 text-sm border rounded-md border-input bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           required
         />

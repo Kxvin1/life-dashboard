@@ -55,6 +55,13 @@ export interface AIInsightHistoryItem {
   total_uses_allowed?: number;
 }
 
+export interface TransactionRequirementsResponse {
+  has_income: boolean;
+  has_expense: boolean;
+  can_generate_insights: boolean;
+  time_period: string;
+}
+
 export const getAIInsights = async (
   timePeriod: string = "all"
 ): Promise<AIInsightResponse> => {
@@ -209,5 +216,43 @@ export const getInsightById = async (
     return data;
   } catch (error) {
     throw error;
+  }
+};
+
+export const checkTransactionRequirements = async (
+  timePeriod: string = "all"
+): Promise<TransactionRequirementsResponse> => {
+  try {
+    const token = Cookies.get("token");
+    if (!token) {
+      throw new Error("Authentication token missing");
+    }
+
+    const response = await fetch(
+      `${API_URL}/api/v1/transactions/has-income-and-expense/?time_period=${timePeriod}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.detail || "Failed to check transaction requirements"
+      );
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    } else {
+      throw new Error(
+        "An unexpected error occurred while checking transaction requirements"
+      );
+    }
   }
 };

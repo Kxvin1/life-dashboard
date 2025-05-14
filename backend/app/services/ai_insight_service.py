@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, desc
 import pytz
 import json
+from collections import defaultdict
 from app.models.ai_insight import AIInsightUsage, SystemSetting, AIInsightHistory
 from app.models.user import User
 from app.models.transaction import Transaction, TransactionType
@@ -226,10 +227,10 @@ class AIInsightService:
         # Get categories
         categories = self.db.query(Category).all()
 
-        # Convert to dictionaries with minimal data to reduce token usage
+        # Convert to dictionaries with minimal data for our aggregation
         transaction_dicts = [
             {
-                "amount": t.amount,  # Keep the original amount value
+                "amount": t.amount,
                 "date": t.date.isoformat(),
                 "type": t.type.value,
                 "category_name": t.category.name if t.category else None,
@@ -237,21 +238,44 @@ class AIInsightService:
             for t in transactions
         ]
 
-        # Simplify category data to reduce token usage
+        # Simplify category data
         category_dicts = [{"name": c.name, "type": c.type.value} for c in categories]
 
-        # Calculate totals for the OpenAI prompt
-        income_total = sum(
-            t["amount"] for t in transaction_dicts if t["type"] == "income"
-        )
-        expense_total = sum(
-            t["amount"] for t in transaction_dicts if t["type"] == "expense"
+        # Calculate financial metrics
+        metrics = self._calculate_financial_metrics(transaction_dicts)
+
+        # Aggregate transactions by category
+        category_aggregation = self._aggregate_transactions_by_category(
+            transaction_dicts
         )
 
-        # Call OpenAI service to analyze transactions
-        result = await self.openai_service.analyze_transactions(
-            transaction_dicts, category_dicts, time_period
+        # Aggregate transactions by time
+        time_aggregation = self._aggregate_transactions_by_time(
+            transaction_dicts, time_period
         )
+
+        # Prepare aggregated data for OpenAI
+        aggregated_data = {
+            "metrics": metrics,
+            "category_aggregation": category_aggregation,
+            "time_aggregation": time_aggregation,
+            "transaction_count": len(transaction_dicts),
+            "time_period": time_period,
+        }
+
+        # Pre-generate chart data on the backend
+        charts = self._prepare_chart_data(
+            category_aggregation, time_aggregation, metrics
+        )
+
+        # Call OpenAI service with aggregated data instead of raw transactions
+        result = await self.openai_service.analyze_transactions(
+            aggregated_data, category_dicts, time_period
+        )
+
+        # Add our pre-generated charts to the result
+        # Since we're not asking OpenAI to generate charts anymore, we need to add them ourselves
+        result["charts"] = charts
 
         # Save the insight to history
         history_id = self.save_insight_to_history(
@@ -359,3 +383,102 @@ class AIInsightService:
             )
             .first()
         )
+
+    def _calculate_financial_metrics(
+        self, transactions: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Calculate key financial metrics from transactions
+
+        Args:
+            transactions: List of transaction dictionaries
+
+        Returns:
+            Dictionary with calculated financial metrics
+        """
+        # Calculate total income and expenses
+        total_income = sum(t["amount"] for t in transactions if t["type"] == "income")
+        total_expenses = sum(
+            t["amount"] for t in transactions if t["type"] == "expense"
+        )
+        net = total_income - total_expenses
+
+        # Calculate savings rate (if income > 0)
+        savings_rate = (net / total_income * 100) if total_income > 0 else 0
+
+        # Calculate expense-to-income ratio (if income > 0)
+        expense_ratio = (total_expenses / total_income) if total_income > 0 else 0
+
+        return {
+            "total_income": total_income,
+            "total_expenses": total_expenses,
+            "net": net,
+            "savings_rate": round(savings_rate, 2),
+            "expense_ratio": round(expense_ratio, 2),
+        }
+
+    def _prepare_chart_data(
+        self,
+        category_aggregation: Dict[str, Any],
+        time_aggregation: Dict[str, Any],
+        metrics: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Prepare chart data from aggregated metrics
+
+        Args:
+            category_aggregation: Aggregated category data
+            time_aggregation: Aggregated time-series data
+            metrics: Financial metrics
+
+        Returns:
+            Dictionary with chart data ready for frontend
+        """
+        # Prepare category distribution chart data
+        category_labels = [
+            cat["name"] for cat in category_aggregation["top_expense_categories"]
+        ]
+        category_values = [
+            cat["amount"] for cat in category_aggregation["top_expense_categories"]
+        ]
+
+        # Generate colors for the chart (simplified version)
+        background_colors = ["#4ade80", "#3b82f6", "#ef4444", "#f59e0b", "#8b5cf6"]
+        # Extend colors if we have more than 5 categories
+        while len(background_colors) < len(category_labels):
+            background_colors.append("#6b7280")
+
+        # Prepare income vs expenses chart
+        time_labels = time_aggregation["labels"]
+        income_data = time_aggregation["income_data"]
+        expense_data = time_aggregation["expense_data"]
+
+        # Create the charts object
+        charts = {
+            "categoryDistribution": {
+                "labels": category_labels,
+                "datasets": [
+                    {
+                        "data": category_values,
+                        "backgroundColor": background_colors[: len(category_labels)],
+                    }
+                ],
+            },
+            "incomeVsExpenses": {
+                "labels": time_labels,
+                "datasets": [
+                    {
+                        "label": "Income",
+                        "data": income_data,
+                        "backgroundColor": "#4ade80",
+                    },
+                    {
+                        "label": "Expenses",
+                        "data": expense_data,
+                        "backgroundColor": "#ef4444",
+                    },
+                ],
+            },
+        }
+
+        return charts

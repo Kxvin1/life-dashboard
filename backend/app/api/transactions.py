@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from datetime import date
+from typing import List, Optional, Dict, Any
+from datetime import date, datetime, timedelta
 from app.db.database import get_db
 from app.models.transaction import Transaction, TransactionType
 from app.schemas.transaction import (
@@ -398,3 +398,99 @@ async def get_transaction_summary_legacy(
         db=db,
         current_user=current_user,
     )
+
+
+@router.get("/transactions/has-income-and-expense/", response_model=Dict[str, Any])
+async def has_income_and_expense_transactions(
+    time_period: str = "all",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Check if the user has at least one income and one expense transaction for the specified time period.
+    This is used to determine if the user can generate AI insights.
+
+    Args:
+        time_period: Time period for analysis ("month", "prev_month", "year", "prev_year", "all")
+
+    Returns:
+        Dict with has_income, has_expense, can_generate_insights flags, and time_period
+    """
+    # Base query for transactions from this user
+    income_query = db.query(Transaction).filter(
+        Transaction.user_id == current_user.id,
+        Transaction.type == TransactionType.income,
+    )
+
+    expense_query = db.query(Transaction).filter(
+        Transaction.user_id == current_user.id,
+        Transaction.type == TransactionType.expense,
+    )
+
+    # Apply time period filter
+    today = datetime.now().date()
+    current_year = today.year
+    current_month = today.month
+
+    if time_period == "month":
+        # Current month
+        start_date = date(current_year, current_month, 1)
+        income_query = income_query.filter(Transaction.date >= start_date)
+        expense_query = expense_query.filter(Transaction.date >= start_date)
+
+    elif time_period == "prev_month":
+        # Previous month
+        if current_month == 1:
+            # If January, previous month is December of previous year
+            prev_month = 12
+            prev_year = current_year - 1
+        else:
+            prev_month = current_month - 1
+            prev_year = current_year
+
+        start_date = date(prev_year, prev_month, 1)
+
+        # Calculate end date (last day of previous month)
+        if prev_month == 12:
+            end_date = date(prev_year, 12, 31)
+        else:
+            end_date = date(prev_year, prev_month + 1, 1) - timedelta(days=1)
+
+        income_query = income_query.filter(
+            Transaction.date >= start_date, Transaction.date <= end_date
+        )
+        expense_query = expense_query.filter(
+            Transaction.date >= start_date, Transaction.date <= end_date
+        )
+
+    elif time_period == "year":
+        # Current year
+        start_date = date(current_year, 1, 1)
+        income_query = income_query.filter(Transaction.date >= start_date)
+        expense_query = expense_query.filter(Transaction.date >= start_date)
+
+    elif time_period == "prev_year":
+        # Previous year
+        prev_year = current_year - 1
+        start_date = date(prev_year, 1, 1)
+        end_date = date(prev_year, 12, 31)
+        income_query = income_query.filter(
+            Transaction.date >= start_date, Transaction.date <= end_date
+        )
+        expense_query = expense_query.filter(
+            Transaction.date >= start_date, Transaction.date <= end_date
+        )
+
+    # Check for income and expense transactions with the applied filters
+    has_income = income_query.limit(1).count() > 0
+    has_expense = expense_query.limit(1).count() > 0
+
+    # User can generate insights if they have at least one income and one expense transaction
+    can_generate_insights = has_income and has_expense
+
+    return {
+        "has_income": has_income,
+        "has_expense": has_expense,
+        "can_generate_insights": can_generate_insights,
+        "time_period": time_period,
+    }

@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import {
   getAIInsights,
   getRemainingInsights,
+  checkTransactionRequirements,
+  TransactionRequirementsResponse,
 } from "@/services/aiInsightService";
 import AIInsightsModal from "./AIInsightsModal";
 import AIInsightsHistoryModal from "./AIInsightsHistoryModal";
@@ -13,7 +15,7 @@ interface AIInsightsButtonProps {
 }
 
 // Helper function to format time period for display
-const formatTimePeriod = (period: string): string => {
+const formatTimePeriodForDisplay = (period: string): string => {
   switch (period) {
     case "month":
       return "Current Month";
@@ -40,6 +42,8 @@ export default function AIInsightsButton({
   const [insightData, setInsightData] = useState<any>(null);
   const [remainingUses, setRemainingUses] = useState<number | null>(null);
   const [totalAllowed, setTotalAllowed] = useState<number | null>(null);
+  const [transactionRequirements, setTransactionRequirements] =
+    useState<TransactionRequirementsResponse | null>(null);
   // Initialize with the prop
   const [selectedTimePeriod, setSelectedTimePeriod] =
     useState<string>(timePeriod);
@@ -47,6 +51,9 @@ export default function AIInsightsButton({
   // Update selectedTimePeriod when the prop changes
   useEffect(() => {
     setSelectedTimePeriod(timePeriod);
+    // Check transaction requirements for the new time period
+    fetchTransactionRequirements(timePeriod);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timePeriod]);
 
   const fetchRemainingUses = async () => {
@@ -56,6 +63,24 @@ export default function AIInsightsButton({
       setTotalAllowed(data.total_uses_allowed);
     } catch (err) {
       console.error("Failed to fetch remaining uses:", err);
+    }
+  };
+
+  const fetchTransactionRequirements = async (
+    period: string = selectedTimePeriod
+  ) => {
+    try {
+      const data = await checkTransactionRequirements(period);
+      setTransactionRequirements(data);
+    } catch (err) {
+      console.error("Failed to check transaction requirements:", err);
+      // Set default values to prevent null errors
+      setTransactionRequirements({
+        has_income: false,
+        has_expense: false,
+        can_generate_insights: false,
+        time_period: period,
+      });
     }
   };
 
@@ -87,16 +112,24 @@ export default function AIInsightsButton({
   // Handle time period selection
   const handleTimePeriodSelect = (period: string) => {
     setSelectedTimePeriod(period);
+    // Check transaction requirements for the new time period
+    fetchTransactionRequirements(period);
   };
 
   const handleHistoryClick = () => {
     setIsHistoryModalOpen(true);
   };
 
-  // Fetch remaining uses on initial render
-  if (remainingUses === null) {
-    fetchRemainingUses();
-  }
+  // Fetch data on initial render
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      await fetchRemainingUses();
+      await fetchTransactionRequirements(selectedTimePeriod);
+    };
+
+    fetchInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex flex-col items-center">
@@ -133,46 +166,78 @@ export default function AIInsightsButton({
         </div>
 
         {/* AI Insights Button */}
-        <button
-          onClick={handleClick}
-          disabled={loading || (remainingUses !== null && remainingUses <= 0)}
-          className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-            loading
-              ? "bg-secondary text-muted-foreground cursor-not-allowed"
-              : remainingUses !== null && remainingUses <= 0
-              ? "bg-secondary text-muted-foreground cursor-not-allowed"
-              : "bg-primary text-primary-foreground hover:bg-primary/90"
-          }`}
-        >
-          {loading ? (
-            <>
-              <span className="w-4 h-4 border-2 border-current rounded-full animate-spin border-t-transparent"></span>
-              <span>Analyzing...</span>
-            </>
-          ) : (
-            <>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="lucide lucide-sparkles"
-              >
-                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-                <path d="M5 3v4" />
-                <path d="M19 17v4" />
-                <path d="M3 5h4" />
-                <path d="M17 19h4" />
-              </svg>
-              <span>Generate Insights</span>
-            </>
-          )}
-        </button>
+        <div className="relative group">
+          <button
+            onClick={handleClick}
+            disabled={
+              loading ||
+              (remainingUses !== null && remainingUses <= 0) ||
+              (transactionRequirements !== null &&
+                !transactionRequirements.can_generate_insights)
+            }
+            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              loading
+                ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                : remainingUses !== null && remainingUses <= 0
+                ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                : transactionRequirements !== null &&
+                  !transactionRequirements.can_generate_insights
+                ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                : "bg-primary text-primary-foreground hover:bg-primary/90"
+            }`}
+          >
+            {loading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-current rounded-full animate-spin border-t-transparent"></span>
+                <span>Analyzing...</span>
+              </>
+            ) : (
+              <>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="lucide lucide-sparkles"
+                >
+                  <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                  <path d="M5 3v4" />
+                  <path d="M19 17v4" />
+                  <path d="M3 5h4" />
+                  <path d="M17 19h4" />
+                </svg>
+                <span>AI Financial Analysis</span>
+              </>
+            )}
+          </button>
+
+          {/* Tooltip for transaction requirements */}
+          {transactionRequirements !== null &&
+            !transactionRequirements.can_generate_insights && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-2 bg-popover text-popover-foreground text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
+                <div className="font-medium mb-1">AI Analysis Unavailable</div>
+                <p>
+                  {!transactionRequirements.has_income &&
+                  !transactionRequirements.has_expense
+                    ? `You need at least one income and one expense transaction for the selected time period (${formatTimePeriodForDisplay(
+                        transactionRequirements.time_period
+                      )}).`
+                    : !transactionRequirements.has_income
+                    ? `You need at least one income transaction for the selected time period (${formatTimePeriodForDisplay(
+                        transactionRequirements.time_period
+                      )}).`
+                    : `You need at least one expense transaction for the selected time period (${formatTimePeriodForDisplay(
+                        transactionRequirements.time_period
+                      )}).`}
+                </p>
+              </div>
+            )}
+        </div>
 
         {/* History Button */}
         <button
@@ -193,17 +258,38 @@ export default function AIInsightsButton({
             <path d="M12 8v4l3 3" />
             <circle cx="12" cy="12" r="10" />
           </svg>
-          <span>History</span>
+          <span>Analysis History</span>
         </button>
       </div>
 
-      {remainingUses !== null && totalAllowed !== null && (
-        <div className="mt-1 text-xs text-muted-foreground">
-          {remainingUses > 0
-            ? `${remainingUses} of ${totalAllowed} uses remaining today`
-            : "No uses remaining today"}
-        </div>
-      )}
+      {/* Status message */}
+      <div className="mt-1 text-xs text-muted-foreground">
+        {transactionRequirements !== null &&
+        !transactionRequirements.can_generate_insights ? (
+          <span className="text-amber-500">
+            {!transactionRequirements.has_income &&
+            !transactionRequirements.has_expense
+              ? `Add income and expense transactions for ${formatTimePeriodForDisplay(
+                  transactionRequirements.time_period
+                )} to enable analysis`
+              : !transactionRequirements.has_income
+              ? `Add income transactions for ${formatTimePeriodForDisplay(
+                  transactionRequirements.time_period
+                )} to enable analysis`
+              : `Add expense transactions for ${formatTimePeriodForDisplay(
+                  transactionRequirements.time_period
+                )} to enable analysis`}
+          </span>
+        ) : remainingUses !== null && totalAllowed !== null ? (
+          remainingUses > 0 ? (
+            `${remainingUses} of ${totalAllowed} uses remaining today`
+          ) : (
+            "No uses remaining today"
+          )
+        ) : (
+          "Loading..."
+        )}
+      </div>
 
       {error && (
         <div className="p-3 mt-2 text-sm border rounded-md bg-destructive/10 border-destructive/20 text-destructive">

@@ -163,8 +163,21 @@ const TransactionDetailPanel = ({
   const handleUpdateTransaction = async () => {
     if (!transaction || !localTransaction) return;
 
-    setIsLoading(true);
     setError(null);
+
+    // Validate amount
+    const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
+    if (isNaN(numAmount) || numAmount <= 0) {
+      setError("Amount must be greater than 0");
+      return;
+    }
+
+    if (numAmount > 999999999999) {
+      setError("Amount cannot exceed 999 billion");
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
       // Only include fields that have changed
@@ -172,8 +185,7 @@ const TransactionDetailPanel = ({
 
       // Check each field and only include it if it's changed
       if (amount !== localTransaction.amount) {
-        updateData.amount =
-          typeof amount === "string" ? parseFloat(amount) : amount;
+        updateData.amount = numAmount;
       }
 
       if (description !== localTransaction.description) {
@@ -371,10 +383,21 @@ const TransactionDetailPanel = ({
                       id="amount"
                       value={amount}
                       onChange={(e) => {
-                        setAmount(e.target.value);
+                        // Limit the amount to 999 billion and ensure it's greater than 0
+                        const value = parseFloat(e.target.value);
+                        if (e.target.value === "") {
+                          setAmount("");
+                        } else if (
+                          !isNaN(value) &&
+                          value > 0 &&
+                          value <= 999999999999
+                        ) {
+                          setAmount(e.target.value);
+                        }
                       }}
                       step="0.01"
-                      min="0"
+                      min="0.01"
+                      max="999999999999"
                       className="w-full px-3 py-2 text-sm border rounded-md border-input bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       required
                     />

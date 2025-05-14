@@ -29,7 +29,7 @@ class OpenAIService:
 
     async def analyze_transactions(
         self,
-        transactions: List[Dict[str, Any]],
+        aggregated_data: Dict[str, Any],
         categories: List[Dict[str, Any]],
         time_period: str = "all",
     ) -> Dict[str, Any]:
@@ -37,7 +37,7 @@ class OpenAIService:
         Analyze transactions using OpenAI and return insights
 
         Args:
-            transactions: List of transaction objects
+            aggregated_data: Pre-aggregated transaction data
             categories: List of category objects
             time_period: Time period for analysis ("month", "quarter", "year", "all")
 
@@ -45,58 +45,54 @@ class OpenAIService:
             Dictionary containing analysis results
         """
         try:
-            # Calculate total income and expenses directly
-            total_income = sum(
-                t["amount"] for t in transactions if t["type"] == "income"
-            )
-            total_expenses = sum(
-                t["amount"] for t in transactions if t["type"] == "expense"
-            )
+            # Extract metrics from aggregated data
+            metrics = aggregated_data["metrics"]
+            category_aggregation = aggregated_data["category_aggregation"]
+            time_aggregation = aggregated_data["time_aggregation"]
+            transaction_count = aggregated_data["transaction_count"]
 
-            # Prepare the data for OpenAI
-            transaction_data = json.dumps(transactions, default=str)
-            category_data = json.dumps(categories, default=str)
+            # Format the top expense categories for the prompt
+            top_expenses_str = ""
+            for expense in category_aggregation["top_expense_categories"]:
+                top_expenses_str += f"- {expense['name']}: {expense['amount']}\n"
 
-            # Create a more concise prompt to reduce token usage
+            # Format the top income categories for the prompt
+            top_income_str = ""
+            for income in category_aggregation["top_income_categories"]:
+                top_income_str += f"- {income['name']}: {income['amount']}\n"
+
+            # Create a more concise prompt with aggregated data
             prompt = f"""
-            Analyze financial data for {time_period}:
-            - Income: {total_income}
-            - Expenses: {total_expenses}
-            - Net: {total_income - total_expenses}
+            Analyze financial data for {time_period} ({transaction_count} transactions):
 
-            Transaction data: {transaction_data}
-            Category data: {category_data}
+            Financial Metrics:
+            - Total Income: {metrics['total_income']}
+            - Total Expenses: {metrics['total_expenses']}
+            - Net: {metrics['net']}
+            - Savings Rate: {metrics['savings_rate']}%
+            - Expense-to-Income Ratio: {metrics['expense_ratio']}
 
-            Calculate:
-            - Savings rate (%)
-            - Expense-to-income ratio
-            - Top expense categories
-            - Spending patterns
+            Top Income Categories:
+            {top_income_str}
 
-            Provide JSON with:
+            Top Expense Categories:
+            {top_expenses_str}
+
+            Monthly Trends:
+            - Months: {json.dumps(time_aggregation['labels'])}
+            - Income: {json.dumps(time_aggregation['income_data'])}
+            - Expenses: {json.dumps(time_aggregation['expense_data'])}
+
+            Provide JSON with only:
             1. Summary (2-3 sentences)
             2. 3-5 insights
             3. 3-5 recommendations
-            4. Chart data
 
             JSON format:
             {{
                 "summary": "Financial summary...",
                 "insights": ["Insight 1", "Insight 2", "Insight 3"],
-                "recommendations": ["Recommendation 1", "Recommendation 2", "Recommendation 3"],
-                "charts": {{
-                    "categoryDistribution": {{
-                        "labels": ["Category1", "Category2"],
-                        "datasets": [{{ "data": [value1, value2], "backgroundColor": ["#4ade80", "#3b82f6"] }}]
-                    }},
-                    "incomeVsExpenses": {{
-                        "labels": ["Period"],
-                        "datasets": [
-                            {{ "label": "Income", "data": [income], "backgroundColor": "#4ade80" }},
-                            {{ "label": "Expenses", "data": [expenses], "backgroundColor": "#ef4444" }}
-                        ]
-                    }}
-                }}
+                "recommendations": ["Recommendation 1", "Recommendation 2", "Recommendation 3"]
             }}
 
             Use exact values. Format large numbers properly (e.g., "$1.2M").
@@ -110,18 +106,18 @@ class OpenAIService:
                         "OpenAI API key is missing or invalid. Please check your API key."
                     )
 
-                # Call OpenAI API
+                # Call OpenAI API with optimized system message
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[
                         {
                             "role": "system",
-                            "content": "You are a financial analyst. Provide data-driven insights based on transaction data. Use the pre-calculated totals. Format large numbers properly. Respond with valid JSON only.",
+                            "content": "Financial analyst. Use pre-calculated metrics. Format as JSON.",
                         },
                         {"role": "user", "content": prompt},
                     ],
                     temperature=0.0,  # Use temperature 0 for maximum accuracy and deterministic outputs
-                    max_tokens=1500,
+                    max_tokens=1000,  # Reduced from 1500 since we need less tokens for response
                     response_format={"type": "json_object"},  # Force JSON response
                 )
 

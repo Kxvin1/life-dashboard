@@ -226,6 +226,7 @@ const Sidebar = ({
                     ? "bg-primary text-primary-foreground"
                     : "bg-secondary text-foreground hover:bg-secondary/80"
                 }`}
+                onClick={isMobile ? onClose : undefined}
                 aria-label="Settings"
               >
                 <svg

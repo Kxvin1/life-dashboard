@@ -204,7 +204,7 @@ export default function AIInsightsHistoryModal({
         >
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-foreground">
-              AI Insights History
+              AI Financial Analysis History
             </h2>
             <button
               onClick={onClose}
@@ -232,7 +232,7 @@ export default function AIInsightsHistoryModal({
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search insights..."
+                placeholder="Search analysis history..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full px-4 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -277,8 +277,8 @@ export default function AIInsightsHistoryModal({
             </div>
           ) : history.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <p>No AI insights history found.</p>
-              <p className="mt-2">Generate insights to see them here.</p>
+              <p>No AI financial analysis history found.</p>
+              <p className="mt-2">Run an analysis to see your history here.</p>
             </div>
           ) : (
             <div className="space-y-4">
