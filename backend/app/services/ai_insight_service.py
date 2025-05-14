@@ -384,6 +384,151 @@ class AIInsightService:
             .first()
         )
 
+    def _aggregate_transactions_by_category(
+        self, transactions: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Aggregate transactions by category
+
+        Args:
+            transactions: List of transaction dictionaries
+
+        Returns:
+            Dictionary with aggregated category data
+        """
+        # Separate transactions by type
+        income_transactions = [t for t in transactions if t["type"] == "income"]
+        expense_transactions = [t for t in transactions if t["type"] == "expense"]
+
+        # Aggregate income by category
+        income_by_category = defaultdict(float)
+        for transaction in income_transactions:
+            category = transaction["category_name"] or "Uncategorized"
+            income_by_category[category] += transaction["amount"]
+
+        # Aggregate expenses by category
+        expenses_by_category = defaultdict(float)
+        for transaction in expense_transactions:
+            category = transaction["category_name"] or "Uncategorized"
+            expenses_by_category[category] += transaction["amount"]
+
+        # Convert to lists of dictionaries for easier consumption
+        income_categories = [
+            {"name": category, "amount": amount}
+            for category, amount in income_by_category.items()
+        ]
+        expense_categories = [
+            {"name": category, "amount": amount}
+            for category, amount in expenses_by_category.items()
+        ]
+
+        # Sort by amount (descending)
+        income_categories.sort(key=lambda x: x["amount"], reverse=True)
+        expense_categories.sort(key=lambda x: x["amount"], reverse=True)
+
+        # Get top categories (limit to 10 for visualization)
+        top_income_categories = income_categories[:10]
+        top_expense_categories = expense_categories[:10]
+
+        return {
+            "income_by_category": income_by_category,
+            "expenses_by_category": expenses_by_category,
+            "top_income_categories": top_income_categories,
+            "top_expense_categories": top_expense_categories,
+        }
+
+    def _aggregate_transactions_by_time(
+        self, transactions: List[Dict[str, Any]], time_period: str
+    ) -> Dict[str, Any]:
+        """
+        Aggregate transactions by time periods
+
+        Args:
+            transactions: List of transaction dictionaries
+            time_period: Time period for analysis ("month", "quarter", "year", "all")
+
+        Returns:
+            Dictionary with aggregated time-series data
+        """
+        # Separate transactions by type
+        income_transactions = [t for t in transactions if t["type"] == "income"]
+        expense_transactions = [t for t in transactions if t["type"] == "expense"]
+
+        # Determine the appropriate time grouping based on the time period
+        if time_period == "month" or time_period == "prev_month":
+            # Group by day for monthly view
+            format_str = "%Y-%m-%d"
+            label_format = "%d"  # Day of month
+        elif time_period == "quarter":
+            # Group by week for quarterly view
+            format_str = "%Y-%W"  # Year and week number
+            label_format = "Week %W"
+        elif time_period == "year" or time_period == "prev_year":
+            # Group by month for yearly view
+            format_str = "%Y-%m"
+            label_format = "%b"  # Month abbreviation
+        else:
+            # Group by month for all-time view
+            format_str = "%Y-%m"
+            label_format = "%b %Y"  # Month and year
+
+        # Initialize data structures for aggregation
+        income_by_period = defaultdict(float)
+        expenses_by_period = defaultdict(float)
+
+        # Aggregate income by period
+        for transaction in income_transactions:
+            # Parse the date from ISO format
+            transaction_date = datetime.fromisoformat(transaction["date"])
+            period_key = transaction_date.strftime(format_str)
+            income_by_period[period_key] += transaction["amount"]
+
+        # Aggregate expenses by period
+        for transaction in expense_transactions:
+            transaction_date = datetime.fromisoformat(transaction["date"])
+            period_key = transaction_date.strftime(format_str)
+            expenses_by_period[period_key] += transaction["amount"]
+
+        # Combine all period keys and sort chronologically
+        all_periods = sorted(
+            set(list(income_by_period.keys()) + list(expenses_by_period.keys()))
+        )
+
+        # Create labels based on the time period
+        labels = []
+        for period_key in all_periods:
+            if time_period == "quarter":
+                # For quarterly view, extract year and week
+                year, week = period_key.split("-")
+                # Create a datetime for the first day of that week
+                first_day = datetime.strptime(f"{year}-{week}-1", "%Y-%W-%w")
+                label = first_day.strftime(label_format)
+            else:
+                # For other views, parse the date and format according to label_format
+                if "-" in period_key:
+                    if len(period_key.split("-")) == 2:  # Year-month format
+                        year, month = period_key.split("-")
+                        # Create a datetime for the first day of that month
+                        first_day = datetime(int(year), int(month), 1)
+                    else:  # Year-month-day format
+                        first_day = datetime.strptime(period_key, "%Y-%m-%d")
+                    label = first_day.strftime(label_format)
+                else:
+                    label = period_key  # Fallback if format is unexpected
+
+            labels.append(label)
+
+        # Create data arrays aligned with labels
+        income_data = [income_by_period.get(period, 0) for period in all_periods]
+        expense_data = [expenses_by_period.get(period, 0) for period in all_periods]
+
+        return {
+            "labels": labels,
+            "income_data": income_data,
+            "expense_data": expense_data,
+            "periods": all_periods,
+        }
+
     def _calculate_financial_metrics(
         self, transactions: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
