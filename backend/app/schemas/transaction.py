@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import date
-from typing import Optional
+from typing import Optional, Dict, Any, List
 from app.models.transaction import TransactionType, PaymentMethod
 from app.schemas.category import Category
 
@@ -40,5 +40,4 @@ class Transaction(TransactionBase):
     user_id: int
     category: Optional[Category] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

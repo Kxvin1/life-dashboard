@@ -51,6 +51,8 @@ async def get_transactions(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     category_id: Optional[int] = None,
+    year: Optional[int] = None,  # Add year parameter
+    month: Optional[int] = None,  # Add month parameter
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -65,7 +67,23 @@ async def get_transactions(
     if category_id:
         query = query.filter(Transaction.category_id == category_id)
 
+    # Add filtering by year and month
+    if year:
+        from sqlalchemy import extract
+
+        query = query.filter(extract("year", Transaction.date) == year)
+    if month:
+        from sqlalchemy import extract
+
+        query = query.filter(extract("month", Transaction.date) == month)
+
     transactions = query.offset(skip).limit(limit).all()
+
+    # Ensure all transactions have valid is_recurring values
+    for transaction in transactions:
+        if transaction.is_recurring is None:
+            transaction.is_recurring = False
+
     return transactions
 
 
