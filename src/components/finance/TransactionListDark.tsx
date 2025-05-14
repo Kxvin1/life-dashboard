@@ -107,8 +107,8 @@ const TransactionList = () => {
             Transaction History
           </h2>
           {totalPages > 1 && (
-            <div className="flex items-center space-x-4">
-              <p className="text-sm text-muted-foreground">
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+              <p className="text-sm text-muted-foreground text-center sm:text-left">
                 <span className="font-medium">{startIndex + 1}</span> -{" "}
                 <span className="font-medium">
                   {Math.min(
@@ -118,68 +118,97 @@ const TransactionList = () => {
                 </span>{" "}
                 of <span className="font-medium">{transactions.length}</span>
               </p>
-              <nav
-                className="relative z-0 inline-flex -space-x-px rounded-md shadow-sm"
-                aria-label="Pagination"
-              >
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(1, prev - 1))
-                  }
-                  disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-2 py-2 text-sm font-medium border rounded-l-md border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
+
+              {/* Simplified mobile pagination */}
+              <div className="flex justify-center sm:justify-start">
+                <nav
+                  className="inline-flex rounded-md shadow-sm"
+                  aria-label="Pagination"
                 >
-                  <span className="sr-only">Previous</span>
-                  <svg
-                    className="w-5 h-5"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
+                  {/* Previous button */}
+                  <button
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-l-md border border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <path
-                      fillRule="evenodd"
-                      d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (page) => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        currentPage === page
-                          ? "z-10 bg-primary/10 border-primary/30 text-primary"
-                          : "bg-card border-border text-foreground hover:bg-accent/50"
-                      }`}
+                    <span className="sr-only">Previous</span>
+                    <svg
+                      className="w-5 h-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
                     >
-                      {page}
+                      <path
+                        fillRule="evenodd"
+                        d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+
+                  {/* First page button - always visible on desktop */}
+                  {currentPage > 2 && (
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      className="hidden sm:inline-flex relative items-center px-4 py-2 border border-border bg-card text-sm font-medium text-foreground hover:bg-accent/50"
+                    >
+                      1
                     </button>
-                  )
-                )}
-                <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                  }
-                  disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-2 py-2 text-sm font-medium border rounded-r-md border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span className="sr-only">Next</span>
-                  <svg
-                    className="w-5 h-5"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
+                  )}
+
+                  {/* Ellipsis - shown when needed on desktop */}
+                  {currentPage > 3 && (
+                    <span className="hidden sm:inline-flex relative items-center px-4 py-2 border border-border bg-card text-sm font-medium text-muted-foreground">
+                      ...
+                    </span>
+                  )}
+
+                  {/* Current page indicator - always visible */}
+                  <span className="relative inline-flex items-center px-4 py-2 border border-primary/30 bg-primary/10 text-sm font-medium text-primary">
+                    {currentPage} of {totalPages}
+                  </span>
+
+                  {/* Ellipsis - shown when needed on desktop */}
+                  {currentPage < totalPages - 2 && (
+                    <span className="hidden sm:inline-flex relative items-center px-4 py-2 border border-border bg-card text-sm font-medium text-muted-foreground">
+                      ...
+                    </span>
+                  )}
+
+                  {/* Last page button - always visible on desktop */}
+                  {currentPage < totalPages - 1 && (
+                    <button
+                      onClick={() => setCurrentPage(totalPages)}
+                      className="hidden sm:inline-flex relative items-center px-4 py-2 border border-border bg-card text-sm font-medium text-foreground hover:bg-accent/50"
+                    >
+                      {totalPages}
+                    </button>
+                  )}
+
+                  {/* Next button */}
+                  <button
+                    onClick={() =>
+                      setCurrentPage(Math.min(totalPages, currentPage + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-r-md border border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <path
-                      fillRule="evenodd"
-                      d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
-              </nav>
+                    <span className="sr-only">Next</span>
+                    <svg
+                      className="w-5 h-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </nav>
+              </div>
             </div>
           )}
         </div>

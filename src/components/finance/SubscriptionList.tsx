@@ -313,8 +313,8 @@ const SubscriptionList = ({
             {status === "active" ? "Active" : "Inactive"} Subscriptions
           </h2>
           {totalPages > 1 && (
-            <div className="flex items-center space-x-4">
-              <p className="text-sm text-muted-foreground">
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+              <p className="text-sm text-muted-foreground text-center sm:text-left">
                 <span className="font-medium">{startIndex + 1}</span> -{" "}
                 <span className="font-medium">
                   {Math.min(
@@ -324,45 +324,96 @@ const SubscriptionList = ({
                 </span>{" "}
                 of <span className="font-medium">{subscriptions.length}</span>
               </p>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-border bg-card text-sm font-medium text-muted-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+
+              {/* Simplified mobile pagination */}
+              <div className="flex justify-center sm:justify-start">
+                <nav
+                  className="inline-flex rounded-md shadow-sm"
+                  aria-label="Pagination"
                 >
-                  <span className="sr-only">Previous</span>
-                  <svg
-                    className="h-5 w-5"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
+                  {/* Previous button */}
+                  <button
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-l-md border border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <path
-                      fillRule="evenodd"
-                      d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-border bg-card text-sm font-medium text-muted-foreground hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span className="sr-only">Next</span>
-                  <svg
-                    className="h-5 w-5"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
+                    <span className="sr-only">Previous</span>
+                    <svg
+                      className="w-5 h-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+
+                  {/* First page button - always visible on desktop */}
+                  {currentPage > 2 && (
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      className="hidden sm:inline-flex relative items-center px-4 py-2 border border-border bg-card text-sm font-medium text-foreground hover:bg-accent/50"
+                    >
+                      1
+                    </button>
+                  )}
+
+                  {/* Ellipsis - shown when needed on desktop */}
+                  {currentPage > 3 && (
+                    <span className="hidden sm:inline-flex relative items-center px-4 py-2 border border-border bg-card text-sm font-medium text-muted-foreground">
+                      ...
+                    </span>
+                  )}
+
+                  {/* Current page indicator - always visible */}
+                  <span className="relative inline-flex items-center px-4 py-2 border border-primary/30 bg-primary/10 text-sm font-medium text-primary">
+                    {currentPage} of {totalPages}
+                  </span>
+
+                  {/* Ellipsis - shown when needed on desktop */}
+                  {currentPage < totalPages - 2 && (
+                    <span className="hidden sm:inline-flex relative items-center px-4 py-2 border border-border bg-card text-sm font-medium text-muted-foreground">
+                      ...
+                    </span>
+                  )}
+
+                  {/* Last page button - always visible on desktop */}
+                  {currentPage < totalPages - 1 && (
+                    <button
+                      onClick={() => setCurrentPage(totalPages)}
+                      className="hidden sm:inline-flex relative items-center px-4 py-2 border border-border bg-card text-sm font-medium text-foreground hover:bg-accent/50"
+                    >
+                      {totalPages}
+                    </button>
+                  )}
+
+                  {/* Next button */}
+                  <button
+                    onClick={() =>
+                      setCurrentPage(Math.min(totalPages, currentPage + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-r-md border border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <path
-                      fillRule="evenodd"
-                      d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
+                    <span className="sr-only">Next</span>
+                    <svg
+                      className="w-5 h-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </nav>
               </div>
             </div>
           )}
@@ -410,13 +461,13 @@ const SubscriptionList = ({
                 }`}
               >
                 {/* Service Name and Price */}
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex justify-between items-start mb-4">
                   <div className="flex flex-col max-w-[70%]">
-                    <h3 className="text-lg font-medium text-foreground truncate">
+                    <h3 className="text-lg font-medium text-foreground break-words">
                       {subscription.name}
                     </h3>
                     {upcomingPaymentIds.includes(subscription.id) && (
-                      <span className="mt-1 text-xs font-medium text-primary truncate">
+                      <span className="mt-1 text-xs font-medium text-primary break-words">
                         {upcomingPaymentIds.indexOf(subscription.id) === 0
                           ? "Next payment due"
                           : `Payment due soon (${
@@ -436,7 +487,7 @@ const SubscriptionList = ({
                     Start Date:
                   </div>
                   <div className="text-foreground flex items-center overflow-hidden">
-                    <span className="truncate">
+                    <span className="min-w-0 break-words">
                       {formatDate(subscription.start_date)}
                     </span>
                     {isFutureDate(subscription.start_date) && (
@@ -449,7 +500,7 @@ const SubscriptionList = ({
                   <div className="text-muted-foreground font-medium">
                     Duration:
                   </div>
-                  <div className="text-foreground truncate">
+                  <div className="text-foreground break-words">
                     {formatSubscriptionDuration(subscription.start_date)}
                   </div>
 
@@ -460,7 +511,7 @@ const SubscriptionList = ({
                     {status === "active" ? (
                       isFutureDate(subscription.start_date) ? (
                         <div className="flex items-center">
-                          <span className="truncate">
+                          <span className="min-w-0 break-words">
                             {formatDate(subscription.start_date)}
                           </span>
                           <span className="ml-1 px-1 py-0.5 text-xs rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex-shrink-0">
@@ -468,12 +519,12 @@ const SubscriptionList = ({
                           </span>
                         </div>
                       ) : (
-                        <span className="truncate">
+                        <span className="min-w-0 break-words">
                           {formatDate(subscription.next_payment_date)}
                         </span>
                       )
                     ) : (
-                      <span className="truncate">
+                      <span className="min-w-0 break-words">
                         {formatDate(subscription.last_active_date)}
                       </span>
                     )}
@@ -482,7 +533,7 @@ const SubscriptionList = ({
                   <div className="text-muted-foreground font-medium">
                     Frequency:
                   </div>
-                  <div className="text-foreground truncate">
+                  <div className="text-foreground break-words">
                     {formatBillingFrequency(subscription.billing_frequency)}
                   </div>
 
@@ -492,7 +543,7 @@ const SubscriptionList = ({
                       <div className="text-muted-foreground font-medium">
                         Note:
                       </div>
-                      <div className="text-foreground italic truncate">
+                      <div className="text-foreground italic break-words">
                         "{subscription.notes}"
                       </div>
                     </>
