@@ -114,8 +114,7 @@ const TransactionDetailPanel = ({
         categoryId !==
           (localTransaction.category?.id
             ? parseInt(localTransaction.category.id)
-            : null) ||
-        notes !== (localTransaction.notes || "");
+            : null);
 
       setHasChanges(hasFormChanges);
     }
@@ -126,7 +125,6 @@ const TransactionDetailPanel = ({
     paymentMethod,
     date,
     categoryId,
-    notes,
     localTransaction,
   ]);
 
@@ -142,7 +140,6 @@ const TransactionDetailPanel = ({
       setCategoryId(
         transaction.category?.id ? parseInt(transaction.category.id) : null
       );
-      setNotes(transaction.notes || "");
 
       // Reset editing state and changes flag
       setIsEditing(false);
@@ -202,11 +199,6 @@ const TransactionDetailPanel = ({
         : null;
       if (categoryId !== originalCategoryId) {
         updateData.category_id = categoryId;
-      }
-
-      // Handle notes (could be null)
-      if (notes !== (localTransaction.notes || "")) {
-        updateData.notes = notes;
       }
 
       // Add these fields only if we're actually updating something
@@ -395,12 +387,12 @@ const TransactionDetailPanel = ({
                     >
                       Description
                     </label>
-                    <input
-                      type="text"
+                    <textarea
                       id="description"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border rounded-md border-input bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      rows={3}
+                      className="w-full px-3 py-2 text-sm border rounded-md border-input bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
                       required
                     />
                   </div>
@@ -476,22 +468,6 @@ const TransactionDetailPanel = ({
                     />
                   </div>
 
-                  <div>
-                    <label
-                      htmlFor="notes"
-                      className="block text-sm font-medium text-foreground"
-                    >
-                      Notes (Optional)
-                    </label>
-                    <textarea
-                      id="notes"
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={3}
-                      className="w-full px-3 py-2 text-sm border rounded-md border-input bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    />
-                  </div>
-
                   <div className="flex pt-4 space-x-2">
                     <button
                       type="button"
@@ -514,11 +490,11 @@ const TransactionDetailPanel = ({
                 // View details
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium text-foreground">
+                    <h3 className="text-lg font-medium text-foreground truncate max-w-[70%]">
                       {localTransaction.description}
                     </h3>
                     <span
-                      className={`px-3 py-1 text-sm font-semibold rounded-full ${
+                      className={`px-3 py-1 text-sm font-semibold rounded-full flex-shrink-0 ${
                         localTransaction.type === "income"
                           ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
                           : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
@@ -578,17 +554,6 @@ const TransactionDetailPanel = ({
                             .join(" ")}
                         </dd>
                       </div>
-
-                      {localTransaction.notes && (
-                        <div className="py-3">
-                          <dt className="mb-1 text-sm font-medium text-muted-foreground">
-                            Notes
-                          </dt>
-                          <dd className="mt-1 text-sm whitespace-pre-wrap text-foreground">
-                            {localTransaction.notes}
-                          </dd>
-                        </div>
-                      )}
                     </dl>
                   </div>
 

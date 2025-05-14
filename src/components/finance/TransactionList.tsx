@@ -104,8 +104,8 @@ const TransactionList = () => {
             Transaction History
           </h2>
           {totalPages > 1 && (
-            <div className="flex items-center space-x-4">
-              <p className="text-sm text-gray-700">
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+              <p className="text-sm text-gray-700 text-center sm:text-left">
                 <span className="font-medium">{startIndex + 1}</span> -{" "}
                 <span className="font-medium">
                   {Math.min(
@@ -116,7 +116,7 @@ const TransactionList = () => {
                 of <span className="font-medium">{transactions.length}</span>
               </p>
               <nav
-                className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px justify-center sm:justify-start"
                 aria-label="Pagination"
               >
                 <button
@@ -213,8 +213,8 @@ const TransactionList = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {formatDate(transaction.date)}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {transaction.description}
+                <td className="px-6 py-4 text-sm font-medium text-gray-900 max-w-[150px]">
+                  <div className="truncate">{transaction.description}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {transaction.category?.name || "Uncategorized"}

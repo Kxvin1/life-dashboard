@@ -47,12 +47,12 @@ const SubscriptionTabs = ({ onSubscriptionDeleted }: SubscriptionTabsProps) => {
           <select
             value={sortField}
             onChange={(e) => setSortField(e.target.value as SortField)}
-            className="px-2 py-1 text-sm border rounded-md border-input bg-background"
+            className="px-2 py-1 text-sm border rounded-md border-input bg-background max-w-[120px] sm:max-w-none overflow-hidden text-ellipsis"
           >
             <option value="name">Name</option>
             <option value="price">Price</option>
             {activeTab === "active" && (
-              <option value="upcoming">Upcoming Payments</option>
+              <option value="upcoming">Upcoming</option>
             )}
           </select>
           <button

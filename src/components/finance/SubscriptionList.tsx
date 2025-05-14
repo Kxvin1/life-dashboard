@@ -411,12 +411,12 @@ const SubscriptionList = ({
               >
                 {/* Service Name and Price */}
                 <div className="flex justify-between items-center mb-4">
-                  <div className="flex flex-col">
-                    <h3 className="text-lg font-medium text-foreground">
+                  <div className="flex flex-col max-w-[70%]">
+                    <h3 className="text-lg font-medium text-foreground truncate">
                       {subscription.name}
                     </h3>
                     {upcomingPaymentIds.includes(subscription.id) && (
-                      <span className="mt-1 text-xs font-medium text-primary">
+                      <span className="mt-1 text-xs font-medium text-primary truncate">
                         {upcomingPaymentIds.indexOf(subscription.id) === 0
                           ? "Next payment due"
                           : `Payment due soon (${
@@ -425,7 +425,7 @@ const SubscriptionList = ({
                       </span>
                     )}
                   </div>
-                  <span className="text-lg font-semibold text-foreground">
+                  <span className="text-lg font-semibold text-foreground flex-shrink-0">
                     {formatCurrency(subscription.amount)}
                   </span>
                 </div>
@@ -435,10 +435,12 @@ const SubscriptionList = ({
                   <div className="text-muted-foreground font-medium">
                     Start Date:
                   </div>
-                  <div className="text-foreground flex items-center">
-                    {formatDate(subscription.start_date)}
+                  <div className="text-foreground flex items-center overflow-hidden">
+                    <span className="truncate">
+                      {formatDate(subscription.start_date)}
+                    </span>
                     {isFutureDate(subscription.start_date) && (
-                      <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-primary/20 text-primary">
+                      <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-primary/20 text-primary flex-shrink-0">
                         Future
                       </span>
                     )}
@@ -447,34 +449,40 @@ const SubscriptionList = ({
                   <div className="text-muted-foreground font-medium">
                     Duration:
                   </div>
-                  <div className="text-foreground">
+                  <div className="text-foreground truncate">
                     {formatSubscriptionDuration(subscription.start_date)}
                   </div>
 
                   <div className="text-muted-foreground font-medium">
                     {status === "active" ? "Next Payment:" : "Last Active:"}
                   </div>
-                  <div className="text-foreground">
+                  <div className="text-foreground overflow-hidden">
                     {status === "active" ? (
                       isFutureDate(subscription.start_date) ? (
                         <div className="flex items-center">
-                          <span>{formatDate(subscription.start_date)}</span>
-                          <span className="ml-1 px-1 py-0.5 text-xs rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                          <span className="truncate">
+                            {formatDate(subscription.start_date)}
+                          </span>
+                          <span className="ml-1 px-1 py-0.5 text-xs rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex-shrink-0">
                             First
                           </span>
                         </div>
                       ) : (
-                        formatDate(subscription.next_payment_date)
+                        <span className="truncate">
+                          {formatDate(subscription.next_payment_date)}
+                        </span>
                       )
                     ) : (
-                      formatDate(subscription.last_active_date)
+                      <span className="truncate">
+                        {formatDate(subscription.last_active_date)}
+                      </span>
                     )}
                   </div>
 
                   <div className="text-muted-foreground font-medium">
                     Frequency:
                   </div>
-                  <div className="text-foreground">
+                  <div className="text-foreground truncate">
                     {formatBillingFrequency(subscription.billing_frequency)}
                   </div>
 
@@ -484,7 +492,7 @@ const SubscriptionList = ({
                       <div className="text-muted-foreground font-medium">
                         Note:
                       </div>
-                      <div className="text-foreground italic">
+                      <div className="text-foreground italic truncate">
                         "{subscription.notes}"
                       </div>
                     </>

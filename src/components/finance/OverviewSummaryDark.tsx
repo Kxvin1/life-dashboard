@@ -467,8 +467,8 @@ export default function OverviewSummary({
               </p>
             </div>
             {totalPages > 1 && (
-              <div className="flex items-center space-x-2">
-                <p className="text-sm text-muted-foreground">
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                <p className="text-sm text-muted-foreground text-center sm:text-left">
                   <span className="font-medium">{startIndex + 1}</span> -{" "}
                   <span className="font-medium">
                     {Math.min(
@@ -482,7 +482,7 @@ export default function OverviewSummary({
                   </span>
                 </p>
                 <nav
-                  className="relative z-0 inline-flex -space-x-px rounded-md shadow-sm"
+                  className="relative z-0 inline-flex -space-x-px rounded-md shadow-sm justify-center sm:justify-start"
                   aria-label="Pagination"
                 >
                   <button
@@ -599,8 +599,10 @@ export default function OverviewSummary({
                       <td className="px-6 py-4 text-sm whitespace-nowrap text-muted-foreground">
                         {formatDate(transaction.date)}
                       </td>
-                      <td className="px-6 py-4 text-sm font-medium whitespace-nowrap text-foreground">
-                        {transaction.description}
+                      <td className="px-6 py-4 text-sm font-medium text-foreground max-w-[150px]">
+                        <div className="truncate">
+                          {transaction.description}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-sm whitespace-nowrap text-muted-foreground">
                         {transaction.category?.name || "Uncategorized"}
@@ -651,13 +653,13 @@ export default function OverviewSummary({
             {paginatedTransactions.map((transaction) => (
               <div
                 key={transaction.id}
-                className="p-4 border rounded-lg shadow-sm cursor-pointer bg-card border-border hover:bg-accent/30 transition-colors"
+                className="p-4 transition-colors border rounded-lg shadow-sm cursor-pointer bg-card border-border hover:bg-accent/30"
                 onClick={() => {
                   setSelectedTransaction(transaction);
                   setIsDetailPanelOpen(true);
                 }}
               >
-                <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-muted-foreground">
                     {formatDate(transaction.date)}
                   </span>
@@ -674,12 +676,12 @@ export default function OverviewSummary({
                 </div>
 
                 <div className="mb-2">
-                  <h3 className="text-base font-medium text-foreground">
+                  <h3 className="text-base font-medium text-foreground truncate">
                     {transaction.description}
                   </h3>
                 </div>
 
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">
                     {transaction.category?.name || "Uncategorized"}
                   </span>
