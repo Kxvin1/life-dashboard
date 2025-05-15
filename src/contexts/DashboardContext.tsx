@@ -101,7 +101,7 @@ const defaultCards: DashboardCard[] = [
     description: "Use a simple timer for focused work sessions and breaks.",
     href: "/productivity/pomodoro",
     category: "productivity",
-    isImplemented: false,
+    isImplemented: true,
   },
   {
     id: "productivity-habits",
@@ -216,11 +216,12 @@ const defaultCards: DashboardCard[] = [
   },
 ];
 
-// Default quick access cards (implemented finance cards only)
+// Default quick access cards (implemented cards only)
 const defaultQuickAccess = [
   "finance-overview",
   "finance-income-expense",
   "finance-subscriptions",
+  "productivity-pomodoro",
 ];
 
 interface DashboardProviderProps {
@@ -244,6 +245,7 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
           .filter((card): card is DashboardCard => card !== undefined);
 
         setQuickAccessCards(cards);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         setQuickAccessCards(
           defaultCards.filter((card) => defaultQuickAccess.includes(card.id))

@@ -6,9 +6,9 @@ import {
   getRemainingInsights,
   checkTransactionRequirements,
   TransactionRequirementsResponse,
+  AIInsightResponse,
 } from "@/services/aiInsightService";
-import AIInsightsModal from "./AIInsightsModal";
-import AIInsightsHistoryModal from "./AIInsightsHistoryModal";
+import AIModalsPortal from "./AIModalsPortal";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface AIInsightsButtonProps {
@@ -41,7 +41,9 @@ export default function AIInsightsButton({
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-  const [insightData, setInsightData] = useState<any>(null);
+  const [insightData, setInsightData] = useState<AIInsightResponse | null>(
+    null
+  );
   const [remainingUses, setRemainingUses] = useState<number | null>(null);
   const [totalAllowed, setTotalAllowed] = useState<number | null>(null);
   const [transactionRequirements, setTransactionRequirements] =
@@ -134,209 +136,211 @@ export default function AIInsightsButton({
   }, []);
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="flex flex-wrap justify-center gap-2 mb-2">
-        {/* Time Period Dropdown */}
-        <div className="relative">
-          <select
-            value={selectedTimePeriod}
-            onChange={(e) => handleTimePeriodSelect(e.target.value)}
-            className="flex items-center justify-center gap-2 px-4 py-2 pr-8 font-medium transition-colors rounded-lg appearance-none bg-secondary text-secondary-foreground hover:bg-secondary/80"
-          >
-            <option value="month">Current Month</option>
-            <option value="prev_month">Previous Month</option>
-            <option value="year">Current Year</option>
-            <option value="prev_year">Previous Year</option>
-            <option value="all">All Time</option>
-          </select>
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-            <svg
-              className="w-4 h-4 text-secondary-foreground"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
+    <>
+      <div className="flex flex-col items-center">
+        <div className="flex flex-wrap justify-center gap-2 mb-2">
+          {/* Time Period Dropdown */}
+          <div className="relative">
+            <select
+              value={selectedTimePeriod}
+              onChange={(e) => handleTimePeriodSelect(e.target.value)}
+              className="flex items-center justify-center gap-2 px-4 py-2 pr-8 font-medium transition-colors rounded-lg appearance-none bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              aria-label="Select time period for analysis"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M19 9l-7 7-7-7"
-              ></path>
-            </svg>
-          </div>
-        </div>
-
-        {/* AI Insights Button */}
-        <div className="relative group">
-          <button
-            onClick={handleClick}
-            disabled={
-              loading ||
-              isDemoUser ||
-              (remainingUses !== null && remainingUses <= 0) ||
-              (transactionRequirements !== null &&
-                !transactionRequirements.can_generate_insights)
-            }
-            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-              loading || isDemoUser
-                ? "bg-secondary text-muted-foreground cursor-not-allowed"
-                : remainingUses !== null && remainingUses <= 0
-                ? "bg-secondary text-muted-foreground cursor-not-allowed"
-                : transactionRequirements !== null &&
-                  !transactionRequirements.can_generate_insights
-                ? "bg-secondary text-muted-foreground cursor-not-allowed"
-                : "bg-primary text-primary-foreground hover:bg-primary/90"
-            }`}
-          >
-            {loading ? (
-              <>
-                <span className="w-4 h-4 border-2 border-current rounded-full animate-spin border-t-transparent"></span>
-                <span>Analyzing...</span>
-              </>
-            ) : (
-              <>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
+              <option value="month">Current Month</option>
+              <option value="prev_month">Previous Month</option>
+              <option value="year">Current Year</option>
+              <option value="prev_year">Previous Year</option>
+              <option value="all">All Time</option>
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <svg
+                className="w-4 h-4 text-secondary-foreground"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="lucide lucide-sparkles"
-                >
-                  <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-                  <path d="M5 3v4" />
-                  <path d="M19 17v4" />
-                  <path d="M3 5h4" />
-                  <path d="M17 19h4" />
-                </svg>
-                <span>AI Financial Analysis</span>
-              </>
-            )}
-          </button>
-
-          {/* Tooltip for demo mode */}
-          {isDemoUser && (
-            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-2 bg-popover text-popover-foreground text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
-              <div className="font-medium mb-1">
-                AI Analysis Unavailable in Demo Mode
-              </div>
-              <p>
-                AI Financial Analysis is not available in demo mode. Sign up for
-                a full account to access this feature.
-              </p>
+                  strokeWidth="2"
+                  d="M19 9l-7 7-7-7"
+                ></path>
+              </svg>
             </div>
-          )}
+          </div>
 
-          {/* Tooltip for transaction requirements */}
-          {!isDemoUser &&
-            transactionRequirements !== null &&
-            !transactionRequirements.can_generate_insights && (
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-2 bg-popover text-popover-foreground text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none">
-                <div className="font-medium mb-1">AI Analysis Unavailable</div>
+          {/* AI Insights Button */}
+          <div className="relative group">
+            <button
+              onClick={handleClick}
+              disabled={
+                loading ||
+                isDemoUser ||
+                (remainingUses !== null && remainingUses <= 0) ||
+                (transactionRequirements !== null &&
+                  !transactionRequirements.can_generate_insights)
+              }
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                loading || isDemoUser
+                  ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                  : remainingUses !== null && remainingUses <= 0
+                  ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                  : transactionRequirements !== null &&
+                    !transactionRequirements.can_generate_insights
+                  ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                  : "bg-primary text-primary-foreground hover:bg-primary/90"
+              }`}
+              aria-label="Generate AI financial insights"
+            >
+              {loading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-current rounded-full animate-spin border-t-transparent"></span>
+                  <span>Analyzing...</span>
+                </>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="lucide lucide-sparkles"
+                  >
+                    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                    <path d="M5 3v4" />
+                    <path d="M19 17v4" />
+                    <path d="M3 5h4" />
+                    <path d="M17 19h4" />
+                  </svg>
+                  <span>Generate Insights</span>
+                </>
+              )}
+            </button>
+
+            {/* Tooltip for demo mode */}
+            {isDemoUser && (
+              <div className="absolute z-50 w-64 p-2 mb-2 text-xs transition-opacity transform -translate-x-1/2 rounded shadow-lg opacity-0 pointer-events-none bottom-full left-1/2 bg-popover text-popover-foreground group-hover:opacity-100">
+                <div className="mb-1 font-medium">
+                  AI Analysis Unavailable in Demo Mode
+                </div>
                 <p>
-                  {!transactionRequirements.has_income &&
-                  !transactionRequirements.has_expense
-                    ? `You need at least one income and one expense transaction for the selected time period (${formatTimePeriodForDisplay(
-                        transactionRequirements.time_period
-                      )}).`
-                    : !transactionRequirements.has_income
-                    ? `You need at least one income transaction for the selected time period (${formatTimePeriodForDisplay(
-                        transactionRequirements.time_period
-                      )}).`
-                    : `You need at least one expense transaction for the selected time period (${formatTimePeriodForDisplay(
-                        transactionRequirements.time_period
-                      )}).`}
+                  AI Financial Analysis is not available in demo mode. Sign up
+                  for a full account to access this feature.
                 </p>
               </div>
             )}
+
+            {/* Tooltip for transaction requirements */}
+            {!isDemoUser &&
+              transactionRequirements !== null &&
+              !transactionRequirements.can_generate_insights && (
+                <div className="absolute z-50 w-64 p-2 mb-2 text-xs transition-opacity transform -translate-x-1/2 rounded shadow-lg opacity-0 pointer-events-none bottom-full left-1/2 bg-popover text-popover-foreground group-hover:opacity-100">
+                  <div className="mb-1 font-medium">
+                    AI Analysis Unavailable
+                  </div>
+                  <p>
+                    {!transactionRequirements.has_income &&
+                    !transactionRequirements.has_expense
+                      ? `You need at least one income and one expense transaction for the selected time period (${formatTimePeriodForDisplay(
+                          transactionRequirements.time_period
+                        )}).`
+                      : !transactionRequirements.has_income
+                      ? `You need at least one income transaction for the selected time period (${formatTimePeriodForDisplay(
+                          transactionRequirements.time_period
+                        )}).`
+                      : `You need at least one expense transaction for the selected time period (${formatTimePeriodForDisplay(
+                          transactionRequirements.time_period
+                        )}).`}
+                  </p>
+                </div>
+              )}
+          </div>
+
+          {/* History Button */}
+          <button
+            onClick={handleHistoryClick}
+            disabled={isDemoUser}
+            className={`flex items-center justify-center gap-2 px-4 py-2 font-medium transition-colors rounded-lg ${
+              isDemoUser
+                ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+            }`}
+            aria-label="View AI analysis history"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 8v4l3 3" />
+              <circle cx="12" cy="12" r="10" />
+            </svg>
+            <span>View History</span>
+          </button>
         </div>
 
-        {/* History Button */}
-        <button
-          onClick={handleHistoryClick}
-          disabled={isDemoUser}
-          className={`flex items-center justify-center gap-2 px-4 py-2 font-medium transition-colors rounded-lg ${
-            isDemoUser
-              ? "bg-secondary text-muted-foreground cursor-not-allowed"
-              : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-          }`}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M12 8v4l3 3" />
-            <circle cx="12" cy="12" r="10" />
-          </svg>
-          <span>Analysis History</span>
-        </button>
-      </div>
-
-      {/* Status message */}
-      <div className="mt-1 text-xs text-muted-foreground">
-        {isDemoUser ? (
-          <span className="text-amber-500">
-            AI Financial Analysis is not available in demo mode
-          </span>
-        ) : transactionRequirements !== null &&
-          !transactionRequirements.can_generate_insights ? (
-          <span className="text-amber-500">
-            {!transactionRequirements.has_income &&
-            !transactionRequirements.has_expense
-              ? `Add income and expense transactions for ${formatTimePeriodForDisplay(
-                  transactionRequirements.time_period
-                )} to enable analysis`
-              : !transactionRequirements.has_income
-              ? `Add income transactions for ${formatTimePeriodForDisplay(
-                  transactionRequirements.time_period
-                )} to enable analysis`
-              : `Add expense transactions for ${formatTimePeriodForDisplay(
-                  transactionRequirements.time_period
-                )} to enable analysis`}
-          </span>
-        ) : remainingUses !== null && totalAllowed !== null ? (
-          remainingUses > 0 ? (
-            `${remainingUses} of ${totalAllowed} uses remaining today`
+        {/* Status message */}
+        <div className="mt-1 text-xs text-muted-foreground">
+          {isDemoUser ? (
+            <span className="text-amber-500">
+              AI Financial Analysis is not available in demo mode
+            </span>
+          ) : transactionRequirements !== null &&
+            !transactionRequirements.can_generate_insights ? (
+            <span className="text-amber-500">
+              {!transactionRequirements.has_income &&
+              !transactionRequirements.has_expense
+                ? `Add income and expense transactions for ${formatTimePeriodForDisplay(
+                    transactionRequirements.time_period
+                  )} to enable analysis`
+                : !transactionRequirements.has_income
+                ? `Add income transactions for ${formatTimePeriodForDisplay(
+                    transactionRequirements.time_period
+                  )} to enable analysis`
+                : `Add expense transactions for ${formatTimePeriodForDisplay(
+                    transactionRequirements.time_period
+                  )} to enable analysis`}
+            </span>
+          ) : remainingUses !== null && totalAllowed !== null ? (
+            remainingUses > 0 ? (
+              `${remainingUses} of ${totalAllowed} uses remaining today`
+            ) : (
+              "No uses remaining today"
+            )
           ) : (
-            "No uses remaining today"
-          )
-        ) : (
-          "Loading..."
+            "Loading..."
+          )}
+        </div>
+
+        {error && (
+          <div className="p-3 mt-2 text-sm border rounded-md bg-destructive/10 border-destructive/20 text-destructive">
+            <div className="mb-1 font-medium">Error:</div>
+            <div>{error}</div>
+          </div>
         )}
       </div>
 
-      {error && (
-        <div className="p-3 mt-2 text-sm border rounded-md bg-destructive/10 border-destructive/20 text-destructive">
-          <div className="mb-1 font-medium">Error:</div>
-          <div>{error}</div>
-        </div>
-      )}
-
-      {isModalOpen && insightData && (
-        <AIInsightsModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          data={insightData}
-          selectedTimePeriod={selectedTimePeriod}
-        />
-      )}
-
-      <AIInsightsHistoryModal
-        isOpen={isHistoryModalOpen}
-        onClose={() => setIsHistoryModalOpen(false)}
+      <AIModalsPortal
+        insightsModalOpen={isModalOpen}
+        historyModalOpen={isHistoryModalOpen}
+        insightData={insightData}
+        selectedTimePeriod={selectedTimePeriod}
+        onInsightsClose={() => setIsModalOpen(false)}
+        onHistoryClose={() => setIsHistoryModalOpen(false)}
       />
-    </div>
+    </>
   );
 }

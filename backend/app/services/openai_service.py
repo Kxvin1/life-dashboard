@@ -27,6 +27,11 @@ class OpenAIService:
             self.client = None
             self.model = "gpt-3.5-turbo"
 
+    def _generate_fallback_response(self, error_message: str) -> Dict[str, Any]:
+        """Generate an error response when OpenAI API fails"""
+        # Instead of generating fake data, we'll raise an exception that will be caught by the API endpoint
+        raise Exception(f"AI Insights Error: {error_message}")
+
     async def analyze_transactions(
         self,
         aggregated_data: Dict[str, Any],

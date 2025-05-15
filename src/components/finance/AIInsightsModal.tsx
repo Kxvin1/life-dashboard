@@ -102,10 +102,13 @@ export default function AIInsightsModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
+    >
       <div
         ref={modalRef}
-        className="bg-card border border-border rounded-xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6"
+        className="bg-card border border-border rounded-xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 m-auto"
       >
         <div className="flex justify-between items-center mb-6">
           <div>

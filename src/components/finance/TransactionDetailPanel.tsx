@@ -311,7 +311,7 @@ const TransactionDetailPanel = ({
   if (!isOpen || !transaction || !localTransaction) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-40 overflow-hidden bg-black/50 backdrop-blur-sm">
       {/* Confirmation Dialog */}
       <ConfirmDialog
         isOpen={showConfirmDialog}

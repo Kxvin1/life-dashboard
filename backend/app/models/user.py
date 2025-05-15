@@ -26,3 +26,12 @@ class User(Base):
     ai_insight_history = relationship(
         "AIInsightHistory", back_populates="user", lazy="dynamic"
     )
+    pomodoro_sessions = relationship(
+        "PomodoroSession", back_populates="user", lazy="dynamic"
+    )
+    pomodoro_ai_usage = relationship(
+        "PomodoroAIUsage", back_populates="user", lazy="dynamic"
+    )
+    pomodoro_ai_history = relationship(
+        "PomodoroAIHistory", back_populates="user", lazy="dynamic"
+    )

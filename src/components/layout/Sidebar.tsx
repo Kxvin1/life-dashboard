@@ -48,13 +48,36 @@ const financeFeatures = [
   },
 ];
 
+// Define productivity features
+const productivityFeatures = [
+  {
+    name: "Pomodoro Timer",
+    href: "/productivity/pomodoro",
+    icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
+    isImplemented: true,
+  },
+  {
+    name: "Task Manager",
+    href: "/productivity/tasks",
+    icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
+    isImplemented: false,
+  },
+  {
+    name: "Habit Tracker",
+    href: "/productivity/habits",
+    icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
+    isImplemented: false,
+  },
+  {
+    name: "Notes",
+    href: "/productivity/notes",
+    icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
+    isImplemented: false,
+  },
+];
+
 // Define placeholder categories for future implementation
 const futureCategories = [
-  {
-    name: "Productivity",
-    href: "/productivity",
-    icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2",
-  },
   {
     name: "Health",
     href: "/health",
@@ -301,6 +324,79 @@ const Sidebar = ({
             </h3>
             <ul>
               {financeFeatures.map((item) => {
+                const isActive = pathname === item.href;
+
+                // For non-implemented features, render a non-clickable span instead of a Link
+                if (!item.isImplemented) {
+                  return (
+                    <li key={item.name}>
+                      <div className="flex items-center px-4 py-2 text-sm cursor-not-allowed text-muted-foreground group relative">
+                        <svg
+                          className="w-5 h-5 mr-3 text-muted-foreground"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d={item.icon}
+                          />
+                        </svg>
+                        {item.name}
+                        <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-secondary text-foreground">
+                          Soon
+                        </span>
+                      </div>
+                    </li>
+                  );
+                }
+
+                // For implemented features, render a normal Link
+                return (
+                  <li key={item.name}>
+                    <Link
+                      href={item.href}
+                      className={`flex items-center px-4 py-2 text-sm ${
+                        isActive
+                          ? "bg-primary/10 text-primary border-l-4 border-primary"
+                          : "text-foreground hover:bg-secondary"
+                      }`}
+                      onClick={isMobile ? onClose : undefined}
+                    >
+                      <svg
+                        className={`mr-3 h-5 w-5 ${
+                          isActive ? "text-primary" : "text-muted-foreground"
+                        }`}
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d={item.icon}
+                        />
+                      </svg>
+                      {item.name}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          {/* Productivity section */}
+          <div className="mt-6">
+            <h3 className="px-4 mb-2 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+              Productivity
+            </h3>
+            <ul>
+              {productivityFeatures.map((item) => {
                 const isActive = pathname === item.href;
 
                 // For non-implemented features, render a non-clickable span instead of a Link

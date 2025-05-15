@@ -5,9 +5,11 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { DashboardProvider } from "@/contexts/DashboardContext";
+import { PomodoroProvider } from "@/contexts/PomodoroContext";
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import ScrollToTop from "@/components/common/ScrollToTop";
+import MiniTimer from "@/components/productivity/MiniTimer";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -110,7 +112,10 @@ export default function RootLayout({
         <AuthProvider>
           <ThemeProvider>
             <DashboardProvider>
-              <LayoutContent>{children}</LayoutContent>
+              <PomodoroProvider>
+                <LayoutContent>{children}</LayoutContent>
+                <MiniTimer />
+              </PomodoroProvider>
             </DashboardProvider>
           </ThemeProvider>
         </AuthProvider>

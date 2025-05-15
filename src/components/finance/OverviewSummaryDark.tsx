@@ -740,11 +740,47 @@ export default function OverviewSummary({
     <div className="space-y-6">
       {renderSummary()}
 
-      {/* AI Insights Button */}
-      <div className="flex justify-center my-6">
-        <AIInsightsButton
-          timePeriod={viewMode === "yearly" ? "year" : month ? "month" : "year"}
-        />
+      {/* AI Insights Section */}
+      <div className="transition-shadow duration-300 border shadow-md bg-card rounded-xl hover:shadow-lg border-border backdrop-blur-sm">
+        <div className="p-6">
+          <div className="flex flex-col items-center text-center mb-4">
+            <div className="flex items-center mb-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-primary mr-2"
+              >
+                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                <path d="M5 3v4" />
+                <path d="M19 17v4" />
+                <path d="M3 5h4" />
+                <path d="M17 19h4" />
+              </svg>
+              <h2 className="text-xl font-semibold text-foreground">
+                AI Financial Insights
+              </h2>
+            </div>
+            <p className="text-muted-foreground text-sm max-w-2xl">
+              Generate personalized financial insights and recommendations based
+              on your transaction history. Select a time period to analyze your
+              spending patterns and financial habits.
+            </p>
+          </div>
+          <div className="flex justify-center">
+            <AIInsightsButton
+              timePeriod={
+                viewMode === "yearly" ? "year" : month ? "month" : "year"
+              }
+            />
+          </div>
+        </div>
       </div>
 
       {renderTransactions()}
