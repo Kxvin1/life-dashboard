@@ -170,53 +170,61 @@ class PomodoroService:
         Returns:
             int: The current streak count
         """
-        # Get all completed sessions for the user, ordered by date
-        sessions = (
-            self.db.query(
-                func.date(PomodoroSession.end_time).label("session_date"),
-                func.count().label("count"),
-            )
-            .filter(
-                PomodoroSession.user_id == user_id,
-                PomodoroSession.status == "completed",
-            )
-            .group_by(func.date(PomodoroSession.end_time))
-            .order_by(desc("session_date"))
-            .all()
-        )
+        try:
+            # Get all completed sessions for the user, ordered by date
+            try:
+                sessions = (
+                    self.db.query(
+                        func.date(PomodoroSession.end_time).label("session_date"),
+                        func.count().label("count"),
+                    )
+                    .filter(
+                        PomodoroSession.user_id == user_id,
+                        PomodoroSession.status == "completed",
+                    )
+                    .group_by(func.date(PomodoroSession.end_time))
+                    .order_by(desc("session_date"))
+                    .all()
+                )
+            except Exception as e:
+                logger.error(f"Error querying pomodoro_sessions for streak: {str(e)}")
+                return 0
 
-        if not sessions:
-            return 0
+            if not sessions:
+                return 0
 
-        # Get today's date in PST
-        today = self._get_pst_date()
+            # Get today's date in PST
+            today = self._get_pst_date()
 
-        # Check if the most recent session was today or yesterday
-        most_recent_date = sessions[0].session_date
+            # Check if the most recent session was today or yesterday
+            most_recent_date = sessions[0].session_date
 
-        # If the most recent session wasn't today or yesterday, streak is broken
-        if most_recent_date != today and most_recent_date != (
-            today - timedelta(days=1)
-        ):
-            # Check if there was a session today
-            if most_recent_date == today:
-                return 1  # Streak is just today
-            return 0  # Streak is broken
-
-        # Count consecutive days
-        streak = 1  # Start with 1 for the most recent day
-
-        for i in range(1, len(sessions)):
-            # Check if this date is consecutive with the previous one
-            if (
-                sessions[i - 1].session_date - timedelta(days=1)
-                == sessions[i].session_date
+            # If the most recent session wasn't today or yesterday, streak is broken
+            if most_recent_date != today and most_recent_date != (
+                today - timedelta(days=1)
             ):
-                streak += 1
-            else:
-                break
+                # Check if there was a session today
+                if most_recent_date == today:
+                    return 1  # Streak is just today
+                return 0  # Streak is broken
 
-        return streak
+            # Count consecutive days
+            streak = 1  # Start with 1 for the most recent day
+
+            for i in range(1, len(sessions)):
+                # Check if this date is consecutive with the previous one
+                if (
+                    sessions[i - 1].session_date - timedelta(days=1)
+                    == sessions[i].session_date
+                ):
+                    streak += 1
+                else:
+                    break
+
+            return streak
+        except Exception as e:
+            logger.error(f"Error calculating streak count: {str(e)}")
+            return 0
 
     def _prepare_chart_data(self, sessions: List[PomodoroSession]) -> Dict[str, Any]:
         """
@@ -618,34 +626,59 @@ class PomodoroService:
         Returns:
             Dictionary containing sessions, total count, and streak count
         """
-        # Get total count
-        total_count = (
-            self.db.query(func.count(PomodoroSession.id))
-            .filter(PomodoroSession.user_id == user_id)
-            .scalar()
-        )
+        try:
+            # First check if the table exists
+            try:
+                # Get total count first to check if table exists
+                total_count = (
+                    self.db.query(func.count(PomodoroSession.id))
+                    .filter(PomodoroSession.user_id == user_id)
+                    .scalar()
+                )
+            except Exception as e:
+                logger.error(f"Error querying pomodoro_sessions table: {str(e)}")
+                # If there's an error, return empty result
+                return {
+                    "items": [],
+                    "total": 0,
+                    "page": 1,
+                    "size": limit,
+                    "has_more": False,
+                    "streak_count": 0,
+                }
 
-        # Get sessions with pagination
-        sessions = (
-            self.db.query(PomodoroSession)
-            .filter(PomodoroSession.user_id == user_id)
-            .order_by(desc(PomodoroSession.end_time))
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+            # Get sessions with pagination
+            sessions = (
+                self.db.query(PomodoroSession)
+                .filter(PomodoroSession.user_id == user_id)
+                .order_by(desc(PomodoroSession.end_time))
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
 
-        # Get streak count
-        streak_count = self.get_streak_count(user_id)
+            # Get streak count
+            streak_count = self.get_streak_count(user_id)
 
-        return {
-            "items": sessions,
-            "total": total_count,
-            "page": skip // limit + 1,
-            "size": limit,
-            "has_more": total_count > skip + limit,
-            "streak_count": streak_count,
-        }
+            return {
+                "items": sessions,
+                "total": total_count,
+                "page": skip // limit + 1,
+                "size": limit,
+                "has_more": total_count > skip + limit,
+                "streak_count": streak_count,
+            }
+        except Exception as e:
+            logger.error(f"Error getting Pomodoro sessions: {str(e)}")
+            # If there's an error, return empty result
+            return {
+                "items": [],
+                "total": 0,
+                "page": 1,
+                "size": limit,
+                "has_more": False,
+                "streak_count": 0,
+            }
 
     def create_pomodoro_session(
         self, user_id: int, session_data: Dict[str, Any]
@@ -803,50 +836,57 @@ class PomodoroService:
         Returns:
             Tuple of (today_count, week_count, total_count)
         """
-        # Get timezone
-        pst = pytz.timezone("America/Los_Angeles")
+        try:
+            # Get timezone
+            pst = pytz.timezone("America/Los_Angeles")
 
-        # Get current date in PST
-        now = datetime.now(pst)
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            # Get current date in PST
+            now = datetime.now(pst)
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-        # Get start of week (Monday) in PST
-        week_start = today_start - timedelta(days=today_start.weekday())
+            # Get start of week (Monday) in PST
+            week_start = today_start - timedelta(days=today_start.weekday())
 
-        # Convert datetime to string for comparison
-        today_start_str = today_start.strftime("%Y-%m-%d %H:%M:%S")
-        week_start_str = week_start.strftime("%Y-%m-%d %H:%M:%S")
+            # First check if the table exists
+            try:
+                # Get total count first to check if table exists
+                total_count = (
+                    self.db.query(func.count(PomodoroSession.id))
+                    .filter(PomodoroSession.user_id == user_id)
+                    .scalar()
+                )
+            except Exception as e:
+                logger.error(f"Error querying pomodoro_sessions table: {str(e)}")
+                # If there's an error, return zeros
+                return 0, 0, 0
 
-        # Get today's count
-        today_count = (
-            self.db.query(func.count(PomodoroSession.id))
-            .filter(
-                PomodoroSession.user_id == user_id,
-                PomodoroSession.end_time >= today_start_str,
+            # Get today's count using datetime objects instead of strings
+            today_count = (
+                self.db.query(func.count(PomodoroSession.id))
+                .filter(
+                    PomodoroSession.user_id == user_id,
+                    func.date(PomodoroSession.end_time) >= func.date(today_start),
+                )
+                .scalar()
             )
-            .scalar()
-        )
 
-        # Get week's count
-        week_count = (
-            self.db.query(func.count(PomodoroSession.id))
-            .filter(
-                PomodoroSession.user_id == user_id,
-                PomodoroSession.end_time >= week_start_str,
+            # Get week's count
+            week_count = (
+                self.db.query(func.count(PomodoroSession.id))
+                .filter(
+                    PomodoroSession.user_id == user_id,
+                    func.date(PomodoroSession.end_time) >= func.date(week_start),
+                )
+                .scalar()
             )
-            .scalar()
-        )
 
-        # Get total count
-        total_count = (
-            self.db.query(func.count(PomodoroSession.id))
-            .filter(PomodoroSession.user_id == user_id)
-            .scalar()
-        )
+            # Log the counts for debugging
+            logger.info(
+                f"Pomodoro counts for user {user_id}: today={today_count}, week={week_count}, total={total_count}"
+            )
 
-        # Log the counts for debugging
-        logger.info(
-            f"Pomodoro counts for user {user_id}: today={today_count}, week={week_count}, total={total_count}"
-        )
-
-        return today_count, week_count, total_count
+            return today_count, week_count, total_count
+        except Exception as e:
+            logger.error(f"Error getting Pomodoro counts: {str(e)}")
+            # If there's an error, return zeros
+            return 0, 0, 0

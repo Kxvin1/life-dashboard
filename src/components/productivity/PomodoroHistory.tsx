@@ -10,7 +10,8 @@ import { usePomodoro } from "@/contexts/PomodoroContext";
 
 const PomodoroHistory = () => {
   const { isDemoUser } = useAuth();
-  const { streakCount, streakTimeRemaining } = usePomodoro();
+  const { streakCount, streakTimeRemaining, hasCompletedTodayPomodoro } =
+    usePomodoro();
   const [sessions, setSessions] = useState<PomodoroSession[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -158,7 +159,9 @@ const PomodoroHistory = () => {
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              Complete at least one Pomodoro today to maintain your streak
+              {hasCompletedTodayPomodoro
+                ? "✅ Streak is safe for today!"
+                : "Complete at least one Pomodoro today to maintain your streak"}
             </p>
           </div>
         </div>

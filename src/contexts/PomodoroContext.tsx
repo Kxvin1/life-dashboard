@@ -391,6 +391,9 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         // Save the current date as the last completion date
         localStorage.setItem("pomodoroLastCompletionDate", pstDate);
 
+        // Update the hasCompletedTodayPomodoro state
+        setHasCompletedTodayPomodoro(true);
+
         // Set streak expiry time to midnight PST tomorrow
         const tomorrow = new Date(pst);
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -403,6 +406,9 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
             expiryTime
           ).toLocaleString()}`
         );
+      } else {
+        // Even if the streak doesn't increase, we've still completed a Pomodoro today
+        setHasCompletedTodayPomodoro(true);
       }
 
       // Save to database if not demo user
@@ -816,6 +822,9 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         // Save the current date as the last completion date
         localStorage.setItem("pomodoroLastCompletionDate", pstDate);
 
+        // Update the hasCompletedTodayPomodoro state
+        setHasCompletedTodayPomodoro(true);
+
         // Set streak expiry time to midnight PST tomorrow
         const tomorrow = new Date(pst);
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -828,6 +837,9 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
             expiryTime
           ).toLocaleString()}`
         );
+      } else {
+        // Even if the streak doesn't increase, we've still completed a Pomodoro today
+        setHasCompletedTodayPomodoro(true);
       }
 
       // Save to database if not demo user
