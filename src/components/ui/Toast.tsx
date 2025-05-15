@@ -15,7 +15,7 @@ interface ToastProps {
 const Toast = ({
   message,
   type = "success",
-  duration = 5000,
+  duration = 7000,
   onClose,
   actionLabel,
   actionHref,
@@ -100,12 +100,12 @@ const Toast = ({
 
   return (
     <div
-      className={`fixed bottom-4 right-4 z-50 transform transition-transform duration-300 ease-in-out ${
-        isVisible ? "translate-y-0" : "translate-y-16 opacity-0"
+      className={`fixed top-1/4 left-1/2 -translate-x-1/2 z-50 transform transition-all duration-300 ease-in-out ${
+        isVisible ? "opacity-100" : "opacity-0 translate-y-[-20px]"
       }`}
     >
       <div
-        className={`flex items-center p-4 rounded-lg shadow-lg border ${getTypeStyles()} max-w-md`}
+        className={`flex items-center p-4 rounded-lg shadow-xl border ${getTypeStyles()} max-w-md`}
       >
         <div className="flex-shrink-0 mr-3">{getIcon()}</div>
         <div className="flex-1">

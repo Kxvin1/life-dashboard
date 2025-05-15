@@ -308,7 +308,7 @@ const SubscriptionList = ({
     <div className="overflow-hidden rounded-xl border border-border">
       {/* Table Header with Pagination */}
       <div className="bg-card px-6 py-4 border-b border-border">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h2 className="text-xl font-semibold text-foreground">
             {status === "active" ? "Active" : "Inactive"} Subscriptions
           </h2>

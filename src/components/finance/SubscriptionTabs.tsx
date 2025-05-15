@@ -18,7 +18,7 @@ const SubscriptionTabs = ({ onSubscriptionDeleted }: SubscriptionTabsProps) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex space-x-1 rounded-lg bg-muted p-1">
           <button
             className={`px-3 py-1.5 text-sm font-medium rounded-md ${
@@ -42,12 +42,12 @@ const SubscriptionTabs = ({ onSubscriptionDeleted }: SubscriptionTabsProps) => {
           </button>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
           <span className="text-sm text-muted-foreground">Sort by:</span>
           <select
             value={sortField}
             onChange={(e) => setSortField(e.target.value as SortField)}
-            className="px-2 py-1 text-sm border rounded-md border-input bg-background max-w-[120px] sm:max-w-none overflow-hidden text-ellipsis"
+            className="px-2 py-1 text-sm border rounded-md border-input bg-background min-w-[100px] max-w-[120px] sm:max-w-none overflow-hidden text-ellipsis"
           >
             <option value="name">Name</option>
             <option value="price">Price</option>

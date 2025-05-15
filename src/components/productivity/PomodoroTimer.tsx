@@ -22,6 +22,7 @@ const PomodoroTimer = () => {
     taskQueue,
     streakCount,
     streakTimeRemaining,
+    hasCompletedTodayPomodoro,
     todayCount, // Database count
     weeklyCount,
     totalCount,
@@ -129,10 +130,14 @@ const PomodoroTimer = () => {
                 </div>
                 <div className="bg-orange-500/10 rounded-md p-2 text-center">
                   <div className="text-xs text-orange-500/80">
-                    Complete a Pomodoro today to maintain streak
+                    {hasCompletedTodayPomodoro
+                      ? "✅ Streak is safe for today!"
+                      : "Complete a Pomodoro today to maintain streak"}
                   </div>
                   <div className="text-xs text-orange-500/80 font-medium mt-1">
-                    Resets at midnight PST ({streakTimeRemaining})
+                    {hasCompletedTodayPomodoro
+                      ? `Next streak day begins at midnight PST (${streakTimeRemaining})`
+                      : `Streak expires at midnight PST (${streakTimeRemaining})`}
                   </div>
                 </div>
               </div>
@@ -238,8 +243,13 @@ const PomodoroTimer = () => {
         <button
           onClick={skipTimer}
           className="px-4 py-2 transition-colors rounded-md bg-secondary text-foreground hover:bg-secondary/80"
+          title={
+            mode === "work" && isRunning
+              ? "Skip (will be counted as interrupted)"
+              : "Skip"
+          }
         >
-          Skip
+          {mode === "work" && isRunning ? "Skip (Interrupt)" : "Skip"}
         </button>
       </div>
 

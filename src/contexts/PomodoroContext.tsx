@@ -56,6 +56,7 @@ interface PomodoroContextType {
   streakCount: number;
   streakExpiryTime: number;
   streakTimeRemaining: string;
+  hasCompletedTodayPomodoro: boolean;
 
   // Counts
   todayCount: number;
@@ -224,6 +225,35 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(interval);
   }, [isDemoUser, user]);
 
+  // State to track if user has completed a Pomodoro today
+  const [hasCompletedTodayPomodoro, setHasCompletedTodayPomodoro] =
+    useState(false);
+
+  // Check if user has completed a Pomodoro today
+  useEffect(() => {
+    const checkTodayCompletion = () => {
+      // Get current date in PST
+      const pst = new Date().toLocaleString("en-US", {
+        timeZone: "America/Los_Angeles",
+      });
+      const pstDate = new Date(pst).toDateString();
+
+      // Get the last completion date from localStorage
+      const lastCompletionDate = localStorage.getItem(
+        "pomodoroLastCompletionDate"
+      );
+
+      // If the last completion date is today, user has completed a Pomodoro today
+      setHasCompletedTodayPomodoro(lastCompletionDate === pstDate);
+    };
+
+    // Check immediately
+    checkTodayCompletion();
+
+    // Also check when todayCount changes (which happens after completing a Pomodoro)
+    // This ensures the UI updates after a Pomodoro is completed
+  }, [todayCount]);
+
   // Calculate streak time remaining
   useEffect(() => {
     const calculateStreakTimeRemaining = () => {
@@ -240,6 +270,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         if (streakCount > 0) {
           setStreakCount(0);
           setStreakExpiryTime(0);
+          setHasCompletedTodayPomodoro(false);
         }
         setStreakTimeRemaining("00:00:00");
         return;
@@ -377,11 +408,12 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
       // Save to database if not demo user
       if (!isDemoUser && user) {
         try {
-          // For timer completion, we know the full duration was used
+          // For timer completion, the full duration was used
+          // But we'll calculate it explicitly to be consistent with other methods
+          const totalSeconds = WORK_MINUTES * 60;
+
           const endTime = new Date();
-          const startTime = new Date(
-            endTime.getTime() - WORK_MINUTES * 60 * 1000
-          );
+          const startTime = new Date(endTime.getTime() - totalSeconds * 1000);
 
           const sessionData = {
             task_name: timerState.currentTask?.name || "Unnamed Task",
@@ -618,7 +650,52 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     }));
   }, []);
 
-  const skipTimer = useCallback(() => {
+  const skipTimer = useCallback(async () => {
+    // If we're in work mode and timer is running, save as interrupted session
+    if (
+      timerState.mode === "work" &&
+      timerState.isRunning &&
+      !isDemoUser &&
+      user
+    ) {
+      try {
+        // Calculate elapsed time
+        const totalSeconds = WORK_MINUTES * 60;
+        const elapsedSeconds = totalSeconds - timerState.timeRemaining;
+        const elapsedMinutes = Math.max(1, Math.floor(elapsedSeconds / 60)); // At least 1 minute
+
+        // Calculate start time based on elapsed duration
+        const endTime = new Date();
+        const startTime = new Date(
+          endTime.getTime() - elapsedMinutes * 60 * 1000
+        );
+
+        const sessionData = {
+          task_name: timerState.currentTask?.name || "Unnamed Task",
+          start_time: startTime,
+          end_time: endTime,
+          duration_minutes: elapsedMinutes,
+          status: "interrupted" as const,
+          notes: "Session skipped",
+        };
+
+        await createPomodoroSession(sessionData);
+
+        // Update counts after successful save
+        try {
+          const counts = await getPomodoroCounts();
+          console.log("Updated Pomodoro counts:", counts);
+          setTodayCount(counts.today);
+          setWeeklyCount(counts.week);
+          setTotalCount(counts.total);
+        } catch (error) {
+          console.error("Failed to update Pomodoro counts:", error);
+        }
+      } catch (error) {
+        console.error("Failed to save interrupted session:", error);
+      }
+    }
+
     // Reset timer to work mode
     setTimerState((prev) => {
       // If we're in break mode, keep the current task or get next from queue if no current task
@@ -656,7 +733,15 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         };
       }
     });
-  }, [taskQueue]);
+  }, [
+    timerState.mode,
+    timerState.isRunning,
+    timerState.timeRemaining,
+    timerState.currentTask,
+    taskQueue,
+    isDemoUser,
+    user,
+  ]);
 
   // Task management
   const setCurrentTask = useCallback((task: PomodoroTask | null) => {
@@ -748,15 +833,15 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
       // Save to database if not demo user
       if (!isDemoUser && user) {
         try {
-          // Always use the full 25 minutes for completed tasks
-          // This ensures consistency in the AI analysis
-          const durationMinutes = WORK_MINUTES;
+          // Calculate actual time spent
+          const totalSeconds = WORK_MINUTES * 60;
+          const elapsedSeconds = totalSeconds - timerState.timeRemaining;
+          // Convert to minutes, ensuring at least 1 minute
+          const durationMinutes = Math.max(1, Math.ceil(elapsedSeconds / 60));
 
-          // Calculate start time based on full duration
+          // Calculate start time based on actual elapsed time
           const endTime = new Date();
-          const startTime = new Date(
-            endTime.getTime() - durationMinutes * 60 * 1000
-          );
+          const startTime = new Date(endTime.getTime() - elapsedSeconds * 1000);
 
           const sessionData = {
             task_name: timerState.currentTask.name,
@@ -850,6 +935,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         streakCount,
         streakExpiryTime,
         streakTimeRemaining,
+        hasCompletedTodayPomodoro,
 
         // Counts
         todayCount,
