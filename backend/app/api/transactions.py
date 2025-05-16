@@ -173,10 +173,6 @@ async def delete_transaction(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # Log the transaction ID and user for debugging
-    print(
-        f"DELETE request for transaction_id: {transaction_id}, user_id: {current_user.id}"
-    )
 
     # Find the transaction
     db_transaction = (
@@ -188,19 +184,11 @@ async def delete_transaction(
     )
 
     if db_transaction is None:
-        print(f"Transaction not found: {transaction_id}")
         raise HTTPException(status_code=404, detail="Transaction not found")
-
-    # Log the transaction details before deletion
-    print(
-        f"Deleting transaction: {db_transaction.id}, {db_transaction.description}, {db_transaction.amount}"
-    )
 
     # Delete the transaction
     db.delete(db_transaction)
     db.commit()
-
-    print(f"Transaction {transaction_id} deleted successfully")
 
     return {"success": True, "message": "Transaction deleted successfully"}
 
@@ -219,11 +207,6 @@ async def test_delete_transaction_get(
 
     if db_transaction is None:
         raise HTTPException(status_code=404, detail="Transaction not found")
-
-    # Log the transaction details
-    print(
-        f"Test deleting transaction (GET): {db_transaction.id}, {db_transaction.description}, {db_transaction.amount}"
-    )
 
     # Delete the transaction
     db.delete(db_transaction)
@@ -301,11 +284,6 @@ async def test_delete_transaction(
 
     if db_transaction is None:
         raise HTTPException(status_code=404, detail="Transaction not found")
-
-    # Log the transaction details
-    print(
-        f"Test deleting transaction (DELETE): {db_transaction.id}, {db_transaction.description}, {db_transaction.amount}"
-    )
 
     # Delete the transaction
     db.delete(db_transaction)

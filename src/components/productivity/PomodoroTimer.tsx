@@ -18,6 +18,7 @@ const PomodoroTimer = () => {
     setCurrentTask,
     addTaskToQueue,
     completeCurrentTask,
+    clearCurrentTask,
     // completedPomodoros, // Local count from localStorage (not used)
     taskQueue,
     streakCount,
@@ -261,29 +262,56 @@ const PomodoroTimer = () => {
           </h4>
           {currentTask ? (
             <div className="flex items-center justify-between p-3 border rounded-md bg-card border-border">
-              <span className="text-foreground truncate max-w-[70%]">
+              <span className="text-foreground truncate max-w-[60%]">
                 {currentTask.name}
               </span>
-              <button
-                onClick={completeCurrentTask}
-                className="flex-shrink-0 px-2 py-1 text-sm text-green-500 transition-colors rounded bg-green-500/10 hover:bg-green-500/20 flex items-center"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-1"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+              <div className="flex space-x-2">
+                <button
+                  onClick={clearCurrentTask}
+                  className="flex-shrink-0 px-2 py-1 text-sm text-red-500 transition-colors rounded bg-red-500/10 hover:bg-red-500/20 flex items-center"
+                  title={
+                    taskQueue.length > 0
+                      ? "Delete task and get next from queue"
+                      : "Delete task"
+                  }
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                Complete
-              </button>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                  Delete
+                </button>
+                <button
+                  onClick={completeCurrentTask}
+                  className="flex-shrink-0 px-2 py-1 text-sm text-green-500 transition-colors rounded bg-green-500/10 hover:bg-green-500/20 flex items-center"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  Complete
+                </button>
+              </div>
             </div>
           ) : (
             <div className="p-3 border rounded-md bg-card border-border text-muted-foreground">

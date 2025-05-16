@@ -79,6 +79,7 @@ interface PomodoroContextType {
   removeTaskFromQueue: (taskId: string) => void;
   reorderTaskQueue: (startIndex: number, endIndex: number) => void;
   completeCurrentTask: () => void;
+  clearCurrentTask: () => void;
 
   // Mini timer
   showMiniTimer: boolean;
@@ -122,7 +123,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
       const now = Date.now();
 
       // Parse saved timer state
-      let parsedTimerState = savedTimerState
+      const parsedTimerState = savedTimerState
         ? JSON.parse(savedTimerState)
         : null;
 
@@ -207,7 +208,6 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
       try {
         if (!isDemoUser && user) {
           const counts = await getPomodoroCounts();
-          console.log("Received Pomodoro counts:", counts);
           setTodayCount(counts.today);
           setWeeklyCount(counts.week);
           setTotalCount(counts.total);
@@ -400,12 +400,6 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         tomorrow.setHours(0, 0, 0, 0);
         const expiryTime = new Date(tomorrow).getTime();
         setStreakExpiryTime(expiryTime);
-
-        console.log(
-          `Streak updated: ${newStreakCount}, expires: ${new Date(
-            expiryTime
-          ).toLocaleString()}`
-        );
       } else {
         // Even if the streak doesn't increase, we've still completed a Pomodoro today
         setHasCompletedTodayPomodoro(true);
@@ -435,7 +429,6 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
           // Update counts after successful save
           try {
             const counts = await getPomodoroCounts();
-            console.log("Updated Pomodoro counts:", counts);
             setTodayCount(counts.today);
             setWeeklyCount(counts.week);
             setTotalCount(counts.total);
@@ -497,6 +490,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     taskQueue,
     isDemoUser,
     user,
+    streakCount,
   ]);
 
   // Timer interval
@@ -690,7 +684,6 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         // Update counts after successful save
         try {
           const counts = await getPomodoroCounts();
-          console.log("Updated Pomodoro counts:", counts);
           setTodayCount(counts.today);
           setWeeklyCount(counts.week);
           setTotalCount(counts.total);
@@ -780,6 +773,30 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     []
   );
 
+  // Clear current task without completing it
+  const clearCurrentTask = useCallback(() => {
+    // Check if there are tasks in the queue
+    if (taskQueue.length > 0) {
+      // Get the first task from the queue
+      const nextTask = taskQueue[0];
+
+      // Remove it from the queue
+      setTaskQueue((prev) => prev.slice(1));
+
+      // Set it as the current task
+      setTimerState((prev) => ({
+        ...prev,
+        currentTask: nextTask,
+      }));
+    } else {
+      // If no tasks in queue, simply set the current task to null
+      setTimerState((prev) => ({
+        ...prev,
+        currentTask: null,
+      }));
+    }
+  }, [taskQueue]);
+
   const completeCurrentTask = useCallback(async () => {
     if (timerState.currentTask) {
       // Play completion sound
@@ -831,12 +848,6 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         tomorrow.setHours(0, 0, 0, 0);
         const expiryTime = new Date(tomorrow).getTime();
         setStreakExpiryTime(expiryTime);
-
-        console.log(
-          `Streak updated: ${newStreakCount}, expires: ${new Date(
-            expiryTime
-          ).toLocaleString()}`
-        );
       } else {
         // Even if the streak doesn't increase, we've still completed a Pomodoro today
         setHasCompletedTodayPomodoro(true);
@@ -869,7 +880,6 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
           // Update counts after successful save
           try {
             const counts = await getPomodoroCounts();
-            console.log("Updated Pomodoro counts:", counts);
             setTodayCount(counts.today);
             setWeeklyCount(counts.week);
             setTotalCount(counts.total);
@@ -930,6 +940,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     user,
     streakCount,
     taskQueue,
+    timerState.timeRemaining,
   ]);
 
   return (
@@ -970,6 +981,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         removeTaskFromQueue,
         reorderTaskQueue,
         completeCurrentTask,
+        clearCurrentTask,
 
         // Mini timer
         showMiniTimer,

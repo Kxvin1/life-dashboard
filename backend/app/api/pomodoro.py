@@ -294,11 +294,6 @@ async def get_pomodoro_counts(
         user_id=current_user.id
     )
 
-    # Log the counts for debugging
-    print(
-        f"API: Pomodoro counts for user {current_user.id}: today={today_count}, week={week_count}, total={total_count}"
-    )
-
     return {
         "today": today_count,
         "week": week_count,
