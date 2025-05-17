@@ -266,13 +266,20 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
       const timeLeft = Math.max(0, streakExpiryTime - now);
 
       if (timeLeft <= 0) {
-        // Reset streak if time expired
-        if (streakCount > 0) {
-          setStreakCount(0);
-          setStreakExpiryTime(0);
-          setHasCompletedTodayPomodoro(false);
-        }
+        // Don't reset streak at midnight - just update the UI to show that
+        // the user needs to complete a Pomodoro today to maintain their streak
+        setHasCompletedTodayPomodoro(false);
         setStreakTimeRemaining("00:00:00");
+
+        // Set new expiry time to midnight tonight
+        const pst = new Date().toLocaleString("en-US", {
+          timeZone: "America/Los_Angeles",
+        });
+        const tonight = new Date(pst);
+        tonight.setHours(24, 0, 0, 0); // Set to midnight tonight
+        const newExpiryTime = new Date(tonight).getTime();
+        setStreakExpiryTime(newExpiryTime);
+
         return;
       }
 
@@ -295,7 +302,7 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
     const interval = setInterval(calculateStreakTimeRemaining, 1000);
 
     return () => clearInterval(interval);
-  }, [streakExpiryTime, streakCount]);
+  }, [streakExpiryTime]);
 
   // Save state to localStorage when it changes
   useEffect(() => {
@@ -383,10 +390,43 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         "pomodoroLastCompletionDate"
       );
 
-      // If this is the first completion ever or a new day
-      if (!lastCompletionDate || lastCompletionDate !== pstDate) {
-        const newStreakCount = streakCount + 1;
-        setStreakCount(newStreakCount);
+      // If this is the first completion ever
+      if (!lastCompletionDate) {
+        // First ever completion - start streak at 1
+        setStreakCount(1);
+
+        // Save the current date as the last completion date
+        localStorage.setItem("pomodoroLastCompletionDate", pstDate);
+
+        // Update the hasCompletedTodayPomodoro state
+        setHasCompletedTodayPomodoro(true);
+
+        // Set streak expiry time to midnight PST tomorrow
+        const tomorrow = new Date(pst);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        const expiryTime = new Date(tomorrow).getTime();
+        setStreakExpiryTime(expiryTime);
+      }
+      // If this is a new day (not the same as last completion date)
+      else if (lastCompletionDate !== pstDate) {
+        // Convert dates to Date objects for comparison
+        const lastDate = new Date(lastCompletionDate);
+        const currentDate = new Date(pstDate);
+
+        // Calculate the difference in days
+        const timeDiff = currentDate.getTime() - lastDate.getTime();
+        const daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
+
+        // If the last completion was yesterday (consecutive day)
+        if (daysDiff === 1) {
+          // Increment streak
+          const newStreakCount = streakCount + 1;
+          setStreakCount(newStreakCount);
+        } else {
+          // Gap in streak - reset to 1
+          setStreakCount(1);
+        }
 
         // Save the current date as the last completion date
         localStorage.setItem("pomodoroLastCompletionDate", pstDate);
@@ -401,7 +441,8 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         const expiryTime = new Date(tomorrow).getTime();
         setStreakExpiryTime(expiryTime);
       } else {
-        // Even if the streak doesn't increase, we've still completed a Pomodoro today
+        // Same day - we've already completed a Pomodoro today
+        // Just update the UI state
         setHasCompletedTodayPomodoro(true);
       }
 
@@ -831,10 +872,43 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         "pomodoroLastCompletionDate"
       );
 
-      // If this is the first completion ever or a new day
-      if (!lastCompletionDate || lastCompletionDate !== pstDate) {
-        const newStreakCount = streakCount + 1;
-        setStreakCount(newStreakCount);
+      // If this is the first completion ever
+      if (!lastCompletionDate) {
+        // First ever completion - start streak at 1
+        setStreakCount(1);
+
+        // Save the current date as the last completion date
+        localStorage.setItem("pomodoroLastCompletionDate", pstDate);
+
+        // Update the hasCompletedTodayPomodoro state
+        setHasCompletedTodayPomodoro(true);
+
+        // Set streak expiry time to midnight PST tomorrow
+        const tomorrow = new Date(pst);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        const expiryTime = new Date(tomorrow).getTime();
+        setStreakExpiryTime(expiryTime);
+      }
+      // If this is a new day (not the same as last completion date)
+      else if (lastCompletionDate !== pstDate) {
+        // Convert dates to Date objects for comparison
+        const lastDate = new Date(lastCompletionDate);
+        const currentDate = new Date(pstDate);
+
+        // Calculate the difference in days
+        const timeDiff = currentDate.getTime() - lastDate.getTime();
+        const daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
+
+        // If the last completion was yesterday (consecutive day)
+        if (daysDiff === 1) {
+          // Increment streak
+          const newStreakCount = streakCount + 1;
+          setStreakCount(newStreakCount);
+        } else {
+          // Gap in streak - reset to 1
+          setStreakCount(1);
+        }
 
         // Save the current date as the last completion date
         localStorage.setItem("pomodoroLastCompletionDate", pstDate);
@@ -849,7 +923,8 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
         const expiryTime = new Date(tomorrow).getTime();
         setStreakExpiryTime(expiryTime);
       } else {
-        // Even if the streak doesn't increase, we've still completed a Pomodoro today
+        // Same day - we've already completed a Pomodoro today
+        // Just update the UI state
         setHasCompletedTodayPomodoro(true);
       }
 
