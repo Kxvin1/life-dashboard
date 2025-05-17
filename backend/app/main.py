@@ -122,7 +122,17 @@ async def cors_test():
     """
     Simple endpoint to test CORS configuration.
     This endpoint should be accessible from the frontend.
+    Only available in development environment.
     """
+    # Check if we're in development environment
+    if settings.ENVIRONMENT != "development":
+        from fastapi import HTTPException, status
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Endpoint not available in production",
+        )
+
     return {
         "message": "CORS is working correctly!",
         "status": "success",
@@ -132,6 +142,19 @@ async def cors_test():
 
 @app.post("/api/v1/seed-categories")
 async def seed_categories_endpoint():
+    """
+    Seed categories endpoint.
+    Only available in development environment.
+    """
+    # Check if we're in development environment
+    if settings.ENVIRONMENT != "development":
+        from fastapi import HTTPException, status
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Endpoint not available in production",
+        )
+
     try:
         seed_categories()
         return {"message": "Categories seeded successfully"}
