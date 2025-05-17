@@ -11,15 +11,13 @@ interface MobileMenuProps {
 
 const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
   const { theme, toggleTheme } = useTheme();
+
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Handle clicks outside the menu to close it
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target as Node)
-      ) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         onClose();
       }
     };
@@ -55,7 +53,9 @@ const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
         style={{ transform: isOpen ? "translateX(0)" : "translateX(100%)" }}
       >
         <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Menu</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Menu
+          </h2>
           <button
             onClick={onClose}
             className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
@@ -120,7 +120,7 @@ const MobileMenu = ({ isOpen, onClose }: MobileMenuProps) => {
                 )}
               </button>
             </div>
-            
+
             {/* Navigation Links */}
             <Link
               href="/login"

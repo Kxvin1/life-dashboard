@@ -7,6 +7,7 @@ import MobileMenu from "./MobileMenu";
 
 const AuthNavbar = () => {
   const { theme, toggleTheme } = useTheme();
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
@@ -23,7 +24,7 @@ const AuthNavbar = () => {
                   </span>
                 </Link>
               </div>
-              
+
               {/* Desktop Navigation */}
               <div className="hidden md:flex items-center space-x-4">
                 {/* Theme Toggle Button */}
@@ -77,7 +78,7 @@ const AuthNavbar = () => {
                   Sign Up
                 </Link>
               </div>
-              
+
               {/* Mobile Hamburger Button */}
               <div className="flex md:hidden items-center">
                 <button
@@ -105,11 +106,11 @@ const AuthNavbar = () => {
           </div>
         </nav>
       </div>
-      
+
       {/* Mobile Menu */}
-      <MobileMenu 
-        isOpen={isMobileMenuOpen} 
-        onClose={() => setIsMobileMenuOpen(false)} 
+      <MobileMenu
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
       />
     </>
   );
