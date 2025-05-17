@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -9,6 +9,7 @@ const SettingsPage = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
+  const [showTooltip, setShowTooltip] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -37,7 +38,7 @@ const SettingsPage = () => {
           Appearance
         </h2>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="font-medium text-foreground">Theme</h3>
             <p className="text-sm text-muted-foreground">
@@ -46,9 +47,9 @@ const SettingsPage = () => {
           </div>
           <button
             onClick={toggleTheme}
-            className="px-4 py-2 transition-colors rounded-md bg-secondary text-foreground hover:bg-secondary/80"
+            className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base transition-colors rounded-md bg-secondary text-foreground hover:bg-secondary/80 self-start sm:self-center"
           >
-            {theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            {theme === "dark" ? "Switch to Light" : "Switch to Dark"}
           </button>
         </div>
       </div>
@@ -58,18 +59,39 @@ const SettingsPage = () => {
 
         <div className="space-y-6">
           <div>
-            <h3 className="mb-2 font-medium text-foreground">
-              Email Notifications
-            </h3>
-            <div className="flex items-center">
+            <div className="flex items-center mb-2">
+              <h3 className="font-medium text-foreground">
+                Email Notifications
+              </h3>
+              <div className="relative inline-block ml-3">
+                <span
+                  className="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20"
+                  onMouseEnter={() => setShowTooltip("email")}
+                  onMouseLeave={() => setShowTooltip(null)}
+                >
+                  Coming Soon
+                </span>
+                {showTooltip === "email" && (
+                  <div className="absolute z-50 w-64 p-2 text-xs rounded shadow-lg pointer-events-none bottom-full left-1/2 -translate-x-1/2 mb-2 bg-popover text-popover-foreground">
+                    <p className="font-medium">Feature in Development</p>
+                    <p className="mt-1">
+                      Email notifications are coming soon. We're working on
+                      implementing this feature.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center opacity-60">
               <input
                 type="checkbox"
                 id="email-notifications"
-                className="w-4 h-4 rounded text-primary border-border focus:ring-primary"
+                className="w-4 h-4 rounded text-primary border-border focus:ring-primary cursor-not-allowed"
+                disabled
               />
               <label
                 htmlFor="email-notifications"
-                className="ml-2 text-foreground"
+                className="ml-2 text-foreground cursor-not-allowed"
               >
                 Receive email notifications
               </label>
@@ -77,8 +99,31 @@ const SettingsPage = () => {
           </div>
 
           <div>
-            <h3 className="mb-2 font-medium text-foreground">Currency</h3>
-            <select className="w-full max-w-xs px-3 py-2 border rounded-md border-border bg-background text-foreground">
+            <div className="flex items-center mb-2">
+              <h3 className="font-medium text-foreground">Currency</h3>
+              <div className="relative inline-block ml-3">
+                <span
+                  className="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20"
+                  onMouseEnter={() => setShowTooltip("currency")}
+                  onMouseLeave={() => setShowTooltip(null)}
+                >
+                  Coming Soon
+                </span>
+                {showTooltip === "currency" && (
+                  <div className="absolute z-50 w-64 p-2 text-xs rounded shadow-lg pointer-events-none bottom-full left-1/2 -translate-x-1/2 mb-2 bg-popover text-popover-foreground">
+                    <p className="font-medium">Feature in Development</p>
+                    <p className="mt-1">
+                      Currency selection is coming soon. Currently, all amounts
+                      are displayed in USD ($).
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <select
+              className="w-full max-w-xs px-3 py-2 border rounded-md border-border bg-background text-foreground opacity-60 cursor-not-allowed"
+              disabled
+            >
               <option value="usd">USD ($)</option>
               <option value="eur">EUR (€)</option>
               <option value="gbp">GBP (£)</option>
