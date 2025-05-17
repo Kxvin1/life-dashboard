@@ -9,17 +9,16 @@ import { formatCurrency } from "@/lib/utils";
 import { Subscription } from "@/types/finance";
 
 interface SubscriptionSummaryProps {
-  key?: number; // This is just to make TypeScript happy with the key prop
+  refreshKey?: number;
 }
 
-const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
+const SubscriptionSummary = ({ refreshKey }: SubscriptionSummaryProps) => {
   const [totalMonthlyCost, setTotalMonthlyCost] = useState<number>(0);
   const [futureMonthlyCost, setFutureMonthlyCost] = useState<number>(0);
   const [totalCombinedMonthlyCost, setTotalCombinedMonthlyCost] =
     useState<number>(0);
   const [activeCount, setActiveCount] = useState<number>(0);
   const [futureCount, setFutureCount] = useState<number>(0);
-  const [totalCount, setTotalCount] = useState<number>(0);
   const [yearlyTotal, setYearlyTotal] = useState<number>(0);
   const [upcomingPayments, setUpcomingPayments] = useState<Subscription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,7 +81,7 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
       setTotalCombinedMonthlyCost(summaryData.total_combined_monthly_cost);
       setActiveCount(summaryData.active_subscriptions_count);
       setFutureCount(summaryData.future_subscriptions_count);
-      setTotalCount(summaryData.total_subscriptions_count);
+      // We don't need total count anymore
       setYearlyTotal(summaryData.total_combined_monthly_cost * 12);
 
       // Fetch active subscriptions for upcoming payments
@@ -91,7 +90,7 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
       // Sort subscriptions by next payment date (or start date for future subscriptions)
       const sortedSubscriptions = [...subscriptions].sort((a, b) => {
         // Get the effective date for each subscription (next payment date or start date for future ones)
-        const getEffectiveDate = (sub) => {
+        const getEffectiveDate = (sub: Subscription) => {
           if (isFutureDate(sub.start_date)) {
             return new Date(sub.start_date).getTime();
           } else {
@@ -123,10 +122,11 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
     }
   };
 
-  // Load data when component mounts
+  // Load data when component mounts or when refreshKey changes
   useEffect(() => {
     loadData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
 
   if (isLoading) {
     return (
@@ -135,13 +135,13 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
           Subscription Summary
         </h2>
         <div className="space-y-4">
-          <div className="h-6 bg-muted rounded w-3/4"></div>
-          <div className="h-6 bg-muted rounded w-1/2"></div>
-          <div className="h-6 bg-muted rounded w-2/3"></div>
-          <div className="mt-6 h-4 bg-muted rounded w-full"></div>
-          <div className="h-12 bg-muted rounded w-full"></div>
-          <div className="h-12 bg-muted rounded w-full"></div>
-          <div className="h-12 bg-muted rounded w-full"></div>
+          <div className="w-3/4 h-6 rounded bg-muted"></div>
+          <div className="w-1/2 h-6 rounded bg-muted"></div>
+          <div className="w-2/3 h-6 rounded bg-muted"></div>
+          <div className="w-full h-4 mt-6 rounded bg-muted"></div>
+          <div className="w-full h-12 rounded bg-muted"></div>
+          <div className="w-full h-12 rounded bg-muted"></div>
+          <div className="w-full h-12 rounded bg-muted"></div>
         </div>
       </div>
     );
@@ -167,9 +167,9 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
       </h2>
 
       {/* Cost Summary */}
-      <div className="space-y-4 mb-6">
+      <div className="mb-6 space-y-4">
         {/* Current Subscriptions */}
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <span className="text-muted-foreground">Current Monthly Cost:</span>
           <span className="text-xl font-semibold text-foreground">
             {formatCurrency(totalMonthlyCost)}
@@ -179,7 +179,7 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
         {/* Future Subscriptions - Only show if there are any */}
         {futureCount > 0 && (
           <>
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between">
               <span className="text-muted-foreground">
                 Future Monthly Cost:
               </span>
@@ -187,7 +187,7 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
                 {formatCurrency(futureMonthlyCost)}
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between">
               <span className="text-muted-foreground">
                 Combined Monthly Cost:
               </span>
@@ -199,7 +199,7 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
         )}
 
         {/* Yearly Cost */}
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <span className="text-muted-foreground">Yearly Cost:</span>
           <span className="text-lg font-medium text-foreground">
             {formatCurrency(yearlyTotal)}
@@ -207,7 +207,7 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
         </div>
 
         {/* Subscription Counts */}
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <span className="text-muted-foreground">Active Now:</span>
           <span className="text-lg font-medium text-foreground">
             {activeCount}
@@ -216,7 +216,7 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
 
         {/* Future Subscriptions Count - Only show if there are any */}
         {futureCount > 0 && (
-          <div className="flex justify-between items-center">
+          <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Starting in Future:</span>
             <span className="text-lg font-medium text-primary">
               {futureCount}
@@ -227,7 +227,7 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
 
       {/* Upcoming Payments */}
       <div className="mt-6">
-        <h3 className="text-md font-medium text-foreground mb-3 border-b border-border pb-2">
+        <h3 className="pb-2 mb-3 font-medium border-b text-md text-foreground border-border">
           Upcoming Payments
         </h3>
 
@@ -240,15 +240,15 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
             {upcomingPayments.map((subscription) => (
               <div
                 key={subscription.id}
-                className="p-3 rounded-lg bg-muted/30 border border-border"
+                className="p-3 border rounded-lg bg-muted/30 border-border"
               >
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <span className="font-medium">{subscription.name}</span>
-                  <span className="text-primary font-semibold">
+                  <span className="font-semibold text-primary">
                     {formatCurrency(subscription.amount)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center mt-1 text-sm">
+                <div className="flex items-center justify-between mt-1 text-sm">
                   <span className="text-muted-foreground">
                     {subscription.billing_frequency}
                   </span>

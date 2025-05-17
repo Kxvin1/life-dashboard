@@ -8,6 +8,7 @@ import SubscriptionForm from "@/components/finance/SubscriptionForm";
 import SubscriptionTabs from "@/components/finance/SubscriptionTabs";
 import SubscriptionSummary from "@/components/finance/SubscriptionSummary";
 import Toast from "@/components/ui/Toast";
+import { SubscriptionStatus } from "@/types/finance";
 
 const SubscriptionsPage = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -15,6 +16,7 @@ const SubscriptionsPage = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [activeTab, setActiveTab] = useState<SubscriptionStatus>("active");
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -32,6 +34,15 @@ const SubscriptionsPage = () => {
     // Refresh the subscription summary only
     // The SubscriptionList component will handle its own refresh
     setRefreshKey((prev) => prev + 1);
+  };
+
+  const handleSubscriptionToggled = () => {
+    // Refresh the subscription summary when a subscription is toggled
+    setRefreshKey((prev) => prev + 1);
+  };
+
+  const handleTabChange = (tab: SubscriptionStatus) => {
+    setActiveTab(tab);
   };
 
   if (isLoading) {
@@ -78,7 +89,7 @@ const SubscriptionsPage = () => {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Subscription Summary - Shown first on mobile, right side on desktop */}
         <div className="order-first lg:order-last lg:col-span-1">
-          <SubscriptionSummary key={refreshKey} />
+          <SubscriptionSummary refreshKey={refreshKey} />
         </div>
 
         {/* Mobile Add Subscription Form - Only visible on mobile, shown BEFORE the header */}
@@ -132,8 +143,10 @@ const SubscriptionsPage = () => {
 
           <div className="p-6 border shadow-md bg-card rounded-xl border-border">
             <SubscriptionTabs
-              key={refreshKey}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
               onSubscriptionDeleted={handleSubscriptionDeleted}
+              onSubscriptionToggled={handleSubscriptionToggled}
             />
           </div>
         </div>
