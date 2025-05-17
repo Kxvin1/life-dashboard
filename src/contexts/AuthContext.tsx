@@ -26,7 +26,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   loginAsDemo: () => Promise<void>;
-  logout: () => void;
+  logout: (message?: string) => void;
   fetchUser: () => Promise<User | null>;
 }
 
@@ -56,8 +56,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return `${baseUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
   }, []);
 
-  // This function is kept for potential future use in other parts of the app
-  // It's currently not used directly but could be useful for refreshing user data
+  // Fetch the current user data and update state
   const fetchUser = useCallback(async () => {
     try {
       const token = Cookies.get("token");
@@ -65,7 +64,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (!token) {
         setIsLoading(false);
         setIsAuthenticated(false);
-        return;
+        return null;
       }
 
       const response = await fetch(getApiUrl("/api/v1/auth/me"), {
@@ -88,18 +87,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setIsAuthenticated(true);
 
       // Set demo user state if applicable
-      if (userData.is_demo_user) {
-        setIsDemoUser(true);
-      } else {
-        setIsDemoUser(false);
-      }
+      setIsDemoUser(!!userData.is_demo_user);
 
       return userData; // Return the user data for potential future use
-    } catch {
+    } catch (error) {
       // If there's an error, clear the token and reset auth state
       Cookies.remove("token");
       setUser(null);
       setIsAuthenticated(false);
+
+      // Check if we're on a protected page and need to redirect
+      const currentPath = window.location.pathname;
+      if (
+        currentPath !== "/login" &&
+        currentPath !== "/register" &&
+        currentPath !== "/home"
+      ) {
+        // Store a message in sessionStorage to display on the login page
+        sessionStorage.setItem(
+          "auth_message",
+          "Your session has expired. Please log in again."
+        );
+
+        // Redirect to login page
+        window.location.href = "/login";
+      }
+
       return null;
     } finally {
       setIsLoading(false);
@@ -121,6 +134,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const login = async (email: string, password: string) => {
     try {
+      // Clear any previous auth messages from sessionStorage
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("auth_message");
+      }
+
       const formData = new URLSearchParams();
       formData.append("username", email);
       formData.append("password", password);
@@ -154,28 +172,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       try {
         // Fetch user data and wait for it to complete
-        const token = Cookies.get("token");
+        const userData = await fetchUser();
 
-        const userResponse = await fetch(getApiUrl("/api/v1/auth/me"), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          credentials: "include",
-        });
-
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          setUser(userData);
-
+        if (userData) {
           // Use window.location for more reliable navigation
           window.location.href = "/";
         } else {
-          // Still redirect to home page
-          window.location.href = "/";
+          // If fetchUser failed, it will handle the error and redirect
+          throw new Error("Failed to fetch user data");
         }
       } catch {
-        // Still redirect to home page
-        window.location.href = "/";
+        // If there was an error fetching user data, fetchUser will handle it
+        // Just return here to prevent further execution
+        return;
       }
     } catch (error) {
       throw error;
@@ -184,6 +193,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const register = async (email: string, password: string, name: string) => {
     try {
+      // Clear any previous auth messages from sessionStorage
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("auth_message");
+      }
+
       const response = await fetch(getApiUrl("/api/v1/auth/register"), {
         method: "POST",
         headers: {
@@ -291,28 +305,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       try {
         // Fetch user data and wait for it to complete
-        const token = Cookies.get("token");
+        const userData = await fetchUser();
 
-        const userResponse = await fetch(getApiUrl("/api/v1/auth/me"), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          credentials: "include",
-        });
-
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          setUser(userData);
-
+        if (userData) {
           // Use window.location for more reliable navigation
           window.location.href = "/";
         } else {
-          // Still redirect to home page
-          window.location.href = "/";
+          // If fetchUser failed, it will handle the error and redirect
+          throw new Error("Failed to fetch user data");
         }
       } catch {
-        // Still redirect to home page
-        window.location.href = "/";
+        // If there was an error fetching user data, fetchUser will handle it
+        // Just return here to prevent further execution
+        return;
       }
     } catch (error) {
       throw error;
@@ -322,6 +327,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const loginAsDemo = async () => {
     try {
       setIsLoading(true);
+
+      // Clear any previous auth messages from sessionStorage
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("auth_message");
+      }
 
       const response = await fetch(getApiUrl("/api/v1/auth/demo"), {
         method: "POST",
@@ -347,18 +357,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setIsDemoUser(true);
 
       try {
-        // Fetch user data
-        const token = Cookies.get("token");
+        // Fetch user data using our improved fetchUser function
+        const userData = await fetchUser();
 
-        const userResponse = await fetch(getApiUrl("/api/v1/auth/me"), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          credentials: "include",
-        });
-
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
+        if (userData) {
+          // Ensure demo user flag is set
           setUser({
             ...userData,
             is_demo_user: true, // Ensure this flag is set on the frontend
@@ -367,12 +370,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           // Redirect to dashboard
           window.location.href = "/";
         } else {
-          // Still redirect to home page
-          window.location.href = "/";
+          // If fetchUser failed, it will handle the error and redirect
+          throw new Error("Failed to fetch user data");
         }
       } catch {
-        // Still redirect to home page
-        window.location.href = "/";
+        // If there was an error fetching user data, fetchUser will handle it
+        // Just return here to prevent further execution
+        return;
       }
     } catch (error) {
       throw error;
@@ -381,12 +385,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const logout = () => {
+  const logout = (message?: string) => {
+    // Clear the token
     Cookies.remove("token");
+
+    // Reset auth state
     setUser(null);
     setIsAuthenticated(false);
     setIsDemoUser(false);
-    router.push("/home");
+
+    // If a message is provided, store it in sessionStorage
+    if (message && typeof window !== "undefined") {
+      sessionStorage.setItem("auth_message", message);
+    }
+
+    // Redirect to home or login page
+    if (message) {
+      // If there's a message, redirect to login page
+      window.location.href = "/login";
+    } else {
+      // Otherwise, use the router for a smoother transition
+      router.push("/home");
+    }
   };
 
   const value = {

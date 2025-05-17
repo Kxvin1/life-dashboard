@@ -7,6 +7,7 @@ from app.db.database import get_db
 from app.models.user import User
 from app.services.pomodoro_service import PomodoroService
 from app.api.auth import get_current_user
+from app.core.config import settings
 from app.schemas.pomodoro import (
     PomodoroSession,
     PomodoroSessionCreate,
@@ -25,7 +26,15 @@ async def test_pomodoro_openai(
 ):
     """
     Test the OpenAI connection for Pomodoro AI analysis
+    Only available in development environment
     """
+    # Check if we're in development environment
+    if settings.ENVIRONMENT != "development":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Endpoint not available in production",
+        )
+
     # Check if user is a demo user
     if current_user.is_demo_user:
         raise HTTPException(

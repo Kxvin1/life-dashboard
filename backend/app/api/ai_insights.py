@@ -6,6 +6,7 @@ import pytz
 from app.db.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
+from app.core.config import settings
 from app.schemas.ai_insight import (
     AIInsightRequest,
     AIInsightResponse,
@@ -22,7 +23,15 @@ async def public_test(request: Request):
     """
     Public test endpoint that doesn't require authentication.
     This is used to test if CORS is working correctly.
+    Only available in development environment.
     """
+    # Check if we're in development environment
+    if settings.ENVIRONMENT != "development":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Endpoint not available in production",
+        )
+
     # Get the origin from the request
     origin = request.headers.get("Origin", "Unknown")
 
@@ -145,7 +154,15 @@ async def test_openai_connection(
     Test the connection to OpenAI API
 
     This endpoint is only accessible to the super user for testing purposes
+    and only in development environment
     """
+    # Check if we're in development environment
+    if settings.ENVIRONMENT != "development":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Endpoint not available in production",
+        )
+
     if current_user.email != "kevinzy17@gmail.com":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

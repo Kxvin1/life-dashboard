@@ -12,12 +12,21 @@ import ScrollToTop from "@/components/common/ScrollToTop";
 import MiniTimer from "@/components/productivity/MiniTimer";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { setupFetchInterceptor } from "@/lib/fetchInterceptor";
 
 const inter = Inter({ subsets: ["latin"] });
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Set up fetch interceptor to handle authentication errors
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Initialize the fetch interceptor
+      setupFetchInterceptor();
+    }
+  }, []);
 
   // Close mobile sidebar when screen size changes to desktop
   useEffect(() => {
