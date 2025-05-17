@@ -30,6 +30,18 @@ const LoginForm = () => {
     }
   }, [theme]);
 
+  // Check for auth messages in sessionStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const authMessage = sessionStorage.getItem("auth_message");
+      if (authMessage) {
+        setError(authMessage);
+        // Clear the message from sessionStorage
+        sessionStorage.removeItem("auth_message");
+      }
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
