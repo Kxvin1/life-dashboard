@@ -6,7 +6,6 @@ import {
   fetchSubscriptions,
   deleteSubscription,
   toggleSubscriptionStatus,
-  fetchSubscriptionSummary,
 } from "@/services/subscriptionService";
 import { formatCurrency, formatSubscriptionDuration } from "@/lib/utils";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -15,13 +14,14 @@ import Toast from "@/components/ui/Toast";
 interface SubscriptionListProps {
   status: SubscriptionStatus;
   onSubscriptionDeleted: () => void;
+  onSubscriptionToggled?: () => void;
   sortField: "name" | "price" | "upcoming";
   sortDirection: "asc" | "desc";
 }
 
 const SubscriptionList = ({
   status,
-  onSubscriptionDeleted,
+  onSubscriptionToggled,
   sortField,
   sortDirection,
 }: SubscriptionListProps) => {
@@ -107,7 +107,7 @@ const SubscriptionList = ({
           comparison = a.amount - b.amount;
         } else if (sortField === "upcoming" && status === "active") {
           // Get the effective date for each subscription (next payment date or start date for future ones)
-          const getEffectiveDate = (sub) => {
+          const getEffectiveDate = (sub: Subscription) => {
             if (isFutureDate(sub.start_date)) {
               return new Date(sub.start_date).getTime();
             } else {
@@ -153,7 +153,7 @@ const SubscriptionList = ({
         // Sort them by next payment date (or start date for future ones)
         const sortedSubscriptions = [...allSubscriptions].sort((a, b) => {
           // Get the effective date for each subscription
-          const getEffectiveDate = (sub) => {
+          const getEffectiveDate = (sub: Subscription) => {
             if (isFutureDate(sub.start_date)) {
               return new Date(sub.start_date).getTime();
             } else {
@@ -175,7 +175,7 @@ const SubscriptionList = ({
           .slice(0, 3)
           .map((sub) => sub.id);
         setUpcomingPaymentIds(upcomingIds);
-      } catch (error) {
+      } catch {
         // Silently handle error - we don't want to break the UI if this fails
       }
     } else {
@@ -187,6 +187,7 @@ const SubscriptionList = ({
   useEffect(() => {
     loadSubscriptions();
     loadUpcomingPayments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, sortField, sortDirection]);
 
   const handleDeleteClick = (id: string) => {
@@ -254,6 +255,11 @@ const SubscriptionList = ({
       // Refresh the current tab's data without changing tabs
       loadSubscriptions();
       loadUpcomingPayments();
+
+      // Notify parent component that a subscription was toggled
+      if (onSubscriptionToggled) {
+        onSubscriptionToggled();
+      }
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -288,7 +294,7 @@ const SubscriptionList = ({
 
   if (subscriptions.length === 0) {
     return (
-      <div className="text-center py-8 bg-card/70 backdrop-blur-sm rounded-xl border border-border">
+      <div className="py-8 text-center border bg-card/70 backdrop-blur-sm rounded-xl border-border">
         <p className="text-muted-foreground">
           No {status} subscriptions found.
         </p>
@@ -305,16 +311,16 @@ const SubscriptionList = ({
   );
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border">
+    <div className="overflow-hidden border rounded-xl border-border">
       {/* Table Header with Pagination */}
-      <div className="bg-card px-6 py-4 border-b border-border">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="px-6 py-4 border-b bg-card border-border">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-xl font-semibold text-foreground">
             {status === "active" ? "Active" : "Inactive"} Subscriptions
           </h2>
           {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
-              <p className="text-sm text-muted-foreground text-center sm:text-left">
+            <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
+              <p className="text-sm text-center text-muted-foreground sm:text-left">
                 <span className="font-medium">{startIndex + 1}</span> -{" "}
                 <span className="font-medium">
                   {Math.min(
@@ -335,7 +341,7 @@ const SubscriptionList = ({
                   <button
                     onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
-                    className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-l-md border border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative inline-flex items-center px-3 py-2 text-sm font-medium border rounded-l-md border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="sr-only">Previous</span>
                     <svg
@@ -356,7 +362,7 @@ const SubscriptionList = ({
                   {currentPage > 2 && (
                     <button
                       onClick={() => setCurrentPage(1)}
-                      className="hidden sm:inline-flex relative items-center px-4 py-2 border border-border bg-card text-sm font-medium text-foreground hover:bg-accent/50"
+                      className="relative items-center hidden px-4 py-2 text-sm font-medium border sm:inline-flex border-border bg-card text-foreground hover:bg-accent/50"
                     >
                       1
                     </button>
@@ -364,19 +370,19 @@ const SubscriptionList = ({
 
                   {/* Ellipsis - shown when needed on desktop */}
                   {currentPage > 3 && (
-                    <span className="hidden sm:inline-flex relative items-center px-4 py-2 border border-border bg-card text-sm font-medium text-muted-foreground">
+                    <span className="relative items-center hidden px-4 py-2 text-sm font-medium border sm:inline-flex border-border bg-card text-muted-foreground">
                       ...
                     </span>
                   )}
 
                   {/* Current page indicator - always visible */}
-                  <span className="relative inline-flex items-center px-4 py-2 border border-primary/30 bg-primary/10 text-sm font-medium text-primary">
+                  <span className="relative inline-flex items-center px-4 py-2 text-sm font-medium border border-primary/30 bg-primary/10 text-primary">
                     {currentPage} of {totalPages}
                   </span>
 
                   {/* Ellipsis - shown when needed on desktop */}
                   {currentPage < totalPages - 2 && (
-                    <span className="hidden sm:inline-flex relative items-center px-4 py-2 border border-border bg-card text-sm font-medium text-muted-foreground">
+                    <span className="relative items-center hidden px-4 py-2 text-sm font-medium border sm:inline-flex border-border bg-card text-muted-foreground">
                       ...
                     </span>
                   )}
@@ -385,7 +391,7 @@ const SubscriptionList = ({
                   {currentPage < totalPages - 1 && (
                     <button
                       onClick={() => setCurrentPage(totalPages)}
-                      className="hidden sm:inline-flex relative items-center px-4 py-2 border border-border bg-card text-sm font-medium text-foreground hover:bg-accent/50"
+                      className="relative items-center hidden px-4 py-2 text-sm font-medium border sm:inline-flex border-border bg-card text-foreground hover:bg-accent/50"
                     >
                       {totalPages}
                     </button>
@@ -397,7 +403,7 @@ const SubscriptionList = ({
                       setCurrentPage(Math.min(totalPages, currentPage + 1))
                     }
                     disabled={currentPage === totalPages}
-                    className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-r-md border border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative inline-flex items-center px-3 py-2 text-sm font-medium border rounded-r-md border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="sr-only">Next</span>
                     <svg
@@ -421,7 +427,7 @@ const SubscriptionList = ({
       </div>
 
       {/* Sort Indicator */}
-      <div className="bg-card px-6 py-3 border-t border-border">
+      <div className="px-6 py-3 border-t bg-card border-border">
         <div className="flex items-center text-sm text-muted-foreground">
           <span>Sorted by: </span>
           <span className="ml-1 font-medium text-foreground">
@@ -446,7 +452,7 @@ const SubscriptionList = ({
       {/* Card-based Layout for All Screen Sizes */}
       <div className="bg-card">
         <div className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4">
             {paginatedSubscriptions.map((subscription) => (
               <div
                 key={subscription.id}
@@ -461,13 +467,13 @@ const SubscriptionList = ({
                 }`}
               >
                 {/* Service Name and Price */}
-                <div className="flex justify-between items-start mb-4">
+                <div className="flex items-start justify-between mb-4">
                   <div className="flex flex-col max-w-[70%]">
-                    <h3 className="text-lg font-medium text-foreground break-words">
+                    <h3 className="text-lg font-medium break-words text-foreground">
                       {subscription.name}
                     </h3>
                     {upcomingPaymentIds.includes(subscription.id) && (
-                      <span className="mt-1 text-xs font-medium text-primary break-words">
+                      <span className="mt-1 text-xs font-medium break-words text-primary">
                         {upcomingPaymentIds.indexOf(subscription.id) === 0
                           ? "Next payment due"
                           : `Payment due soon (${
@@ -476,17 +482,17 @@ const SubscriptionList = ({
                       </span>
                     )}
                   </div>
-                  <span className="text-lg font-semibold text-foreground flex-shrink-0">
+                  <span className="flex-shrink-0 text-lg font-semibold text-foreground">
                     {formatCurrency(subscription.amount)}
                   </span>
                 </div>
 
                 {/* Details Grid */}
-                <div className="grid grid-cols-2 gap-y-3 mb-5 text-sm">
-                  <div className="text-muted-foreground font-medium">
+                <div className="grid grid-cols-2 mb-5 text-sm gap-y-3">
+                  <div className="font-medium text-muted-foreground">
                     Start Date:
                   </div>
-                  <div className="text-foreground flex items-center overflow-hidden">
+                  <div className="flex items-center overflow-hidden text-foreground">
                     <span className="min-w-0 break-words">
                       {formatDate(subscription.start_date)}
                     </span>
@@ -497,17 +503,17 @@ const SubscriptionList = ({
                     )}
                   </div>
 
-                  <div className="text-muted-foreground font-medium">
+                  <div className="font-medium text-muted-foreground">
                     Duration:
                   </div>
-                  <div className="text-foreground break-words">
+                  <div className="break-words text-foreground">
                     {formatSubscriptionDuration(subscription.start_date)}
                   </div>
 
-                  <div className="text-muted-foreground font-medium">
+                  <div className="font-medium text-muted-foreground">
                     {status === "active" ? "Next Payment:" : "Last Active:"}
                   </div>
-                  <div className="text-foreground overflow-hidden">
+                  <div className="overflow-hidden text-foreground">
                     {status === "active" ? (
                       isFutureDate(subscription.start_date) ? (
                         <div className="flex items-center">
@@ -530,21 +536,21 @@ const SubscriptionList = ({
                     )}
                   </div>
 
-                  <div className="text-muted-foreground font-medium">
+                  <div className="font-medium text-muted-foreground">
                     Frequency:
                   </div>
-                  <div className="text-foreground break-words">
+                  <div className="break-words text-foreground">
                     {formatBillingFrequency(subscription.billing_frequency)}
                   </div>
 
                   {/* Display notes if they exist */}
                   {subscription.notes && (
                     <>
-                      <div className="text-muted-foreground font-medium">
+                      <div className="font-medium text-muted-foreground">
                         Note:
                       </div>
-                      <div className="text-foreground italic break-words">
-                        "{subscription.notes}"
+                      <div className="italic break-words text-foreground">
+                        &quot;{subscription.notes}&quot;
                       </div>
                     </>
                   )}
@@ -631,7 +637,7 @@ const SubscriptionList = ({
             setSubscriptionToToggle(null);
           }}
           variant={
-            subscriptionToToggle.status === "active" ? "warning" : "default"
+            subscriptionToToggle.status === "active" ? "warning" : "info"
           }
         />
       )}

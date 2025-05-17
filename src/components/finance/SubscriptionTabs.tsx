@@ -6,13 +6,20 @@ import SubscriptionList from "./SubscriptionList";
 
 interface SubscriptionTabsProps {
   onSubscriptionDeleted: () => void;
+  onSubscriptionToggled?: () => void;
+  activeTab: SubscriptionStatus;
+  onTabChange: (tab: SubscriptionStatus) => void;
 }
 
 type SortField = "name" | "price" | "upcoming";
 type SortDirection = "asc" | "desc";
 
-const SubscriptionTabs = ({ onSubscriptionDeleted }: SubscriptionTabsProps) => {
-  const [activeTab, setActiveTab] = useState<SubscriptionStatus>("active");
+const SubscriptionTabs = ({
+  onSubscriptionDeleted,
+  onSubscriptionToggled,
+  activeTab,
+  onTabChange,
+}: SubscriptionTabsProps) => {
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
@@ -26,7 +33,7 @@ const SubscriptionTabs = ({ onSubscriptionDeleted }: SubscriptionTabsProps) => {
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
-            onClick={() => setActiveTab("active")}
+            onClick={() => onTabChange("active")}
           >
             Active
           </button>
@@ -36,7 +43,7 @@ const SubscriptionTabs = ({ onSubscriptionDeleted }: SubscriptionTabsProps) => {
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
-            onClick={() => setActiveTab("inactive")}
+            onClick={() => onTabChange("inactive")}
           >
             Inactive
           </button>
@@ -108,6 +115,7 @@ const SubscriptionTabs = ({ onSubscriptionDeleted }: SubscriptionTabsProps) => {
       <SubscriptionList
         status={activeTab}
         onSubscriptionDeleted={onSubscriptionDeleted}
+        onSubscriptionToggled={onSubscriptionToggled}
         sortField={sortField}
         sortDirection={sortDirection}
       />
