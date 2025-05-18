@@ -239,7 +239,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 } else if (fieldName === "password") {
                   messages.push("Your password doesn't meet the requirements");
                 } else if (fieldName === "full_name") {
-                  messages.push("Please check your name");
+                  messages.push("Name cannot exceed 20 characters");
                 }
                 // If we can't determine the field, use a generic message
                 else {
@@ -273,7 +273,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               messages.push("Your password doesn't meet the requirements");
             }
             if (errorData.full_name) {
-              messages.push("Please check your name");
+              messages.push("Name cannot exceed 20 characters");
             }
 
             if (messages.length > 0) {

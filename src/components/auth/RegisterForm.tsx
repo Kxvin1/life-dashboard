@@ -13,6 +13,7 @@ const RegisterForm = () => {
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const { register, loginAsDemo, isLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const MAX_NAME_LENGTH = 20;
 
   // Ensure theme is applied correctly
   useEffect(() => {
@@ -46,6 +47,13 @@ const RegisterForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Validate name length
+    if (name.length > MAX_NAME_LENGTH) {
+      setError(`Name cannot exceed ${MAX_NAME_LENGTH} characters`);
+      return;
+    }
+
     try {
       await register(email, password, name);
     } catch (err) {
@@ -132,18 +140,28 @@ const RegisterForm = () => {
           )}
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="name" className="sr-only">
-                Full Name
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="name" className="sr-only">
+                  Name
+                </label>
+                <span className="text-xs text-muted-foreground text-gray-500 dark:text-gray-400">
+                  {name.length}/{MAX_NAME_LENGTH} characters
+                </span>
+              </div>
               <input
                 id="name"
                 name="name"
                 type="text"
                 required
+                maxLength={MAX_NAME_LENGTH}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Full Name"
+                placeholder="Name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value.length <= MAX_NAME_LENGTH) {
+                    setName(e.target.value);
+                  }
+                }}
               />
             </div>
             <div>
