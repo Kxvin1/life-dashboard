@@ -49,7 +49,7 @@ const HomePage = () => {
               </div>
 
               {/* Desktop Navigation */}
-              <div className="hidden md:flex items-center space-x-4">
+              <div className="items-center hidden space-x-4 md:flex">
                 {/* Theme Toggle Button */}
                 <button
                   onClick={toggleTheme}
@@ -103,15 +103,15 @@ const HomePage = () => {
               </div>
 
               {/* Mobile Hamburger Button */}
-              <div className="flex md:hidden items-center">
+              <div className="flex items-center md:hidden">
                 <button
                   onClick={toggleMobileMenu}
-                  className="p-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700"
+                  className="p-2 text-gray-700 rounded-md dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700"
                   aria-label="Open menu"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
+                    className="w-6 h-6"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -151,7 +151,7 @@ const HomePage = () => {
                 </h1>
                 <p className="mt-3 text-base text-gray-500 dark:text-gray-300 sm:mt-5 sm:text-xl lg:text-lg xl:text-xl">
                   Use AI-powered tools to organize your money, time, and health
-                  — and uncover insights you might miss on your own.
+                  - and uncover insights you might miss on your own.
                   <br />
                   <br />
                   All through a beautiful, intuitive interface with your data
@@ -199,7 +199,7 @@ const HomePage = () => {
                 Simple tools. Supercharged by AI.
               </p>
               <p className="max-w-2xl mt-4 text-xl text-gray-500 dark:text-gray-300 lg:mx-auto">
-                Turns everyday tasks into AI enhanced experiences — helping you
+                Turns everyday tasks into AI enhanced experiences - helping you
                 make smarter decisions, stay organized, and feel in control.
               </p>
             </div>
@@ -316,7 +316,7 @@ const HomePage = () => {
                       Personal Organization
                     </h3>
                     <p className="mt-2 text-base text-gray-500 dark:text-gray-300">
-                      Effortlessly manage notes, files, reading, and skills —
+                      Effortlessly manage notes, files, reading, and skills -
                       with AI that keeps everything in sync.
                     </p>
                   </div>
@@ -387,7 +387,7 @@ const HomePage = () => {
                     Clear insights. Smarter decisions.
                   </p>
                   <p className="mt-4 text-lg text-gray-500 dark:text-gray-300">
-                    AI-driven insights surface hidden patterns and trends —
+                    AI-driven insights surface hidden patterns and trends -
                     helping you make smarter decisions, spot opportunities, and
                     stay one step ahead.
                   </p>
