@@ -235,7 +235,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
                 // Create user-friendly messages based on field and error type
                 if (fieldName === "email") {
-                  messages.push("Please enter a valid email address");
+                  messages.push(
+                    "Please enter a valid email address (maximum 50 characters)"
+                  );
                 } else if (fieldName === "password") {
                   messages.push("Your password doesn't meet the requirements");
                 } else if (fieldName === "full_name") {
@@ -267,7 +269,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             const messages = [];
 
             if (errorData.email) {
-              messages.push("Please enter a valid email address");
+              messages.push(
+                "Please enter a valid email address (maximum 50 characters)"
+              );
             }
             if (errorData.password) {
               messages.push("Your password doesn't meet the requirements");

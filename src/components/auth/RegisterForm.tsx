@@ -14,6 +14,7 @@ const RegisterForm = () => {
   const { register, loginAsDemo, isLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const MAX_NAME_LENGTH = 20;
+  const MAX_EMAIL_LENGTH = 50;
 
   // Ensure theme is applied correctly
   useEffect(() => {
@@ -51,6 +52,12 @@ const RegisterForm = () => {
     // Validate name length
     if (name.length > MAX_NAME_LENGTH) {
       setError(`Name cannot exceed ${MAX_NAME_LENGTH} characters`);
+      return;
+    }
+
+    // Validate email length
+    if (email.length > MAX_EMAIL_LENGTH) {
+      setError(`Email cannot exceed ${MAX_EMAIL_LENGTH} characters`);
       return;
     }
 
@@ -138,13 +145,16 @@ const RegisterForm = () => {
               ))}
             </div>
           )}
-          <div className="rounded-md shadow-sm -space-y-px">
+          <div className="space-y-4">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label htmlFor="name" className="sr-only">
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
                   Name
                 </label>
-                <span className="text-xs text-muted-foreground text-gray-500 dark:text-gray-400">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
                   {name.length}/{MAX_NAME_LENGTH} characters
                 </span>
               </div>
@@ -154,8 +164,8 @@ const RegisterForm = () => {
                 type="text"
                 required
                 maxLength={MAX_NAME_LENGTH}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Name"
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
+                placeholder="Enter your name"
                 value={name}
                 onChange={(e) => {
                   if (e.target.value.length <= MAX_NAME_LENGTH) {
@@ -164,34 +174,54 @@ const RegisterForm = () => {
                 }}
               />
             </div>
+
             <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Email address
+                </label>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {email.length}/{MAX_EMAIL_LENGTH} characters
+                </span>
+              </div>
               <input
                 id="email"
                 name="email"
                 type="email"
                 autoComplete="email"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
+                maxLength={MAX_EMAIL_LENGTH}
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
+                placeholder="Enter your email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value.length <= MAX_EMAIL_LENGTH) {
+                    setEmail(e.target.value);
+                  }
+                }}
               />
             </div>
+
             <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Password
+                </label>
+              </div>
               <input
                 id="password"
                 name="password"
                 type="password"
                 autoComplete="new-password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white dark:bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm transition-colors"
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
