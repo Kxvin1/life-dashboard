@@ -22,15 +22,8 @@ logger = logging.getLogger(__name__)
 # Add the current directory to the path so we can import from app
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Get database URL with the correct precedence
-# 1. Use DATABASE_PUBLIC_URL if available (works everywhere)
-# 2. Fall back to DATABASE_URL (only works inside Railway network)
-# 3. Use a placeholder for development/testing
-DATABASE_URL = (
-    os.environ.get("DATABASE_PUBLIC_URL")
-    or os.environ.get("DATABASE_URL")
-    or "postgresql://placeholder:placeholder@localhost/placeholder"
-)
+# Get database URL - use DATABASE_URL which should be set to the public URL in railway.toml
+DATABASE_URL = os.environ.get("DATABASE_URL") or "postgresql://placeholder:placeholder@localhost/placeholder"
 
 # Log which URL we're using
 if "railway.internal" in DATABASE_URL:
@@ -47,7 +40,7 @@ if (
     DATABASE_URL == "postgresql://placeholder:placeholder@localhost/placeholder"
     and __name__ == "__main__"
 ):
-    logger.error("No valid DATABASE_URL or DATABASE_PUBLIC_URL found")
+    logger.error("No valid DATABASE_URL found")
     sys.exit(1)
 
 # Import or define the engine creation function
@@ -73,13 +66,16 @@ except ImportError:
         # Determine connection settings based on the URL
         is_railway_internal = "railway.internal" in url
         is_localhost = "localhost" in url or "127.0.0.1" in url
-
+        
+        # Set SSL mode based on connection type
+        # For Railway internal connections, disable SSL
+        # For public connections (including Railway proxy), require SSL
+        sslmode = "disable" if is_railway_internal else "require"
+        
         # Create engine with appropriate settings
         if is_localhost:
             # For localhost, don't use any SSL settings
-            logger.info(
-                f"Creating engine for {masked_url} without SSL (local development)"
-            )
+            logger.info(f"Creating engine for {masked_url} without SSL (local development)")
             return create_engine(
                 url,
                 pool_pre_ping=True,
@@ -88,26 +84,9 @@ except ImportError:
                 max_overflow=10,
                 # No connect_args for localhost
             )
-        elif is_railway_internal:
-            # For Railway internal connections, disable SSL
-            logger.info(
-                f"Creating engine for {masked_url} with sslmode=disable (Railway internal)"
-            )
-            return create_engine(
-                url,
-                pool_pre_ping=True,
-                pool_recycle=300,
-                pool_size=5,
-                max_overflow=10,
-                connect_args={"sslmode": "disable"},
-            )
         else:
-            # For all other connections (production), use SSL mode from environment variable
-            # Get SSL mode from environment or use prefer as default
-            ssl_mode = os.environ.get("DATABASE_SSL_MODE", "prefer")
-            logger.info(
-                f"Creating engine for {masked_url} with sslmode={ssl_mode} (production)"
-            )
+            # For all other connections, use the determined SSL mode
+            logger.info(f"Creating engine for {masked_url} with sslmode={sslmode}")
             return create_engine(
                 url,
                 pool_pre_ping=True,
@@ -115,8 +94,8 @@ except ImportError:
                 pool_size=5,
                 max_overflow=10,
                 connect_args={
-                    "sslmode": ssl_mode,  # Use SSL mode from environment variable
-                    "connect_timeout": 10,  # Add connection timeout
+                    "sslmode": sslmode,
+                    "connect_timeout": 10,
                 },
             )
 
@@ -146,56 +125,7 @@ def wait_for_database(max_attempts=10, delay=5):
             logger.warning(
                 f"Database not available yet (attempt {attempt+1}/{max_attempts}): {error_str}"
             )
-
-            # Special handling for SSL errors
-            if "SSL" in error_str or "ssl" in error_str:
-                logger.warning(
-                    "SSL negotiation error detected. Trying alternative SSL modes..."
-                )
-
-                # Try different SSL modes
-                ssl_modes = ["disable", "allow", "prefer", "require"]
-                for ssl_mode in ssl_modes:
-                    try:
-                        # Normalize URL
-                        url = DATABASE_URL
-                        if url.startswith("postgres://"):
-                            url = url.replace("postgres://", "postgresql://", 1)
-
-                        masked_url = url.split("@")[1] if "@" in url else "masked"
-                        logger.info(
-                            f"Attempting connection to {masked_url} with sslmode={ssl_mode}"
-                        )
-
-                        # Try with current SSL mode
-                        temp_engine = sqlalchemy_create_engine(
-                            url,
-                            pool_pre_ping=True,
-                            connect_args={
-                                "sslmode": ssl_mode,
-                                "connect_timeout": 10,
-                            },
-                        )
-                        with temp_engine.connect() as conn:
-                            conn.execute(text("SELECT 1"))
-                            logger.info(
-                                f"Database connection successful with sslmode={ssl_mode}!"
-                            )
-
-                            # Set the working SSL mode as an environment variable
-                            os.environ["DATABASE_SSL_MODE"] = ssl_mode
-                            logger.info(
-                                f"Set DATABASE_SSL_MODE={ssl_mode} for this session"
-                            )
-
-                            # Update the global engine with the working one
-                            engine = temp_engine
-                            return True
-                    except Exception as ssl_e:
-                        logger.warning(
-                            f"Connection with sslmode={ssl_mode} failed: {str(ssl_e)}"
-                        )
-
+            
             if attempt < max_attempts - 1:
                 logger.info(f"Waiting {delay} seconds before retrying...")
                 time.sleep(delay)

@@ -25,7 +25,12 @@ def make_engine(url: str):
     # Determine connection settings based on the URL
     is_railway_internal = "railway.internal" in url
     is_localhost = "localhost" in url or "127.0.0.1" in url
-
+    
+    # Set SSL mode based on connection type
+    # For Railway internal connections, disable SSL
+    # For public connections (including Railway proxy), require SSL
+    sslmode = "disable" if is_railway_internal else "require"
+    
     # Create engine with appropriate settings
     if is_localhost:
         # For localhost, don't use any SSL settings
@@ -38,26 +43,9 @@ def make_engine(url: str):
             max_overflow=10,
             # No connect_args for localhost
         )
-    elif is_railway_internal:
-        # For Railway internal connections, disable SSL
-        logger.info(
-            f"Creating engine for {masked_url} with sslmode=disable (Railway internal)"
-        )
-        return create_engine(
-            url,
-            pool_pre_ping=True,
-            pool_recycle=300,
-            pool_size=5,
-            max_overflow=10,
-            connect_args={"sslmode": "disable"},
-        )
     else:
-        # For all other connections (production), use SSL mode from environment variable
-        # Get SSL mode from environment or use prefer as default
-        ssl_mode = os.environ.get("DATABASE_SSL_MODE", "prefer")
-        logger.info(
-            f"Creating engine for {masked_url} with sslmode={ssl_mode} (production)"
-        )
+        # For all other connections, use the determined SSL mode
+        logger.info(f"Creating engine for {masked_url} with sslmode={sslmode}")
         return create_engine(
             url,
             pool_pre_ping=True,
@@ -65,7 +53,7 @@ def make_engine(url: str):
             pool_size=5,
             max_overflow=10,
             connect_args={
-                "sslmode": ssl_mode,  # Use SSL mode from environment variable
-                "connect_timeout": 10,  # Add connection timeout
+                "sslmode": sslmode,
+                "connect_timeout": 10,
             },
         )
