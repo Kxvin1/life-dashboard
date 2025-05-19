@@ -23,7 +23,10 @@ logger = logging.getLogger(__name__)
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Get database URL - use DATABASE_URL which should be set to the public URL in railway.toml
-DATABASE_URL = os.environ.get("DATABASE_URL") or "postgresql://placeholder:placeholder@localhost/placeholder"
+DATABASE_URL = (
+    os.environ.get("DATABASE_URL")
+    or "postgresql://placeholder:placeholder@localhost/placeholder"
+)
 
 # Log which URL we're using
 if "railway.internal" in DATABASE_URL:
@@ -66,16 +69,18 @@ except ImportError:
         # Determine connection settings based on the URL
         is_railway_internal = "railway.internal" in url
         is_localhost = "localhost" in url or "127.0.0.1" in url
-        
+
         # Set SSL mode based on connection type
         # For Railway internal connections, disable SSL
         # For public connections (including Railway proxy), require SSL
         sslmode = "disable" if is_railway_internal else "require"
-        
+
         # Create engine with appropriate settings
         if is_localhost:
             # For localhost, don't use any SSL settings
-            logger.info(f"Creating engine for {masked_url} without SSL (local development)")
+            logger.info(
+                f"Creating engine for {masked_url} without SSL (local development)"
+            )
             return create_engine(
                 url,
                 pool_pre_ping=True,
@@ -125,7 +130,7 @@ def wait_for_database(max_attempts=10, delay=5):
             logger.warning(
                 f"Database not available yet (attempt {attempt+1}/{max_attempts}): {error_str}"
             )
-            
+
             if attempt < max_attempts - 1:
                 logger.info(f"Waiting {delay} seconds before retrying...")
                 time.sleep(delay)
@@ -214,8 +219,44 @@ def main():
     """Main function."""
     try:
         logger.info("Starting fix_migrations.py script")
-        fix_migrations()
+        migrations_success = fix_migrations()
         logger.info("fix_migrations.py script completed successfully")
+
+        # Run seed_task_categories only after migrations have completed successfully
+        if migrations_success:
+            logger.info("Running task categories seeding...")
+            try:
+                import asyncio
+                from app.db.seed_task_categories import verify_task_categories_async
+
+                # Try up to 3 times with backoff
+                max_attempts = 3
+                for attempt in range(max_attempts):
+                    try:
+                        logger.info(
+                            f"Seeding task categories (attempt {attempt+1}/{max_attempts})..."
+                        )
+                        asyncio.run(verify_task_categories_async())
+                        logger.info("Task categories seeding completed successfully!")
+                        break
+                    except Exception as seed_e:
+                        logger.warning(
+                            f"Error seeding task categories (attempt {attempt+1}/{max_attempts}): {str(seed_e)}"
+                        )
+                        if attempt < max_attempts - 1:
+                            backoff_time = (
+                                2**attempt
+                            )  # Exponential backoff: 1, 2, 4 seconds
+                            logger.info(
+                                f"Waiting {backoff_time} seconds before retrying..."
+                            )
+                            time.sleep(backoff_time)
+            except Exception as e:
+                logger.error(
+                    f"Error importing or running seed_task_categories: {str(e)}"
+                )
+                # Continue anyway - this is not critical
+
         return 0
     except Exception as e:
         logger.error(f"Error in main function: {str(e)}")

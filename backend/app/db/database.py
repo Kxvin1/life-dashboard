@@ -74,28 +74,10 @@ else:
 # Create engine using shared module
 engine = make_engine(database_url)
 
-# Only register the ping_connection event listener for non-localhost connections
+# We're using pool_pre_ping=True in the engine creation, so we don't need a custom ping listener
+# SQLAlchemy will automatically check connections before using them
 is_localhost = "localhost" in database_url or "127.0.0.1" in database_url
-
-if not is_localhost:
-    # Define ping function to check connection
-    @event.listens_for(engine, "engine_connect")
-    def ping_connection(connection, branch):
-        if branch:
-            # Don't ping on checkout for branch connections
-            return
-
-        # Ping the connection to check if it's still alive
-        try:
-            connection.scalar("SELECT 1")
-        except Exception:
-            # Connection is invalid - close it and let SQLAlchemy create a new one
-            logger.warning("Database connection invalid, requesting new connection")
-            connection.close()
-            raise DisconnectionError("Connection invalid")
-
-else:
-    logger.info("Skipping connection ping for localhost development")
+logger.info("Using SQLAlchemy's built-in connection validation with pool_pre_ping=True")
 
 
 # Create session factory
@@ -105,20 +87,12 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
-# Dependency with simple retry logic
+# Dependency to get database session
 def get_db():
     # Create a new session
     db = SessionLocal()
     try:
-        # Only test the connection for non-localhost environments
-        if not is_localhost:
-            try:
-                db.execute(text("SELECT 1"))
-            except Exception as e:
-                # Log the error but continue anyway
-                logger.warning(f"Database connection test failed: {str(e)}")
-
-        # Yield the session
+        # Yield the session - SQLAlchemy will handle connection validation with pool_pre_ping
         yield db
     finally:
         # Always close the session
