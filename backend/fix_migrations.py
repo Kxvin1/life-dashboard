@@ -11,6 +11,7 @@ import logging
 from alembic.config import Config
 from alembic import command
 from sqlalchemy import text, inspect
+from sqlalchemy import create_engine as sqlalchemy_create_engine
 
 # Configure logging
 logging.basicConfig(
@@ -101,9 +102,11 @@ except ImportError:
                 connect_args={"sslmode": "disable"},
             )
         else:
-            # For all other connections (production), require SSL
+            # For all other connections (production), use SSL mode from environment variable
+            # Get SSL mode from environment or use prefer as default
+            ssl_mode = os.environ.get("DATABASE_SSL_MODE", "prefer")
             logger.info(
-                f"Creating engine for {masked_url} with sslmode=require (production)"
+                f"Creating engine for {masked_url} with sslmode={ssl_mode} (production)"
             )
             return create_engine(
                 url,
@@ -111,7 +114,10 @@ except ImportError:
                 pool_recycle=300,
                 pool_size=5,
                 max_overflow=10,
-                connect_args={"sslmode": "require"},
+                connect_args={
+                    "sslmode": ssl_mode,  # Use SSL mode from environment variable
+                    "connect_timeout": 10,  # Add connection timeout
+                },
             )
 
 
@@ -119,21 +125,78 @@ except ImportError:
 engine = make_engine(DATABASE_URL)
 
 
-def wait_for_database(max_attempts=5, delay=5):
+def wait_for_database(max_attempts=10, delay=5):
     """Wait for the database to be available."""
     logger.info(f"Waiting for database to be available...")
 
     # Try to connect
     for attempt in range(max_attempts):
         try:
-            with engine.connect() as conn:
+            # Create a fresh engine for each attempt to avoid cached connection issues
+            temp_engine = make_engine(DATABASE_URL)
+            with temp_engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
                 logger.info("Database is available!")
+                # Update the global engine with the working one
+                global engine
+                engine = temp_engine
                 return True
         except Exception as e:
+            error_str = str(e)
             logger.warning(
-                f"Database not available yet (attempt {attempt+1}/{max_attempts}): {str(e)}"
+                f"Database not available yet (attempt {attempt+1}/{max_attempts}): {error_str}"
             )
+
+            # Special handling for SSL errors
+            if "SSL" in error_str or "ssl" in error_str:
+                logger.warning(
+                    "SSL negotiation error detected. Trying alternative SSL modes..."
+                )
+
+                # Try different SSL modes
+                ssl_modes = ["disable", "allow", "prefer", "require"]
+                for ssl_mode in ssl_modes:
+                    try:
+                        # Normalize URL
+                        url = DATABASE_URL
+                        if url.startswith("postgres://"):
+                            url = url.replace("postgres://", "postgresql://", 1)
+
+                        masked_url = url.split("@")[1] if "@" in url else "masked"
+                        logger.info(
+                            f"Attempting connection to {masked_url} with sslmode={ssl_mode}"
+                        )
+
+                        # Try with current SSL mode
+                        temp_engine = sqlalchemy_create_engine(
+                            url,
+                            pool_pre_ping=True,
+                            connect_args={
+                                "sslmode": ssl_mode,
+                                "connect_timeout": 10,
+                            },
+                        )
+                        with temp_engine.connect() as conn:
+                            conn.execute(text("SELECT 1"))
+                            logger.info(
+                                f"Database connection successful with sslmode={ssl_mode}!"
+                            )
+
+                            # Set the working SSL mode as an environment variable
+                            os.environ["DATABASE_SSL_MODE"] = ssl_mode
+                            logger.info(
+                                f"Set DATABASE_SSL_MODE={ssl_mode} for this session"
+                            )
+
+                            # Update the global engine with the working one
+                            global engine
+                            engine = temp_engine
+                            return True
+                    except Exception as ssl_e:
+                        logger.warning(
+                            f"Connection with sslmode={ssl_mode} failed: {str(ssl_e)}"
+                        )
+
             if attempt < max_attempts - 1:
                 logger.info(f"Waiting {delay} seconds before retrying...")
                 time.sleep(delay)

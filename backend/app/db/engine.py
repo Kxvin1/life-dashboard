@@ -3,6 +3,7 @@ Shared database engine creation module.
 """
 
 import logging
+import os
 from sqlalchemy import create_engine
 
 logger = logging.getLogger(__name__)
@@ -51,9 +52,11 @@ def make_engine(url: str):
             connect_args={"sslmode": "disable"},
         )
     else:
-        # For all other connections (production), require SSL
+        # For all other connections (production), use SSL mode from environment variable
+        # Get SSL mode from environment or use prefer as default
+        ssl_mode = os.environ.get("DATABASE_SSL_MODE", "prefer")
         logger.info(
-            f"Creating engine for {masked_url} with sslmode=require (production)"
+            f"Creating engine for {masked_url} with sslmode={ssl_mode} (production)"
         )
         return create_engine(
             url,
@@ -61,5 +64,8 @@ def make_engine(url: str):
             pool_recycle=300,
             pool_size=5,
             max_overflow=10,
-            connect_args={"sslmode": "require"},
+            connect_args={
+                "sslmode": ssl_mode,  # Use SSL mode from environment variable
+                "connect_timeout": 10,  # Add connection timeout
+            },
         )
