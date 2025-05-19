@@ -6,3 +6,4 @@ from app.models.category import Category
 from app.models.subscription import Subscription
 from app.models.ai_insight import AIInsightUsage, SystemSetting
 from app.models.pomodoro import PomodoroSession, PomodoroAIUsage, PomodoroAIHistory
+from app.models.task import Task, TaskCategory, TaskAIUsage, TaskAIHistory

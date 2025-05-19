@@ -6,3 +6,4 @@ from app.api.transaction_summaries import router as summaries_router
 from app.api.subscriptions import router as subscriptions_router
 from app.api.ai_insights import router as ai_insights_router
 from app.api.pomodoro import router as pomodoro_router
+from app.api.tasks import router as tasks_router

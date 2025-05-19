@@ -88,12 +88,12 @@ const defaultCards: DashboardCard[] = [
   // Productivity Cards
   {
     id: "productivity-todo",
-    title: "To Do List",
+    title: "Task Manager",
     description:
       "Create, edit, and complete tasks with due dates and priorities.",
     href: "/productivity/todo",
     category: "productivity",
-    isImplemented: false,
+    isImplemented: true,
   },
   {
     id: "productivity-pomodoro",
@@ -222,6 +222,7 @@ const defaultQuickAccess = [
   "finance-income-expense",
   "finance-subscriptions",
   "productivity-pomodoro",
+  "productivity-todo",
 ];
 
 interface DashboardProviderProps {

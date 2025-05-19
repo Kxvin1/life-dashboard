@@ -2,6 +2,71 @@ import { Transaction } from "@/types/finance";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+/**
+ * Truncates text to a specified length and adds ellipsis if needed
+ */
+export const truncateText = (text: string, maxLength: number): string => {
+  if (!text || text.length <= maxLength) return text;
+  return `${text.substring(0, maxLength)}...`;
+};
+
+/**
+ * Formats time duration in minutes to a human-readable format
+ * For values < 60 minutes: "X minutes"
+ * For values between 60-1439 minutes: "X hours Y minutes"
+ * For value of 1440 minutes: "1 day" (maximum allowed value)
+ */
+export const formatTimeDuration = (minutes?: number): string => {
+  if (!minutes) return "Not specified";
+
+  if (minutes >= 1440) return "1 day";
+
+  if (minutes < 60) {
+    return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (remainingMinutes === 0) {
+    return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+  }
+
+  return `${hours} ${hours === 1 ? "hour" : "hours"} ${remainingMinutes} ${
+    remainingMinutes === 1 ? "minute" : "minutes"
+  }`;
+};
+
+/**
+ * Formats time duration in days for long-term goals
+ * @param days Number of days
+ * @returns Formatted string (e.g., "30 days", "1 day")
+ */
+export const formatDaysDuration = (days?: number): string => {
+  if (!days) return "Not specified";
+  return `${days} ${days === 1 ? "day" : "days"}`;
+};
+
+/**
+ * Converts minutes to days (for long-term goals)
+ * @param minutes Number of minutes
+ * @returns Equivalent number of days
+ */
+export const minutesToDays = (minutes?: number): number | undefined => {
+  if (!minutes) return undefined;
+  return Math.round(minutes / 1440); // 1440 minutes in a day
+};
+
+/**
+ * Converts days to minutes (for long-term goals)
+ * @param days Number of days
+ * @returns Equivalent number of minutes
+ */
+export const daysToMinutes = (days?: number): number | undefined => {
+  if (!days) return undefined;
+  return days * 1440; // 1440 minutes in a day
+};
+
 export const formatCurrency = (amount: number): string => {
   // For extremely large numbers (999+ billion), cap at 999B+
   if (Math.abs(amount) >= 999_000_000_000) {

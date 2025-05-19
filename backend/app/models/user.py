@@ -35,3 +35,12 @@ class User(Base):
     pomodoro_ai_history = relationship(
         "PomodoroAIHistory", back_populates="user", lazy="dynamic"
     )
+    # Task relationships
+    tasks = relationship("Task", back_populates="user", lazy="dynamic")
+    task_categories = relationship(
+        "TaskCategory", back_populates="user", lazy="dynamic"
+    )
+    task_ai_usage = relationship("TaskAIUsage", back_populates="user", lazy="dynamic")
+    task_ai_history = relationship(
+        "TaskAIHistory", back_populates="user", lazy="dynamic"
+    )
