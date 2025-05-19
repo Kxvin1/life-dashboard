@@ -21,19 +21,45 @@ def make_engine(url: str):
     # Mask the URL for logging
     masked_url = url.split("@")[1] if "@" in url else "masked"
 
-    # Determine SSL mode based on the URL
+    # Determine connection settings based on the URL
     is_railway_internal = "railway.internal" in url
-    sslmode = "disable" if is_railway_internal else "require"
+    is_localhost = "localhost" in url or "127.0.0.1" in url
 
-    # Log connection details
-    logger.info(f"Creating engine for {masked_url} with sslmode={sslmode}")
-
-    # Create and return the engine
-    return create_engine(
-        url,
-        pool_pre_ping=True,
-        pool_recycle=300,
-        pool_size=5,
-        max_overflow=10,
-        connect_args={"sslmode": sslmode},
-    )
+    # Create engine with appropriate settings
+    if is_localhost:
+        # For localhost, don't use any SSL settings
+        logger.info(f"Creating engine for {masked_url} without SSL (local development)")
+        return create_engine(
+            url,
+            pool_pre_ping=True,
+            pool_recycle=300,
+            pool_size=5,
+            max_overflow=10,
+            # No connect_args for localhost
+        )
+    elif is_railway_internal:
+        # For Railway internal connections, disable SSL
+        logger.info(
+            f"Creating engine for {masked_url} with sslmode=disable (Railway internal)"
+        )
+        return create_engine(
+            url,
+            pool_pre_ping=True,
+            pool_recycle=300,
+            pool_size=5,
+            max_overflow=10,
+            connect_args={"sslmode": "disable"},
+        )
+    else:
+        # For all other connections (production), require SSL
+        logger.info(
+            f"Creating engine for {masked_url} with sslmode=require (production)"
+        )
+        return create_engine(
+            url,
+            pool_pre_ping=True,
+            pool_recycle=300,
+            pool_size=5,
+            max_overflow=10,
+            connect_args={"sslmode": "require"},
+        )

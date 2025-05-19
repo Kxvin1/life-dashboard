@@ -91,6 +91,14 @@ async def verify_task_categories_async() -> None:
     Async wrapper for verify_task_categories with error handling
     """
     try:
+        # Check if we're in a local development environment
+        from app.db.database import is_localhost
+
+        # For local development, just log a message and skip verification
+        if is_localhost:
+            logger.info("Skipping task categories verification in local development")
+            return
+
         db = SessionLocal()
         try:
             verify_task_categories(db)

@@ -35,22 +35,28 @@ else:
 # Create engine using shared module
 engine = make_engine(database_url)
 
+# Only register the ping_connection event listener for non-localhost connections
+is_localhost = "localhost" in database_url or "127.0.0.1" in database_url
 
-# Define ping function to check connection
-@event.listens_for(engine, "engine_connect")
-def ping_connection(connection, branch):
-    if branch:
-        # Don't ping on checkout for branch connections
-        return
+if not is_localhost:
+    # Define ping function to check connection
+    @event.listens_for(engine, "engine_connect")
+    def ping_connection(connection, branch):
+        if branch:
+            # Don't ping on checkout for branch connections
+            return
 
-    # Ping the connection to check if it's still alive
-    try:
-        connection.scalar("SELECT 1")
-    except Exception:
-        # Connection is invalid - close it and let SQLAlchemy create a new one
-        logger.warning("Database connection invalid, requesting new connection")
-        connection.close()
-        raise DisconnectionError("Connection invalid")
+        # Ping the connection to check if it's still alive
+        try:
+            connection.scalar("SELECT 1")
+        except Exception:
+            # Connection is invalid - close it and let SQLAlchemy create a new one
+            logger.warning("Database connection invalid, requesting new connection")
+            connection.close()
+            raise DisconnectionError("Connection invalid")
+
+else:
+    logger.info("Skipping connection ping for localhost development")
 
 
 # Create session factory
@@ -65,12 +71,13 @@ def get_db():
     # Create a new session
     db = SessionLocal()
     try:
-        # Test the connection with a simple query
-        try:
-            db.execute(text("SELECT 1"))
-        except Exception as e:
-            # Log the error but continue anyway
-            logger.warning(f"Database connection test failed: {str(e)}")
+        # Only test the connection for non-localhost environments
+        if not is_localhost:
+            try:
+                db.execute(text("SELECT 1"))
+            except Exception as e:
+                # Log the error but continue anyway
+                logger.warning(f"Database connection test failed: {str(e)}")
 
         # Yield the session
         yield db
