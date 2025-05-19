@@ -1,13 +1,14 @@
-import { 
-  Task, 
-  TaskStatus, 
-  TaskPriority, 
-  EnergyLevel 
+import { useEffect } from "react";
+import {
+  Task,
+  TaskStatus,
+  TaskPriority,
+  EnergyLevel,
 } from "@/services/taskService";
-import { 
-  formatTimeDuration, 
-  formatDaysDuration, 
-  minutesToDays 
+import {
+  formatTimeDuration,
+  formatDaysDuration,
+  minutesToDays,
 } from "@/lib/utils";
 
 interface TaskItemMobileModalProps {
@@ -17,25 +18,39 @@ interface TaskItemMobileModalProps {
   onEdit: () => void;
 }
 
-const TaskItemMobileModal = ({ 
-  task, 
-  isOpen, 
-  onClose, 
-  onEdit 
+const TaskItemMobileModal = ({
+  task,
+  isOpen,
+  onClose,
+  onEdit,
 }: TaskItemMobileModalProps) => {
   if (!isOpen) return null;
+
+  // Handle escape key press
+  useEffect(() => {
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleEscapeKey);
+    return () => {
+      document.removeEventListener("keydown", handleEscapeKey);
+    };
+  }, [isOpen, onClose]);
 
   const formattedDueDate = task.due_date
     ? new Date(task.due_date).toLocaleDateString()
     : "No due date";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:hidden">
       <div
         className="fixed inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
       ></div>
-      <div className="w-full max-w-md p-6 mx-auto overflow-hidden transition-all transform bg-card rounded-t-xl animate-slide-up">
+      <div className="relative w-full max-w-md p-6 mx-auto overflow-auto bg-card rounded-xl animate-slide-up">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium text-foreground">Task Details</h3>
           <button

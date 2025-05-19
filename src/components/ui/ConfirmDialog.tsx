@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -23,8 +23,34 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onCancel,
   variant = "warning",
 }) => {
+  // If not open, don't render anything
   if (!isOpen) return null;
 
+  // Reference to the modal content for focus management
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Focus the confirm button when the modal opens
+  useEffect(() => {
+    if (isOpen && confirmButtonRef.current) {
+      confirmButtonRef.current.focus();
+    }
+  }, [isOpen]);
+
+  // Handle escape key press
+  useEffect(() => {
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onCancel();
+      }
+    };
+
+    document.addEventListener("keydown", handleEscapeKey);
+    return () => {
+      document.removeEventListener("keydown", handleEscapeKey);
+    };
+  }, [isOpen, onCancel]);
+
+  // Get variant-specific styles
   const getVariantStyles = () => {
     switch (variant) {
       case "danger":
@@ -95,18 +121,23 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+      <div className="flex items-center justify-center min-h-screen p-4">
+        {/* Backdrop with click handler to close */}
         <div
           className="fixed inset-0 transition-opacity bg-black/50 backdrop-blur-sm"
           aria-hidden="true"
+          onClick={onCancel}
         ></div>
 
-        {/* Modal panel */}
-        <div className="inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-card rounded-lg shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
+        {/* Modal container - centered in viewport */}
+        <div className="relative w-full max-w-lg px-4 pt-5 pb-4 mx-auto overflow-hidden text-left bg-card rounded-lg shadow-xl sm:p-6">
           <div className="sm:flex sm:items-start">
+            {/* Icon */}
             <div className="flex items-center justify-center flex-shrink-0 w-12 h-12 mx-auto rounded-full sm:mx-0 sm:h-10 sm:w-10">
               {variantStyles.icon}
             </div>
+
+            {/* Content */}
             <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
               <h3 className="text-lg font-medium leading-6 text-foreground">
                 {title}
@@ -116,9 +147,12 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Buttons */}
           <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
             <button
               type="button"
+              ref={confirmButtonRef}
               className={`inline-flex justify-center w-full px-4 py-2 text-base font-medium border border-transparent rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm ${variantStyles.confirmButton}`}
               onClick={onConfirm}
             >

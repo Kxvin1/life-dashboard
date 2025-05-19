@@ -7,6 +7,7 @@ import TaskList from "./TaskList";
 import TaskForm from "./TaskForm";
 import TaskAIButton from "./TaskAIButton";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Pagination from "@/components/ui/Pagination";
 
 interface TodoListProps {
   isLongTerm: boolean;
@@ -23,12 +24,14 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
     fetchTasksByType,
     completeTasks,
     deleteTasks,
+    tasksPerPage,
   } = useTask();
 
   const [showForm, setShowForm] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<number[]>([]);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Sorting state
   type SortOption =
@@ -112,10 +115,16 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
     return sortOrder === "asc" ? comparison : -comparison;
   });
 
-  // Fetch tasks when the tab changes
+  // Fetch tasks when the tab changes or pagination changes
   useEffect(() => {
-    fetchTasksByType(isLongTerm);
-  }, [isLongTerm, fetchTasksByType]);
+    // Ensure we're fetching the correct page of tasks
+    fetchTasksByType(isLongTerm, currentPage, tasksPerPage);
+  }, [isLongTerm, fetchTasksByType, currentPage, tasksPerPage]);
+
+  // Reset to page 1 when tab, filter, or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [isLongTerm, filterStatus, sortBy, sortOrder]);
 
   // Handle task selection for batch actions
   const toggleTaskSelection = (taskId: number) => {
@@ -261,6 +270,23 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
         </div>
       </div>
 
+      {/* Pagination - Moved to top of task list */}
+      {totalTasks > tasksPerPage && (
+        <div className="flex justify-center mb-4">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.ceil(totalTasks / tasksPerPage)}
+            totalItems={totalTasks}
+            itemsPerPage={tasksPerPage}
+            onPageChange={(page) => {
+              setCurrentPage(page);
+              // Scroll to top when changing pages
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          />
+        </div>
+      )}
+
       {/* Selected items actions */}
       {selectedTasks.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 p-3 mb-4 rounded-md bg-secondary/30">
@@ -335,12 +361,14 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
           </p>
         </div>
       ) : (
-        // Task list
-        <TaskList
-          tasks={filteredTasks}
-          isSelected={isTaskSelected}
-          onSelect={toggleTaskSelection}
-        />
+        // Task list with pagination
+        <>
+          <TaskList
+            tasks={filteredTasks}
+            isSelected={isTaskSelected}
+            onSelect={toggleTaskSelection}
+          />
+        </>
       )}
 
       {/* Delete Confirmation Dialog */}

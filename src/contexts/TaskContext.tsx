@@ -37,6 +37,9 @@ interface TaskContextType {
   totalShortTermTasks: number;
   totalLongTermTasks: number;
 
+  // Pagination state
+  tasksPerPage: number;
+
   // AI state
   aiRemainingUses: number;
   aiTotalAllowed: number;
@@ -45,7 +48,11 @@ interface TaskContextType {
 
   // Task actions
   fetchAllTasks: () => Promise<void>;
-  fetchTasksByType: (isLongTerm: boolean) => Promise<void>;
+  fetchTasksByType: (
+    isLongTerm: boolean,
+    page?: number,
+    limit?: number
+  ) => Promise<void>;
   addTask: (
     task: Omit<
       Task,
@@ -111,6 +118,9 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
   const [totalShortTermTasks, setTotalShortTermTasks] = useState(0);
   const [totalLongTermTasks, setTotalLongTermTasks] = useState(0);
 
+  // Fixed pagination limit of 10 items per page
+  const tasksPerPage = 10;
+
   // AI state
   const [aiRemainingUses, setAIRemainingUses] = useState(0);
   const [aiTotalAllowed, setAITotalAllowed] = useState(0);
@@ -132,16 +142,29 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
     }
   }, [isAuthenticated]);
 
-  // Fetch tasks by type (short-term or long-term)
+  // Fetch tasks by type (short-term or long-term) with pagination
   const fetchTasksByType = useCallback(
-    async (isLongTerm: boolean) => {
+    async (isLongTerm: boolean, page: number = 1, limit: number = 10) => {
       if (!isAuthenticated) return;
 
       setIsLoading(true);
       setError(null);
 
       try {
-        const response = await fetchTasks(isLongTerm);
+        // Calculate skip value for pagination
+        const skip = (page - 1) * limit;
+
+        // Fetch tasks with pagination parameters
+        const response = await fetchTasks(
+          isLongTerm,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          skip,
+          limit
+        );
 
         if (isLongTerm) {
           setLongTermTasks(response.tasks);
@@ -622,6 +645,9 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
     error,
     totalShortTermTasks,
     totalLongTermTasks,
+
+    // Pagination state
+    tasksPerPage,
 
     // AI state
     aiRemainingUses,

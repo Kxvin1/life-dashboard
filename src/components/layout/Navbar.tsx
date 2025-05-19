@@ -31,6 +31,7 @@ const Navbar = ({ onMenuToggle }: NavbarProps) => {
     if (pathname === "/productivity") return "Productivity";
     if (pathname === "/health") return "Health";
     if (pathname === "/personal") return "Personal Organization";
+    if (pathname === "/productivity/todo") return "Task Manager";
 
     // Extract the last part of the path for other pages
     const parts = pathname.split("/");
