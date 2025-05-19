@@ -39,14 +39,27 @@ logger.info(f"Using database URL: {masked_url}")
 if is_production:
     logger.info("Configuring database connection for production")
 
-    # Create engine with appropriate SSL settings
-    engine = create_engine(
-        database_url,
-        pool_pre_ping=True,
-        pool_recycle=300,
-        # Use require for production - this is the most reliable setting
-        connect_args={"sslmode": "require"},
-    )
+    # Check if we're connecting to Railway's internal PostgreSQL
+    is_railway_internal = "railway.internal" in database_url
+
+    if is_railway_internal:
+        # For Railway internal connections, disable SSL completely
+        logger.info("Detected Railway internal connection, disabling SSL")
+        engine = create_engine(
+            database_url,
+            pool_pre_ping=True,
+            pool_recycle=300,
+            connect_args={"sslmode": "disable"},
+        )
+    else:
+        # For other connections, use SSL
+        logger.info("Using standard connection with SSL")
+        engine = create_engine(
+            database_url,
+            pool_pre_ping=True,
+            pool_recycle=300,
+            connect_args={"sslmode": "require"},
+        )
 else:
     # For development, use standard connection
     logger.info("Using development database connection")
