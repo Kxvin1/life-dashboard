@@ -305,6 +305,169 @@ def create_task_ai_history_table():
         return False
 
 
+def create_tasks_table():
+    """Create the tasks table if it doesn't exist."""
+    try:
+        if check_table_exists("tasks"):
+            print("tasks table already exists")
+            return True
+
+        # Make sure task_categories table exists first
+        if not check_table_exists("task_categories"):
+            print("task_categories table doesn't exist, creating it first...")
+            create_task_categories_table()
+
+        print("Creating tasks table...")
+
+        # First try to create the table using SQL directly with explicit transaction control
+        try:
+            with engine.connect() as conn:
+                # Start transaction
+                conn.execute(text("BEGIN"))
+
+                try:
+                    # Create enum types if they don't exist
+                    conn.execute(
+                        text(
+                            "CREATE TYPE IF NOT EXISTS taskstatus AS ENUM ('not_started', 'in_progress', 'completed')"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            "CREATE TYPE IF NOT EXISTS taskpriority AS ENUM ('low', 'medium', 'high')"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            "CREATE TYPE IF NOT EXISTS energylevel AS ENUM ('low', 'medium', 'high')"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            "CREATE TYPE IF NOT EXISTS recurringfrequency AS ENUM ('daily', 'weekly', 'monthly', 'custom')"
+                        )
+                    )
+
+                    # Create the tasks table
+                    conn.execute(
+                        text(
+                            """
+                    CREATE TABLE tasks (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER REFERENCES users(id) NOT NULL,
+                        title VARCHAR NOT NULL,
+                        description TEXT,
+                        due_date DATE,
+                        status taskstatus NOT NULL DEFAULT 'not_started',
+                        priority taskpriority NOT NULL DEFAULT 'medium',
+                        energy_level energylevel,
+                        category_id INTEGER REFERENCES task_categories(id),
+                        estimated_time_minutes INTEGER,
+                        is_recurring BOOLEAN DEFAULT FALSE,
+                        recurring_frequency recurringfrequency,
+                        parent_task_id INTEGER REFERENCES tasks(id),
+                        is_long_term BOOLEAN DEFAULT FALSE,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        updated_at TIMESTAMP WITH TIME ZONE
+                    );
+                    CREATE INDEX ix_tasks_id ON tasks (id);
+                    """
+                        )
+                    )
+
+                    # Commit transaction
+                    conn.execute(text("COMMIT"))
+                    print("tasks table created successfully using SQL")
+                    return True
+                except Exception as inner_error:
+                    # Rollback transaction on error
+                    conn.execute(text("ROLLBACK"))
+                    print(f"Error in transaction, rolling back: {inner_error}")
+                    raise
+        except Exception as sql_error:
+            print(f"Error creating tasks table using SQL: {sql_error}")
+            traceback.print_exc()
+
+            # Try alternative approach without foreign key constraints
+            try:
+                print("Trying alternative approach to create tasks table...")
+                with engine.connect() as conn:
+                    # Start transaction
+                    conn.execute(text("BEGIN"))
+
+                    try:
+                        # Create enum types if they don't exist
+                        conn.execute(
+                            text(
+                                "CREATE TYPE IF NOT EXISTS taskstatus AS ENUM ('not_started', 'in_progress', 'completed')"
+                            )
+                        )
+                        conn.execute(
+                            text(
+                                "CREATE TYPE IF NOT EXISTS taskpriority AS ENUM ('low', 'medium', 'high')"
+                            )
+                        )
+                        conn.execute(
+                            text(
+                                "CREATE TYPE IF NOT EXISTS energylevel AS ENUM ('low', 'medium', 'high')"
+                            )
+                        )
+                        conn.execute(
+                            text(
+                                "CREATE TYPE IF NOT EXISTS recurringfrequency AS ENUM ('daily', 'weekly', 'monthly', 'custom')"
+                            )
+                        )
+
+                        # Create the tasks table without foreign key constraints
+                        conn.execute(
+                            text(
+                                """
+                        CREATE TABLE tasks (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER NOT NULL,
+                            title VARCHAR NOT NULL,
+                            description TEXT,
+                            due_date DATE,
+                            status taskstatus NOT NULL DEFAULT 'not_started',
+                            priority taskpriority NOT NULL DEFAULT 'medium',
+                            energy_level energylevel,
+                            category_id INTEGER,
+                            estimated_time_minutes INTEGER,
+                            is_recurring BOOLEAN DEFAULT FALSE,
+                            recurring_frequency recurringfrequency,
+                            parent_task_id INTEGER,
+                            is_long_term BOOLEAN DEFAULT FALSE,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                            updated_at TIMESTAMP WITH TIME ZONE
+                        );
+                        CREATE INDEX ix_tasks_id ON tasks (id);
+                        """
+                            )
+                        )
+
+                        # Commit transaction
+                        conn.execute(text("COMMIT"))
+                        print(
+                            "tasks table created successfully using alternative approach"
+                        )
+                        return True
+                    except Exception as inner_error:
+                        # Rollback transaction on error
+                        conn.execute(text("ROLLBACK"))
+                        print(
+                            f"Error in alternative transaction, rolling back: {inner_error}"
+                        )
+                        raise
+            except Exception as alt_error:
+                print(f"Error in alternative approach: {alt_error}")
+                traceback.print_exc()
+                return False
+    except Exception as e:
+        print(f"Error creating tasks table: {e}")
+        traceback.print_exc()
+        return False
+
+
 def seed_default_task_categories():
     """Seed default task categories."""
     try:
@@ -382,6 +545,27 @@ def run_migrations():
         return False
 
 
+def execute_sql_file(file_path):
+    """Execute SQL from a file."""
+    try:
+        print(f"Executing SQL file: {file_path}")
+        # Read the SQL file
+        with open(file_path, "r") as f:
+            sql = f.read()
+
+        # Execute the SQL
+        with engine.connect() as conn:
+            conn.execute(text(sql))
+            conn.commit()
+
+        print(f"SQL file executed successfully: {file_path}")
+        return True
+    except Exception as e:
+        print(f"Error executing SQL file {file_path}: {e}")
+        traceback.print_exc()
+        return False
+
+
 def fix_migrations():
     """Fix migration issues by ensuring all tables exist."""
     try:
@@ -423,6 +607,17 @@ def fix_migrations():
 
             if not task_categories_exists:
                 print("Failed to create task_categories table")
+
+        if "tasks" in missing_tables:
+            print("tasks table doesn't exist, creating it...")
+            create_tasks_table()
+
+            # Verify that the table exists now
+            table_exists = check_table_exists("tasks")
+            print(f"tasks table exists after fix: {table_exists}")
+
+            if not table_exists:
+                print("Failed to create tasks table")
 
         if "task_ai_usage" in missing_tables:
             print("task_ai_usage table doesn't exist, creating it...")
@@ -466,6 +661,8 @@ def fix_migrations():
                 for table in still_missing:
                     if table == "task_categories":
                         create_task_categories_table()
+                    elif table == "tasks":
+                        create_tasks_table()
                     elif table == "task_ai_usage":
                         create_task_ai_usage_table()
                     elif table == "task_ai_history":
@@ -479,6 +676,31 @@ def fix_migrations():
                     print(
                         f"Tables still missing after direct creation: {final_missing}"
                     )
+
+                    # Last resort: try to execute the SQL file directly
+                    print("Trying to execute SQL file directly as last resort...")
+                    current_dir = os.path.dirname(os.path.abspath(__file__))
+                    sql_file_path = os.path.join(current_dir, "create_tasks_table.sql")
+
+                    if os.path.exists(sql_file_path):
+                        execute_sql_file(sql_file_path)
+
+                        # Final final check
+                        final_final_missing = [
+                            table
+                            for table in final_missing
+                            if not check_table_exists(table)
+                        ]
+                        if final_final_missing:
+                            print(
+                                f"Tables still missing after SQL file execution: {final_final_missing}"
+                            )
+                        else:
+                            print(
+                                "All tables created successfully after SQL file execution"
+                            )
+                    else:
+                        print(f"SQL file not found: {sql_file_path}")
                 else:
                     print("All tables created successfully after direct creation")
             else:

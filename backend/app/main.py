@@ -1,9 +1,10 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import Response, JSONResponse
 from datetime import datetime
 from app.core.config import settings
 from app.db.database import SessionLocal
+import json
 from app.api import (
     transactions_router,
     health_router,
@@ -37,7 +38,10 @@ async def startup_event():
     asyncio.create_task(verify_task_categories_async())
 
 
-# Configure CORS - Allow specific origins
+# Add demo user middleware first
+app.add_middleware(DemoUserMiddleware)
+
+# Configure CORS - Allow specific origins (add this AFTER other middleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -46,26 +50,14 @@ app.add_middleware(
         # Add any other origins that need access
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=[
-        "Authorization",
-        "Content-Type",
-        "Accept",
-        "Origin",
-        "X-Requested-With",
-        "Access-Control-Allow-Origin",
-        "Access-Control-Allow-Methods",
-        "Access-Control-Allow-Headers",
-    ],
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
     expose_headers=["*"],
     max_age=600,
 )
 
-# Add demo user middleware
-app.add_middleware(DemoUserMiddleware)
 
-
-# Add CORS headers to all responses
+# Add CORS headers to all responses as a fallback
 @app.middleware("http")
 async def add_cors_headers(request: Request, call_next):
     # Get the origin from the request
@@ -99,17 +91,43 @@ async def add_cors_headers(request: Request, call_next):
         return response
 
     # For all other requests
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
 
-    # Add CORS headers to the response
-    if origin in allowed_origins:
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-    else:
-        # For other origins, still allow but without credentials
-        response.headers["Access-Control-Allow-Origin"] = "*"
+        # Always add CORS headers to the response
+        if origin in allowed_origins:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        else:
+            # For other origins, still allow but without credentials
+            response.headers["Access-Control-Allow-Origin"] = "*"
 
-    return response
+        return response
+    except Exception as e:
+        # If there's an error, still return a response with CORS headers
+        print(f"Error in middleware: {str(e)}")
+
+        # Create a proper JSON response
+        error_response = JSONResponse(
+            status_code=500, content={"detail": "Internal Server Error"}
+        )
+
+        # Add CORS headers
+        if origin in allowed_origins:
+            error_response.headers["Access-Control-Allow-Origin"] = origin
+            error_response.headers["Access-Control-Allow-Credentials"] = "true"
+        else:
+            error_response.headers["Access-Control-Allow-Origin"] = "*"
+
+        # Add other CORS headers
+        error_response.headers["Access-Control-Allow-Methods"] = (
+            "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        )
+        error_response.headers["Access-Control-Allow-Headers"] = (
+            "Authorization, Content-Type, Accept, Origin, X-Requested-With"
+        )
+
+        return error_response
 
 
 # Include routers
@@ -138,8 +156,6 @@ async def cors_test():
     """
     # Check if we're in development environment
     if settings.ENVIRONMENT != "development":
-        from fastapi import HTTPException, status
-
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Endpoint not available in production",
@@ -160,8 +176,6 @@ async def seed_categories_endpoint():
     """
     # Check if we're in development environment
     if settings.ENVIRONMENT != "development":
-        from fastapi import HTTPException, status
-
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Endpoint not available in production",
@@ -182,8 +196,6 @@ async def seed_task_categories_endpoint():
     """
     # Check if we're in development environment
     if settings.ENVIRONMENT != "development":
-        from fastapi import HTTPException, status
-
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Endpoint not available in production",
