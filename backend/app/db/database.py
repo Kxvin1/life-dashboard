@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError, DisconnectionError
@@ -17,41 +17,42 @@ is_production = settings.ENVIRONMENT != "development"
 # Get database URL
 database_url = settings.DATABASE_URL
 
-# Configure connection parameters
-connect_args = {}
-pool_options = {
-    "pool_pre_ping": True,  # Check connection before using it
-    "pool_recycle": 300,  # Recycle connections every 5 minutes
-    "pool_timeout": 30,  # Wait up to 30 seconds for a connection
-    "pool_size": 5,  # Maintain up to 5 connections
-    "max_overflow": 10,  # Allow up to 10 overflow connections
-}
+# Log the database URL (masked)
+if "@" in database_url:
+    masked_url = database_url.split("@")[1]
+else:
+    masked_url = "masked"
+logger.info(f"Using database URL: {masked_url}")
 
-# Try different connection approaches based on environment
+# Simple, direct connection approach
 if is_production:
-    # For Railway, try without any SSL parameters first
     logger.info("Configuring database connection for production")
 
-    # Remove any SSL parameters that might be causing issues
-    if "sslmode" in database_url:
-        database_url = database_url.replace("sslmode=prefer", "")
-        database_url = database_url.replace("sslmode=require", "")
-        database_url = database_url.replace("sslmode=disable", "")
-        # Clean up URL
-        database_url = database_url.replace("?&", "?")
-        database_url = database_url.replace("&&", "&")
-        if database_url.endswith("?") or database_url.endswith("&"):
-            database_url = database_url[:-1]
+    # Check if we're connecting to Railway's internal PostgreSQL
+    is_railway_internal = "railway.internal" in database_url
 
-    # Create engine with minimal configuration
-    logger.info(
-        f"Using database URL: {database_url.split('@')[1] if '@' in database_url else 'masked'}"
-    )
-    engine = create_engine(database_url, **pool_options)
+    if is_railway_internal:
+        # For Railway internal connections, disable SSL
+        logger.info("Detected Railway internal connection, disabling SSL")
+        engine = create_engine(
+            database_url,
+            pool_pre_ping=True,
+            pool_recycle=300,
+            connect_args={"sslmode": "disable"},
+        )
+    else:
+        # For other production environments, prefer SSL
+        logger.info("Using standard production connection")
+        engine = create_engine(
+            database_url,
+            pool_pre_ping=True,
+            pool_recycle=300,
+            connect_args={"sslmode": "prefer"},
+        )
 else:
     # For development, use standard connection
     logger.info("Using development database connection")
-    engine = create_engine(database_url, **pool_options)
+    engine = create_engine(database_url, pool_pre_ping=True)
 
 
 # Define ping function to check connection
@@ -78,36 +79,20 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
-# Dependency with retry logic
+# Dependency with simple retry logic
 def get_db():
-    # Maximum number of retries
-    max_retries = 3
-    retry_delay = 1  # seconds
-
-    for attempt in range(max_retries):
-        db = SessionLocal()
+    # Create a new session
+    db = SessionLocal()
+    try:
+        # Test the connection with a simple query
         try:
-            # Test the connection
-            db.execute("SELECT 1")
-            yield db
-            break
-        except OperationalError as e:
-            # Close the failed connection
-            db.close()
+            db.execute(text("SELECT 1"))
+        except Exception as e:
+            # Log the error but continue anyway
+            logger.warning(f"Database connection test failed: {str(e)}")
 
-            if attempt < max_retries - 1:
-                logger.warning(
-                    f"Database connection failed (attempt {attempt+1}/{max_retries}): {str(e)}"
-                )
-                time.sleep(retry_delay)
-                # Increase delay for next retry
-                retry_delay *= 2
-            else:
-                logger.error(
-                    f"Database connection failed after {max_retries} attempts: {str(e)}"
-                )
-                # On last attempt, yield a db session anyway - the endpoint will handle the error
-                db = SessionLocal()
-                yield db
-        finally:
-            db.close()
+        # Yield the session
+        yield db
+    finally:
+        # Always close the session
+        db.close()

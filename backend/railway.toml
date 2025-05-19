@@ -3,8 +3,8 @@ builder = "nixpacks"
 buildCommand = "pip install -r requirements.txt"
 
 [deploy]
-startCommand = "sleep 20 && python fix_migrations.py || true && sleep 5 && uvicorn app.main:app --host 0.0.0.0 --port $PORT --reload"
+startCommand = "python fix_migrations.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/"
-healthcheckTimeout = 100
+healthcheckTimeout = 200
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10

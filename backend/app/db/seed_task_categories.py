@@ -88,10 +88,16 @@ def verify_task_categories(db: Session) -> None:
 
 async def verify_task_categories_async() -> None:
     """
-    Async wrapper for verify_task_categories
+    Async wrapper for verify_task_categories with error handling
     """
-    db = SessionLocal()
     try:
-        verify_task_categories(db)
-    finally:
-        db.close()
+        db = SessionLocal()
+        try:
+            verify_task_categories(db)
+        except Exception as e:
+            logger.error(f"Error verifying/updating categories: {str(e)}")
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Failed to create database session: {str(e)}")
+        # Continue anyway to allow the application to start
