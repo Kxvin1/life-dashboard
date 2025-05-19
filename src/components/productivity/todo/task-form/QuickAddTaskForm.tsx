@@ -31,7 +31,7 @@ const QuickAddTaskForm: React.FC<QuickAddTaskFormProps> = ({
         isQuickAdd={true}
         isLongTerm={isLongTerm}
       />
-      <div className="flex space-x-2">
+      <div className="flex space-x-2 sticky bottom-0 bg-card pt-2 pb-1 z-10">
         <FormActions
           isSubmitting={isSubmitting}
           onCancel={onCancel}

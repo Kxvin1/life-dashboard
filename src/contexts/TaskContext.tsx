@@ -343,10 +343,30 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
     [shortTermTasks, longTermTasks]
   );
 
-  // Change task status
+  // Change task status with optimistic update
   const changeTaskStatus = useCallback(
     async (taskId: number, status: TaskStatus) => {
-      return await editTask(taskId, { status });
+      // Update local state immediately for both short-term and long-term tasks
+      setShortTermTasks((prev) =>
+        prev.map((task) => (task.id === taskId ? { ...task, status } : task))
+      );
+
+      setLongTermTasks((prev) =>
+        prev.map((task) => (task.id === taskId ? { ...task, status } : task))
+      );
+
+      // Then call the API to persist the change
+      try {
+        return await editTask(taskId, { status });
+      } catch (error) {
+        console.error("Error changing task status:", error);
+
+        // If API call fails, revert the local state
+        setShortTermTasks((prev) => [...prev]);
+        setLongTermTasks((prev) => [...prev]);
+
+        throw error;
+      }
     },
     [editTask]
   );

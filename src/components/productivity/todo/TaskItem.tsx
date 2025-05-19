@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useTask } from "@/contexts/TaskContext";
 import { Task, TaskStatus } from "@/services/taskService";
 import TaskForm from "./TaskForm";
@@ -36,6 +36,7 @@ interface TaskItemProps {
   onSelect: (taskId: number) => void;
   onMoveUp?: (taskId: number, currentIndex: number) => Promise<void>;
   onMoveDown?: (taskId: number, currentIndex: number) => Promise<void>;
+  updateTaskStatus?: (taskId: number, newStatus: TaskStatus) => void;
 }
 
 const TaskItem = ({
@@ -45,8 +46,9 @@ const TaskItem = ({
   onSelect,
   onMoveUp,
   onMoveDown,
+  updateTaskStatus,
 }: TaskItemProps) => {
-  const { changeTaskStatus, removeTask } = useTask();
+  const { removeTask, changeTaskStatus } = useTask();
   const [showDetails, setShowDetails] = useState(false);
   const [showMobileDetails, setShowMobileDetails] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -73,20 +75,121 @@ const TaskItem = ({
     }
   }, []);
 
-  // Toggle task completion status
-  const handleToggleCompletion = () => {
-    changeTaskStatus(
-      task.id,
-      task.status === TaskStatus.COMPLETED
-        ? TaskStatus.NOT_STARTED
-        : TaskStatus.COMPLETED
-    );
-  };
+  // Local state for task status to enable truly optimistic UI updates
+  const [localStatus, setLocalStatus] = useState<TaskStatus>(task.status);
+  // Track if a status change is in progress to prevent multiple calls
+  const [isStatusChangeInProgress, setIsStatusChangeInProgress] =
+    useState(false);
+  // Use a ref to store the latest task status for comparison
+  const latestTaskStatus = useRef(task.status);
+  // Use a ref to store timeouts for cleanup
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Cycle status: Not Started → In Progress → Completed → Not Started
-  const handleStatusChange = async () => {
+  // Update local status when task prop changes, but only if not in the middle of a change
+  useEffect(() => {
+    if (!isStatusChangeInProgress) {
+      setLocalStatus(task.status);
+    }
+    latestTaskStatus.current = task.status;
+  }, [task.status, isStatusChangeInProgress]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Custom function to update status without triggering a refresh
+  const updateStatusWithoutRefresh = useCallback(
+    (newStatus: TaskStatus) => {
+      // Prevent multiple rapid changes
+      if (isStatusChangeInProgress) return;
+
+      // Set flag to indicate a status change is in progress
+      setIsStatusChangeInProgress(true);
+
+      // Update local state immediately for responsive UI
+      setLocalStatus(newStatus);
+
+      // Also update the parent component's state if available
+      if (updateTaskStatus) {
+        updateTaskStatus(task.id, newStatus);
+      }
+
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      // Delay the API call to ensure UI updates first
+      timeoutRef.current = setTimeout(() => {
+        // Use a direct fetch call instead of the context function
+        const token =
+          localStorage.getItem("token") ||
+          document.cookie.replace(
+            /(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/,
+            "$1"
+          );
+        if (!token) {
+          // Try to use the context function as fallback
+          try {
+            changeTaskStatus(task.id, newStatus);
+          } catch (error) {
+            console.error("Error updating task status:", error);
+          }
+          setIsStatusChangeInProgress(false);
+          return;
+        }
+
+        const apiUrl = `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+        }/api/v1/tasks/${task.id}`;
+
+        fetch(apiUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status: newStatus }),
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Failed to update task status");
+            }
+            return response.json();
+          })
+          .catch((error) => {
+            console.error("Error updating task status:", error);
+            // If API call fails, revert the local state
+            setLocalStatus(latestTaskStatus.current);
+          })
+          .finally(() => {
+            setIsStatusChangeInProgress(false);
+            timeoutRef.current = null;
+          });
+      }, 500); // 500ms delay
+    },
+    [task.id, updateTaskStatus, isStatusChangeInProgress]
+  );
+
+  // Toggle task completion status with optimistic update
+  const handleToggleCompletion = useCallback(() => {
+    const newStatus =
+      localStatus === TaskStatus.COMPLETED
+        ? TaskStatus.NOT_STARTED
+        : TaskStatus.COMPLETED;
+
+    updateStatusWithoutRefresh(newStatus);
+  }, [localStatus, updateStatusWithoutRefresh]);
+
+  // Cycle status with optimistic update: Not Started → In Progress → Completed → Not Started
+  const handleStatusChange = useCallback(() => {
     let newStatus: TaskStatus;
-    switch (task.status) {
+    switch (localStatus) {
       case TaskStatus.NOT_STARTED:
         newStatus = TaskStatus.IN_PROGRESS;
         break;
@@ -99,12 +202,9 @@ const TaskItem = ({
       default:
         newStatus = TaskStatus.NOT_STARTED;
     }
-    try {
-      await changeTaskStatus(task.id, newStatus);
-    } catch (error) {
-      console.error("Error changing task status:", error);
-    }
-  };
+
+    updateStatusWithoutRefresh(newStatus);
+  }, [localStatus, updateStatusWithoutRefresh]);
 
   const handleDeleteClick = () => setShowDeleteConfirm(true);
   const handleConfirmDelete = async () => {
@@ -139,9 +239,24 @@ const TaskItem = ({
     />
   ) : (
     <div
-      className={`${getStatusBackgroundColor(task.status)} border ${
-        isSelected ? "border-primary" : "border-border"
-      } rounded-lg overflow-hidden transition-shadow duration-200 hover:shadow-md`}
+      className={`${getStatusBackgroundColor(localStatus)} border ${
+        isSelected ? "border-primary border-2" : "border-border"
+      } rounded-lg overflow-hidden transition-all duration-200 hover:shadow-md relative cursor-pointer ${
+        isSelected ? "shadow-md shadow-primary/10" : ""
+      }`}
+      onClick={(e) => {
+        // Only select if clicking on the card itself, not on interactive elements
+        if (
+          e.target === e.currentTarget ||
+          (e.currentTarget.contains(e.target as Node) &&
+            !(e.target as HTMLElement).closest("button") &&
+            !(e.target as HTMLElement).closest("a") &&
+            !(e.target as HTMLElement).closest('[role="button"]') &&
+            !(e.target as HTMLElement).closest('[data-interactive="true"]'))
+        ) {
+          onSelect(task.id);
+        }
+      }}
     >
       <div className="p-4">
         <div className="flex flex-col sm:flex-row">
@@ -153,44 +268,10 @@ const TaskItem = ({
               </div>
             </div>
 
-            {/* Selection & complete controls */}
+            {/* Complete control only (removed selection checkbox) */}
             <div className="flex flex-col items-center gap-2 mt-1 mr-3">
-              <div className="relative">
-                {/* Hide the actual checkbox but keep functionality */}
-                <input
-                  type="checkbox"
-                  id={`select-task-${task.id}`}
-                  checked={isSelected}
-                  onChange={() => onSelect(task.id)}
-                  className="sr-only peer"
-                />
-                <Tooltip content="Select task" position="top" width="w-24">
-                  <label
-                    htmlFor={`select-task-${task.id}`}
-                    className="flex items-center justify-center w-5 h-5 transition-all duration-200 border rounded cursor-pointer border-border bg-background peer-checked:border-primary peer-checked:bg-primary peer-focus:ring-2 peer-focus:ring-primary/30"
-                  >
-                    {isSelected && (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="text-primary-foreground"
-                      >
-                        <path d="M20 6 9 17l-5-5" />
-                      </svg>
-                    )}
-                  </label>
-                </Tooltip>
-              </div>
-
               <StatusToggleButton
-                status={task.status}
+                status={localStatus}
                 onToggle={handleToggleCompletion}
               />
             </div>
@@ -200,7 +281,7 @@ const TaskItem = ({
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 {/* Status badge */}
                 <StatusBadge
-                  status={task.status}
+                  status={localStatus}
                   onClick={handleStatusChange}
                 />
 
@@ -215,7 +296,7 @@ const TaskItem = ({
               <Tooltip content={task.title} position="top" width="w-64">
                 <h3
                   className={`text-base font-medium truncate max-w-full ${
-                    task.status === TaskStatus.COMPLETED
+                    localStatus === TaskStatus.COMPLETED
                       ? "line-through text-muted-foreground"
                       : "text-foreground"
                   }`}
@@ -245,12 +326,14 @@ const TaskItem = ({
                 <button
                   className="hidden text-xs text-primary sm:block"
                   onClick={() => setShowDetails(!showDetails)}
+                  data-interactive="true"
                 >
                   {showDetails ? "Hide details" : "Show details"}
                 </button>
                 <button
                   className="text-xs text-primary sm:hidden"
                   onClick={() => setShowMobileDetails(true)}
+                  data-interactive="true"
                 >
                   View details
                 </button>

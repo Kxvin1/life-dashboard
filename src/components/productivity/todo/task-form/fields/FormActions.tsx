@@ -41,7 +41,7 @@ const FormActions: React.FC<FormActionsProps> = ({
   }
 
   return (
-    <div className="flex justify-end pt-2 space-x-2">
+    <div className="flex justify-end pt-2 space-x-2 sticky bottom-0 bg-card pb-1 z-10">
       <button
         type="button"
         onClick={onCancel}

@@ -157,7 +157,7 @@ const TaskForm = ({ isLongTerm, task, onClose }: TaskFormProps) => {
   };
 
   return (
-    <div className="p-4 mb-4 border rounded-lg bg-card border-border">
+    <div className="p-4 mb-4 border rounded-lg bg-card border-border max-h-[80vh] overflow-y-auto sm:max-h-none sm:overflow-visible">
       <TaskFormHeader
         isLongTerm={isLongTerm}
         isEditing={!!task}

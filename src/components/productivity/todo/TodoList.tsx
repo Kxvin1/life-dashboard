@@ -135,6 +135,38 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
     );
   };
 
+  // Select all tasks on the current page
+  const selectAllTasks = () => {
+    const currentPageTaskIds = filteredTasks.map((task) => task.id);
+
+    // If all tasks on the current page are already selected, deselect them
+    const allSelected = currentPageTaskIds.every((id) =>
+      selectedTasks.includes(id)
+    );
+
+    if (allSelected) {
+      // Deselect all tasks on the current page
+      setSelectedTasks((prev) =>
+        prev.filter((id) => !currentPageTaskIds.includes(id))
+      );
+    } else {
+      // Select all tasks on the current page
+      const newSelectedTasks = [...selectedTasks];
+      currentPageTaskIds.forEach((id) => {
+        if (!newSelectedTasks.includes(id)) {
+          newSelectedTasks.push(id);
+        }
+      });
+      setSelectedTasks(newSelectedTasks);
+    }
+  };
+
+  // Check if all tasks on the current page are selected
+  const areAllTasksSelected = () => {
+    if (filteredTasks.length === 0) return false;
+    return filteredTasks.every((task) => selectedTasks.includes(task.id));
+  };
+
   // Clear all selections
   const clearSelections = () => {
     setSelectedTasks([]);
@@ -147,107 +179,111 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
 
   return (
     <div>
-      {/* Header with actions */}
-      <div className="flex flex-col items-start justify-between gap-4 mb-4 sm:flex-row sm:items-center">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">
-            {isLongTerm ? "Long-Term Tasks" : "Short-Term Tasks"}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {totalTasks} {isLongTerm ? "tasks" : "tasks"} total
-          </p>
+      {/* Header with title */}
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-foreground">
+          {isLongTerm ? "Long-Term Tasks" : "Short-Term Tasks"}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {totalTasks} {isLongTerm ? "tasks" : "tasks"} total
+        </p>
+      </div>
+
+      {/* Redesigned filter controls and add task button */}
+      <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-3">
+        {/* Filter section */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground">
+            Filter
+          </label>
+          <select
+            className="px-3 py-2 text-sm rounded-md border border-border bg-card text-foreground hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
+            value={filterStatus || ""}
+            onChange={(e) => setFilterStatus(e.target.value || null)}
+            aria-label="Filter by status"
+          >
+            <option value="">All Statuses</option>
+            <option value={TaskStatus.NOT_STARTED}>Not Started</option>
+            <option value={TaskStatus.IN_PROGRESS}>In Progress</option>
+            <option value={TaskStatus.COMPLETED}>Completed</option>
+          </select>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {/* Filter dropdown */}
-          <div className="flex flex-col gap-2 sm:flex-row">
+        {/* Sort section */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-muted-foreground">
+            Sort By
+          </label>
+          <div className="flex items-center gap-1">
             <select
-              className="px-3 py-1 text-sm rounded-md bg-secondary text-foreground"
-              value={filterStatus || ""}
-              onChange={(e) => setFilterStatus(e.target.value || null)}
-              aria-label="Filter by status"
+              className="flex-1 px-3 py-2 text-sm rounded-md border border-border bg-card text-foreground hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              aria-label="Sort by"
             >
-              <option value="">All Statuses</option>
-              <option value={TaskStatus.NOT_STARTED}>Not Started</option>
-              <option value={TaskStatus.IN_PROGRESS}>In Progress</option>
-              <option value={TaskStatus.COMPLETED}>Completed</option>
+              <option value="dateAdded">Date Added</option>
+              <option value="priority">Priority</option>
+              <option value="energy">Energy Level</option>
+              <option value="dueDate">Due Date</option>
+              <option value="timeEstimate">Time Estimate</option>
             </select>
 
-            {/* Sort dropdown */}
-            <div className="flex items-center gap-1">
-              <select
-                className="px-3 py-1 text-sm rounded-md bg-secondary text-foreground"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
-                aria-label="Sort by"
-              >
-                <option value="dateAdded">Date Added</option>
-                <option value="priority">Priority</option>
-                <option value="energy">Energy Level</option>
-                <option value="dueDate">Due Date</option>
-                <option value="timeEstimate">Time Estimate</option>
-              </select>
-
-              {/* Sort order toggle button */}
-              <button
-                className="p-1 transition-colors rounded-md bg-secondary text-foreground hover:bg-secondary/80"
-                onClick={() =>
-                  setSortOrder(sortOrder === "asc" ? "desc" : "asc")
-                }
-                title={
-                  sortOrder === "asc"
-                    ? "Switch to descending order"
-                    : "Switch to ascending order"
-                }
-                aria-label="Toggle sort order"
-              >
-                {sortOrder === "asc" ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="m3 8 4-4 4 4" />
-                    <path d="M7 4v16" />
-                    <path d="M11 12h4" />
-                    <path d="M11 16h7" />
-                    <path d="M11 20h10" />
-                  </svg>
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="m3 16 4 4 4-4" />
-                    <path d="M7 20V4" />
-                    <path d="M11 4h10" />
-                    <path d="M11 8h7" />
-                    <path d="M11 12h4" />
-                  </svg>
-                )}
-              </button>
-            </div>
+            {/* Sort order toggle button */}
+            <button
+              className="p-2 transition-colors rounded-md border border-border bg-card text-foreground hover:border-primary/50 hover:bg-secondary/50"
+              onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+              title={
+                sortOrder === "asc"
+                  ? "Switch to descending order"
+                  : "Switch to ascending order"
+              }
+              aria-label="Toggle sort order"
+            >
+              {sortOrder === "asc" ? (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m3 8 4-4 4 4" />
+                  <path d="M7 4v16" />
+                  <path d="M11 12h4" />
+                  <path d="M11 16h7" />
+                  <path d="M11 20h10" />
+                </svg>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m3 16 4 4 4-4" />
+                  <path d="M7 20V4" />
+                  <path d="M11 4h10" />
+                  <path d="M11 8h7" />
+                  <path d="M11 12h4" />
+                </svg>
+              )}
+            </button>
           </div>
+        </div>
 
-          {/* AI Button for goal breakdown */}
-          {isLongTerm && <TaskAIButton />}
-
-          {/* Add task button */}
+        {/* Add task button - redesigned to match AI button */}
+        <div className="flex items-end">
           <button
-            className="flex items-center px-3 py-1 text-sm rounded-md bg-primary text-primary-foreground"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 font-medium transition-colors rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 border border-primary/20"
             onClick={() => setShowForm(true)}
           >
             <svg
@@ -260,15 +296,58 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="mr-1"
             >
               <path d="M5 12h14" />
               <path d="M12 5v14" />
             </svg>
-            Add {isLongTerm ? "Long-Term Task" : "Task"}
+            <span>Add Task</span>
           </button>
         </div>
       </div>
+
+      {/* AI Section for Long-Term Tasks */}
+      {isLongTerm && (
+        <div className="mb-4">
+          <TaskAIButton />
+        </div>
+      )}
+
+      {/* Select All checkbox */}
+      {filteredTasks.length > 0 && (
+        <div className="flex items-center mb-3 gap-2">
+          <div className="relative">
+            <input
+              type="checkbox"
+              id="select-all-tasks"
+              checked={areAllTasksSelected()}
+              onChange={selectAllTasks}
+              className="sr-only peer"
+            />
+            <label
+              htmlFor="select-all-tasks"
+              className="flex items-center justify-center w-5 h-5 transition-colors duration-200 border rounded cursor-pointer border-border bg-background peer-checked:border-primary peer-checked:bg-primary peer-focus:ring-2 peer-focus:ring-primary/30"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`${
+                  areAllTasksSelected() ? "opacity-100" : "opacity-0"
+                } text-primary-foreground`}
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </label>
+          </div>
+          <span className="text-sm text-foreground">Select All</span>
+        </div>
+      )}
 
       {/* Pagination - Moved to top of task list */}
       {totalTasks > tasksPerPage && (
@@ -287,41 +366,7 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
         </div>
       )}
 
-      {/* Selected items actions */}
-      {selectedTasks.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 p-3 mb-4 rounded-md bg-secondary/30">
-          <span className="mr-2 text-sm text-muted-foreground">
-            {selectedTasks.length} selected
-          </span>
-          <button
-            className="px-2 py-1 text-xs rounded-md bg-primary text-primary-foreground"
-            onClick={async () => {
-              try {
-                await completeTasks(selectedTasks);
-                clearSelections();
-              } catch (error) {
-                console.error("Error completing tasks:", error);
-              }
-            }}
-            disabled={selectedTasks.length === 0}
-          >
-            Complete
-          </button>
-          <button
-            className="px-2 py-1 text-xs rounded-md bg-secondary text-foreground"
-            onClick={() => setShowDeleteConfirm(true)}
-            disabled={selectedTasks.length === 0}
-          >
-            Delete
-          </button>
-          <button
-            className="px-2 py-1 ml-auto text-xs rounded-md bg-secondary text-foreground"
-            onClick={clearSelections}
-          >
-            Cancel
-          </button>
-        </div>
-      )}
+      {/* Selected items actions removed from here - moved to task list section */}
 
       {/* Task form */}
       {showForm && (
@@ -363,6 +408,44 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
       ) : (
         // Task list with pagination
         <>
+          {/* Selection UI that scrolls with the page */}
+          {selectedTasks.length > 0 && (
+            <div className="mb-4">
+              <div className="flex items-center gap-2 p-3 rounded-md bg-card border border-border shadow-lg max-w-md mx-auto">
+                <span className="mr-2 text-sm font-medium">
+                  {selectedTasks.length} selected
+                </span>
+                <button
+                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  onClick={async () => {
+                    try {
+                      await completeTasks(selectedTasks);
+                      clearSelections();
+                    } catch (error) {
+                      console.error("Error completing tasks:", error);
+                    }
+                  }}
+                  disabled={selectedTasks.length === 0}
+                >
+                  Complete
+                </button>
+                <button
+                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={selectedTasks.length === 0}
+                >
+                  Delete
+                </button>
+                <button
+                  className="px-3 py-1.5 text-xs font-medium rounded-md bg-secondary text-foreground hover:bg-secondary/80 transition-colors ml-auto"
+                  onClick={clearSelections}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
           <TaskList
             tasks={filteredTasks}
             isSelected={isTaskSelected}
@@ -370,6 +453,8 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
           />
         </>
       )}
+
+      {/* No selection UI here - moved to task list section */}
 
       {/* Delete Confirmation Dialog */}
       {showDeleteConfirm && (

@@ -24,13 +24,27 @@ export const StatusBadge = ({ status, onClick }: StatusBadgeProps) => {
 
   const tooltipContent = `Click to change status: ${statusText}`;
 
+  // Prevent default to avoid any browser-triggered page refresh
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Add a small delay to ensure the event is fully handled before calling onClick
+    if (onClick) {
+      setTimeout(() => {
+        onClick();
+      }, 0);
+    }
+  };
+
   return (
     <Tooltip content={tooltipContent} position="top" width="w-48">
       <span
         className={`px-2 py-0.5 text-xs rounded-full inline-flex items-center whitespace-nowrap ${getStatusColor(
           status
         )}`}
-        onClick={onClick}
+        onClick={handleClick}
+        data-interactive="true"
       >
         <span className="mr-1 font-medium">Status:</span>
         <span className="truncate max-w-[80px] sm:max-w-none">

@@ -20,7 +20,10 @@ export const MoveActions = ({
   const iconSize = isMobile ? "16" : "18";
 
   return (
-    <div className="z-10 flex items-center p-1 space-x-1 rounded-lg shadow-sm bg-secondary/50">
+    <div
+      className="z-10 flex items-center p-1 space-x-1 rounded-lg shadow-sm bg-secondary/50"
+      data-interactive="true"
+    >
       <Tooltip content="Move task up in the list" position="top" width="w-32">
         <button
           type="button"
@@ -33,6 +36,7 @@ export const MoveActions = ({
               : "text-foreground hover:text-primary hover:bg-secondary"
           }`}
           disabled={index === 0}
+          data-interactive="true"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -57,6 +61,7 @@ export const MoveActions = ({
           className={`${buttonSize} flex items-center justify-center rounded-md ${
             isMobile ? "" : "transition-all duration-200"
           } text-foreground hover:text-primary hover:bg-secondary`}
+          data-interactive="true"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -92,7 +97,10 @@ export const EditDeleteActions = ({
   const iconSize = isMobile ? "16" : "18";
 
   return (
-    <div className="z-10 flex items-center p-1 space-x-1 rounded-lg shadow-sm bg-secondary/50">
+    <div
+      className="z-10 flex items-center p-1 space-x-1 rounded-lg shadow-sm bg-secondary/50"
+      data-interactive="true"
+    >
       <Tooltip content="Edit task details" position="top" width="w-32">
         <button
           type="button"
@@ -100,6 +108,7 @@ export const EditDeleteActions = ({
           className={`${buttonSize} flex items-center justify-center rounded-md ${
             isMobile ? "" : "transition-all duration-200"
           } text-foreground hover:text-primary hover:bg-secondary`}
+          data-interactive="true"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -125,6 +134,7 @@ export const EditDeleteActions = ({
           className={`${buttonSize} flex items-center justify-center rounded-md ${
             isMobile ? "" : "transition-all duration-200"
           } text-foreground hover:text-destructive hover:bg-destructive/10`}
+          data-interactive="true"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -161,15 +171,29 @@ export const StatusToggleButton = ({
     ? "Mark as not started"
     : "Mark as completed";
 
+  // Prevent default to avoid any browser-triggered page refresh
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Add a small delay to ensure the event is fully handled before calling onToggle
+    if (onToggle) {
+      setTimeout(() => {
+        onToggle();
+      }, 0);
+    }
+  };
+
   return (
     <Tooltip content={tooltipContent} position="top" width="w-40">
       <button
-        onClick={onToggle}
+        onClick={handleClick}
         className={`w-6 h-6 rounded-full flex items-center justify-center shadow-sm transition-all duration-200 ${
           isCompleted
             ? "bg-green-500 text-white hover:bg-green-600"
             : "bg-secondary text-foreground hover:bg-secondary/80"
         }`}
+        data-interactive="true"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

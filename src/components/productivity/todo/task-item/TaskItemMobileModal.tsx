@@ -47,13 +47,13 @@ const TaskItemMobileModal = ({
     : "No due date";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:hidden">
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-16 sm:hidden overflow-y-auto">
       <div
         className="fixed inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
       ></div>
-      <div className="relative w-full max-w-md p-6 mx-auto overflow-auto bg-card rounded-xl animate-slide-up">
-        <div className="flex items-center justify-between mb-4">
+      <div className="relative w-full max-w-md p-6 mx-auto bg-card rounded-xl animate-slide-up max-h-[80vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4 sticky top-0 bg-card z-10 pb-2">
           <h3 className="text-lg font-medium text-foreground">Task Details</h3>
           <button
             onClick={onClose}
@@ -172,7 +172,7 @@ const TaskItemMobileModal = ({
           )}
         </div>
 
-        <div className="flex justify-end gap-2 mt-6">
+        <div className="flex justify-end gap-2 mt-6 sticky bottom-0 bg-card pt-2 pb-1">
           <button
             onClick={() => {
               onClose();

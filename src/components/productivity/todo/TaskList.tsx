@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Task, reorderTask as apiReorderTask } from "@/services/taskService";
+import {
+  Task,
+  TaskStatus,
+  reorderTask as apiReorderTask,
+} from "@/services/taskService";
 import TaskItem from "./TaskItem";
 
 interface TaskListProps {
@@ -18,6 +22,15 @@ const TaskList = ({ tasks, isSelected, onSelect }: TaskListProps) => {
   useEffect(() => {
     setLocalTasks(tasks);
   }, [tasks]);
+
+  // Function to update a task's status optimistically
+  const updateTaskStatus = (taskId: number, newStatus: TaskStatus) => {
+    setLocalTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, status: newStatus } : task
+      )
+    );
+  };
 
   // Handle moving a task up in the list
   const handleMoveTaskUp = async (taskId: number, currentIndex: number) => {
@@ -72,6 +85,7 @@ const TaskList = ({ tasks, isSelected, onSelect }: TaskListProps) => {
           onSelect={onSelect}
           onMoveUp={handleMoveTaskUp}
           onMoveDown={handleMoveTaskDown}
+          updateTaskStatus={updateTaskStatus}
         />
       ))}
     </div>
