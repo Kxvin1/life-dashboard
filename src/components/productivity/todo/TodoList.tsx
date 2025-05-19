@@ -2,12 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTask } from "@/contexts/TaskContext";
-import {
-  Task,
-  TaskStatus,
-  TaskPriority,
-  EnergyLevel,
-} from "@/services/taskService";
+import { TaskStatus, TaskPriority, EnergyLevel } from "@/services/taskService";
 import TaskList from "./TaskList";
 import TaskForm from "./TaskForm";
 import TaskAIButton from "./TaskAIButton";
