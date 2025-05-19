@@ -3,7 +3,7 @@ builder = "nixpacks"
 buildCommand = "pip install -r requirements.txt"
 
 [deploy]
-startCommand = "python -c \"import time; print('Waiting for database to be ready...'); time.sleep(5);\" && python fix_migrations.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT --reload"
+startCommand = "python fix_migrations.py || true && uvicorn app.main:app --host 0.0.0.0 --port $PORT --reload"
 healthcheckPath = "/"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
