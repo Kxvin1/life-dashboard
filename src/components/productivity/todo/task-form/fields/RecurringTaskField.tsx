@@ -1,5 +1,7 @@
-import React from 'react';
-import { RecurringFrequency } from '@/services/taskService';
+"use client";
+
+import React from "react";
+import { RecurringFrequency } from "@/services/taskService";
 
 interface RecurringTaskFieldProps {
   isRecurring: boolean;
@@ -30,9 +32,7 @@ const RecurringTaskField: React.FC<RecurringTaskFieldProps> = ({
           title="Mark a task as recurring to indicate it should be repeated regularly. Note: Currently, you'll need to manually create new instances of recurring tasks after completion."
         >
           Recurring Task
-          <span className="ml-1 text-xs text-muted-foreground">
-            (Manual)
-          </span>
+          <span className="ml-1 text-xs text-muted-foreground">(Manual)</span>
         </label>
       </div>
 

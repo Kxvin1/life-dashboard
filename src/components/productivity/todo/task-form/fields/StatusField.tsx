@@ -1,15 +1,14 @@
-import React from 'react';
-import { TaskStatus } from '@/services/taskService';
+"use client";
+
+import React from "react";
+import { TaskStatus } from "@/services/taskService";
 
 interface StatusFieldProps {
   status: TaskStatus;
   setStatus: (status: TaskStatus) => void;
 }
 
-const StatusField: React.FC<StatusFieldProps> = ({
-  status,
-  setStatus,
-}) => {
+const StatusField: React.FC<StatusFieldProps> = ({ status, setStatus }) => {
   return (
     <div>
       <label

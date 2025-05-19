@@ -1,4 +1,6 @@
-import React from 'react';
+"use client";
+
+import React from "react";
 
 interface TitleFieldProps {
   title: string;
@@ -40,7 +42,11 @@ const TitleField: React.FC<TitleFieldProps> = ({
         className="w-full px-3 py-2 border rounded-md bg-background border-border text-foreground"
         maxLength={maxLength}
         required
-        placeholder={isQuickAdd ? `Enter ${isLongTerm ? "long-term task" : "task"} title` : undefined}
+        placeholder={
+          isQuickAdd
+            ? `Enter ${isLongTerm ? "long-term task" : "task"} title`
+            : undefined
+        }
       />
     </div>
   );

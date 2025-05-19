@@ -194,16 +194,18 @@ const TaskForm = ({ isLongTerm, task, onClose }: TaskFormProps) => {
       )}
 
       {/* Confirmation Dialog for Unsaved Changes */}
-      <ConfirmDialog
-        isOpen={showCloseConfirm}
-        title="Discard Changes"
-        message="You have unsaved changes. Are you sure you want to close this form? Your changes will be lost."
-        confirmLabel="Discard"
-        cancelLabel="Continue Editing"
-        onConfirm={onClose}
-        onCancel={() => setShowCloseConfirm(false)}
-        variant="warning"
-      />
+      {showCloseConfirm && (
+        <ConfirmDialog
+          isOpen={true}
+          title="Discard Changes"
+          message="You have unsaved changes. Are you sure you want to close this form? Your changes will be lost."
+          confirmLabel="Discard"
+          cancelLabel="Continue Editing"
+          onConfirm={onClose}
+          onCancel={() => setShowCloseConfirm(false)}
+          variant="warning"
+        />
+      )}
     </div>
   );
 };

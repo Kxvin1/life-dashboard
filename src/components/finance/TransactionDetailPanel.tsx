@@ -313,16 +313,18 @@ const TransactionDetailPanel = ({
   return (
     <div className="fixed inset-0 z-40 overflow-hidden bg-black/50 backdrop-blur-sm">
       {/* Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={showConfirmDialog}
-        title="Unsaved Changes"
-        message="You have unsaved changes. Are you sure you want to close without saving?"
-        confirmLabel="Discard Changes"
-        cancelLabel="Continue Editing"
-        onConfirm={handleDiscardChanges}
-        onCancel={() => setShowConfirmDialog(false)}
-        variant="warning"
-      />
+      {showConfirmDialog && (
+        <ConfirmDialog
+          isOpen={true}
+          title="Unsaved Changes"
+          message="You have unsaved changes. Are you sure you want to close without saving?"
+          confirmLabel="Discard Changes"
+          cancelLabel="Continue Editing"
+          onConfirm={handleDiscardChanges}
+          onCancel={() => setShowConfirmDialog(false)}
+          variant="warning"
+        />
+      )}
 
       <div className="absolute inset-y-0 right-0 flex max-w-full">
         <div

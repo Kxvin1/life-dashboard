@@ -1,3 +1,5 @@
+"use client";
+
 import { TaskStatus, TaskPriority } from "@/services/taskService";
 
 // Helper function to get status badge color

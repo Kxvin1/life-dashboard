@@ -5,6 +5,7 @@ import { useTask } from "@/contexts/TaskContext";
 import { Task, TaskStatus } from "@/services/taskService";
 import TaskForm from "./TaskForm";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Tooltip from "@/components/ui/Tooltip";
 import { truncateText } from "@/lib/utils";
 import {
   // Helper functions
@@ -163,28 +164,29 @@ const TaskItem = ({
                   onChange={() => onSelect(task.id)}
                   className="sr-only peer"
                 />
-                <label
-                  htmlFor={`select-task-${task.id}`}
-                  className="flex items-center justify-center w-5 h-5 transition-all duration-200 border rounded cursor-pointer border-border bg-background peer-checked:border-primary peer-checked:bg-primary peer-focus:ring-2 peer-focus:ring-primary/30"
-                  title="Select task"
-                >
-                  {isSelected && (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="text-primary-foreground"
-                    >
-                      <path d="M20 6 9 17l-5-5" />
-                    </svg>
-                  )}
-                </label>
+                <Tooltip content="Select task" position="top" width="w-24">
+                  <label
+                    htmlFor={`select-task-${task.id}`}
+                    className="flex items-center justify-center w-5 h-5 transition-all duration-200 border rounded cursor-pointer border-border bg-background peer-checked:border-primary peer-checked:bg-primary peer-focus:ring-2 peer-focus:ring-primary/30"
+                  >
+                    {isSelected && (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-primary-foreground"
+                      >
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                    )}
+                  </label>
+                </Tooltip>
               </div>
 
               <StatusToggleButton
@@ -210,16 +212,17 @@ const TaskItem = ({
               </div>
 
               {/* Title */}
-              <h3
-                className={`text-base font-medium truncate max-w-full ${
-                  task.status === TaskStatus.COMPLETED
-                    ? "line-through text-muted-foreground"
-                    : "text-foreground"
-                }`}
-                title={task.title}
-              >
-                {truncateText(task.title, 50)}
-              </h3>
+              <Tooltip content={task.title} position="top" width="w-64">
+                <h3
+                  className={`text-base font-medium truncate max-w-full ${
+                    task.status === TaskStatus.COMPLETED
+                      ? "line-through text-muted-foreground"
+                      : "text-foreground"
+                  }`}
+                >
+                  {truncateText(task.title, 50)}
+                </h3>
+              </Tooltip>
 
               {/* Details preview */}
               <div className="flex flex-wrap gap-2 mt-1 text-xs text-muted-foreground">
@@ -310,19 +313,21 @@ const TaskItem = ({
         }}
       />
 
-      <ConfirmDialog
-        isOpen={showDeleteConfirm}
-        title="Delete Task"
-        message={`Are you sure you want to delete "${truncateText(
-          task.title,
-          50
-        )}"? This action cannot be undone.`}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setShowDeleteConfirm(false)}
-        variant="danger"
-      />
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          isOpen={true}
+          title="Delete Task"
+          message={`Are you sure you want to delete "${truncateText(
+            task.title,
+            50
+          )}"? This action cannot be undone.`}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+          variant="danger"
+        />
+      )}
     </>
   );
 };

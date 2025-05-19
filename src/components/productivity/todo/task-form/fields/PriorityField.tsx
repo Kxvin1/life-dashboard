@@ -1,5 +1,7 @@
-import React from 'react';
-import { TaskPriority } from '@/services/taskService';
+"use client";
+
+import React from "react";
+import { TaskPriority } from "@/services/taskService";
 
 interface PriorityFieldProps {
   priority: TaskPriority;

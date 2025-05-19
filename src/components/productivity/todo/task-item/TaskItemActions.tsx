@@ -1,3 +1,5 @@
+"use client";
+
 import { TaskStatus } from "@/services/taskService";
 import Tooltip from "@/components/ui/Tooltip";
 

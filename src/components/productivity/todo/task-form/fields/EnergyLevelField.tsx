@@ -1,5 +1,7 @@
-import React from 'react';
-import { EnergyLevel } from '@/services/taskService';
+"use client";
+
+import React from "react";
+import { EnergyLevel } from "@/services/taskService";
 
 interface EnergyLevelFieldProps {
   energyLevel: EnergyLevel | undefined;

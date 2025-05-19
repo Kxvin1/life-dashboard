@@ -1,5 +1,7 @@
-import React from 'react';
-import { formatTimeDuration, formatDaysDuration } from '@/lib/utils';
+"use client";
+
+import React from "react";
+import { formatTimeDuration, formatDaysDuration } from "@/lib/utils";
 
 interface TimeEstimateFieldProps {
   isLongTerm: boolean;
@@ -27,9 +29,7 @@ const TimeEstimateField: React.FC<TimeEstimateFieldProps> = ({
           htmlFor="estimatedTime"
           className="block text-sm font-medium text-foreground"
         >
-          {isLongTerm
-            ? "Estimated Time (days)"
-            : "Estimated Time (minutes)"}
+          {isLongTerm ? "Estimated Time (days)" : "Estimated Time (minutes)"}
         </label>
         {isLongTerm
           ? estimatedTimeDays && (
@@ -49,9 +49,7 @@ const TimeEstimateField: React.FC<TimeEstimateFieldProps> = ({
           id="estimatedTime"
           value={estimatedTimeDays || ""}
           onChange={(e) => {
-            const value = e.target.value
-              ? parseInt(e.target.value)
-              : undefined;
+            const value = e.target.value ? parseInt(e.target.value) : undefined;
             if (!value || (value > 0 && value <= maxTimeDays)) {
               setEstimatedTimeDays(value);
             }
@@ -67,9 +65,7 @@ const TimeEstimateField: React.FC<TimeEstimateFieldProps> = ({
           id="estimatedTime"
           value={estimatedTimeMinutes || ""}
           onChange={(e) => {
-            const value = e.target.value
-              ? parseInt(e.target.value)
-              : undefined;
+            const value = e.target.value ? parseInt(e.target.value) : undefined;
             if (!value || (value > 0 && value <= maxTimeMinutes)) {
               setEstimatedTimeMinutes(value);
             }

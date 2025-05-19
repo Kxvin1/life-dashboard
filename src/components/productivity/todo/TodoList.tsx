@@ -372,29 +372,31 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={showDeleteConfirm}
-        title="Delete Tasks"
-        message={`Are you sure you want to delete ${
-          selectedTasks.length
-        } selected ${
-          selectedTasks.length === 1 ? "task" : "tasks"
-        }? This action cannot be undone.`}
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        onConfirm={async () => {
-          try {
-            await deleteTasks(selectedTasks);
-            clearSelections();
-          } catch (error) {
-            console.error("Error deleting tasks:", error);
-          } finally {
-            setShowDeleteConfirm(false);
-          }
-        }}
-        onCancel={() => setShowDeleteConfirm(false)}
-        variant="danger"
-      />
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          isOpen={true}
+          title="Delete Tasks"
+          message={`Are you sure you want to delete ${
+            selectedTasks.length
+          } selected ${
+            selectedTasks.length === 1 ? "task" : "tasks"
+          }? This action cannot be undone.`}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          onConfirm={async () => {
+            try {
+              await deleteTasks(selectedTasks);
+              clearSelections();
+            } catch (error) {
+              console.error("Error deleting tasks:", error);
+            } finally {
+              setShowDeleteConfirm(false);
+            }
+          }}
+          onCancel={() => setShowDeleteConfirm(false)}
+          variant="danger"
+        />
+      )}
     </div>
   );
 };

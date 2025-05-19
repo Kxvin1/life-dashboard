@@ -1,14 +1,16 @@
-import { 
-  Task, 
-  TaskStatus, 
-  TaskPriority, 
-  EnergyLevel, 
-  RecurringFrequency 
+"use client";
+
+import {
+  Task,
+  TaskStatus,
+  TaskPriority,
+  EnergyLevel,
+  RecurringFrequency,
 } from "@/services/taskService";
-import { 
-  formatTimeDuration, 
-  formatDaysDuration, 
-  minutesToDays 
+import {
+  formatTimeDuration,
+  formatDaysDuration,
+  minutesToDays,
 } from "@/lib/utils";
 
 interface TaskItemDetailsProps {
@@ -58,9 +60,7 @@ const TaskItemDetails = ({ task }: TaskItemDetailsProps) => {
       <div className="grid grid-cols-1 text-sm sm:grid-cols-2 gap-x-4 gap-y-3">
         {/* Status */}
         <div>
-          <p className="text-xs font-medium text-muted-foreground">
-            Status:
-          </p>
+          <p className="text-xs font-medium text-muted-foreground">Status:</p>
           <p className="text-foreground">
             {task.status === TaskStatus.NOT_STARTED
               ? "Not Started"
@@ -72,9 +72,7 @@ const TaskItemDetails = ({ task }: TaskItemDetailsProps) => {
 
         {/* Priority */}
         <div>
-          <p className="text-xs font-medium text-muted-foreground">
-            Priority:
-          </p>
+          <p className="text-xs font-medium text-muted-foreground">Priority:</p>
           <p className="text-foreground">
             {task.priority === TaskPriority.LOW
               ? "Low"
@@ -102,9 +100,7 @@ const TaskItemDetails = ({ task }: TaskItemDetailsProps) => {
             </p>
             <p className="text-foreground">
               {task.is_long_term
-                ? formatDaysDuration(
-                    minutesToDays(task.estimated_time_minutes)
-                  )
+                ? formatDaysDuration(minutesToDays(task.estimated_time_minutes))
                 : formatTimeDuration(task.estimated_time_minutes)}
             </p>
           </div>
@@ -154,11 +150,9 @@ const TaskItemDetails = ({ task }: TaskItemDetailsProps) => {
             <p className="text-foreground">
               {task.recurring_frequency === RecurringFrequency.DAILY
                 ? "Daily"
-                : task.recurring_frequency ===
-                  RecurringFrequency.WEEKLY
+                : task.recurring_frequency === RecurringFrequency.WEEKLY
                 ? "Weekly"
-                : task.recurring_frequency ===
-                  RecurringFrequency.MONTHLY
+                : task.recurring_frequency === RecurringFrequency.MONTHLY
                 ? "Monthly"
                 : "Custom"}
             </p>

@@ -1,14 +1,13 @@
-import React from 'react';
+"use client";
+
+import React from "react";
 
 interface DateFieldProps {
   dueDate: string;
   setDueDate: (dueDate: string) => void;
 }
 
-const DateField: React.FC<DateFieldProps> = ({
-  dueDate,
-  setDueDate,
-}) => {
+const DateField: React.FC<DateFieldProps> = ({ dueDate, setDueDate }) => {
   return (
     <div>
       <label

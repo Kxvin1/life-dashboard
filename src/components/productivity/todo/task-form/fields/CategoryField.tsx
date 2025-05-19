@@ -1,4 +1,6 @@
-import React from 'react';
+"use client";
+
+import React from "react";
 
 interface TaskCategory {
   id: number;
@@ -28,9 +30,7 @@ const CategoryField: React.FC<CategoryFieldProps> = ({
         id="category"
         value={categoryId || ""}
         onChange={(e) =>
-          setCategoryId(
-            e.target.value ? parseInt(e.target.value) : undefined
-          )
+          setCategoryId(e.target.value ? parseInt(e.target.value) : undefined)
         }
         className="w-full px-3 py-2 border rounded-md bg-background border-border text-foreground"
       >

@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Task,
   TaskStatus,
@@ -97,7 +99,8 @@ export const validateForm = (
   if (isLongTerm) {
     if (
       formState.estimatedTimeDays &&
-      (formState.estimatedTimeDays <= 0 || formState.estimatedTimeDays > MAX_TIME_DAYS)
+      (formState.estimatedTimeDays <= 0 ||
+        formState.estimatedTimeDays > MAX_TIME_DAYS)
     ) {
       return `Time estimate must be between 1 and ${MAX_TIME_DAYS} days (1 year)`;
     }

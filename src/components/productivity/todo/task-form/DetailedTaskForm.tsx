@@ -1,5 +1,7 @@
-import React from 'react';
-import { TaskFormState } from './TaskFormUtils';
+"use client";
+
+import React from "react";
+import { TaskFormState } from "./TaskFormUtils";
 import {
   TitleField,
   DescriptionField,
@@ -11,7 +13,7 @@ import {
   TimeEstimateField,
   RecurringTaskField,
   FormActions,
-} from './fields';
+} from "./fields";
 
 interface TaskCategory {
   id: number;

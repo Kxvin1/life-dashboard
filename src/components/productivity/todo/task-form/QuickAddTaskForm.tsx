@@ -1,5 +1,7 @@
-import React from 'react';
-import { TitleField, FormActions } from './fields';
+"use client";
+
+import React from "react";
+import { TitleField, FormActions } from "./fields";
 
 interface QuickAddTaskFormProps {
   isLongTerm: boolean;
