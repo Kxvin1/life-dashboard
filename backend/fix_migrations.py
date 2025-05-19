@@ -127,6 +127,7 @@ engine = make_engine(DATABASE_URL)
 
 def wait_for_database(max_attempts=10, delay=5):
     """Wait for the database to be available."""
+    global engine
     logger.info(f"Waiting for database to be available...")
 
     # Try to connect
@@ -138,7 +139,6 @@ def wait_for_database(max_attempts=10, delay=5):
                 conn.execute(text("SELECT 1"))
                 logger.info("Database is available!")
                 # Update the global engine with the working one
-                global engine
                 engine = temp_engine
                 return True
         except Exception as e:
@@ -189,7 +189,6 @@ def wait_for_database(max_attempts=10, delay=5):
                             )
 
                             # Update the global engine with the working one
-                            global engine
                             engine = temp_engine
                             return True
                     except Exception as ssl_e:
