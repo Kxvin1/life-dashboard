@@ -17,6 +17,17 @@ is_production = settings.ENVIRONMENT != "development"
 # Get database URL
 database_url = settings.DATABASE_URL
 
+# Ensure the URL has the correct protocol prefix
+if not database_url.startswith("postgresql://"):
+    if database_url.startswith("postgres://"):
+        # Replace postgres:// with postgresql://
+        database_url = database_url.replace("postgres://", "postgresql://")
+        logger.info("Fixed database URL protocol (postgres:// → postgresql://)")
+    elif not "://" in database_url:
+        # Add the protocol if missing
+        database_url = f"postgresql://{database_url}"
+        logger.info("Added postgresql:// protocol to database URL")
+
 # Log the database URL (masked)
 if "@" in database_url:
     masked_url = database_url.split("@")[1]
@@ -24,31 +35,18 @@ else:
     masked_url = "masked"
 logger.info(f"Using database URL: {masked_url}")
 
-# Simple, direct connection approach
+# Simple connection approach
 if is_production:
     logger.info("Configuring database connection for production")
 
-    # Check if we're connecting to Railway's internal PostgreSQL
-    is_railway_internal = "railway.internal" in database_url
-
-    if is_railway_internal:
-        # For Railway internal connections, disable SSL
-        logger.info("Detected Railway internal connection, disabling SSL")
-        engine = create_engine(
-            database_url,
-            pool_pre_ping=True,
-            pool_recycle=300,
-            connect_args={"sslmode": "disable"},
-        )
-    else:
-        # For other production environments, prefer SSL
-        logger.info("Using standard production connection")
-        engine = create_engine(
-            database_url,
-            pool_pre_ping=True,
-            pool_recycle=300,
-            connect_args={"sslmode": "prefer"},
-        )
+    # Create engine with appropriate SSL settings
+    engine = create_engine(
+        database_url,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        # Use require for production - this is the most reliable setting
+        connect_args={"sslmode": "require"},
+    )
 else:
     # For development, use standard connection
     logger.info("Using development database connection")

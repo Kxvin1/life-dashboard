@@ -44,42 +44,40 @@ if is_production and __name__ == "__main__":
     logger.info("Waiting 10 seconds for database to initialize...")
     time.sleep(10)
 
-# Check if we're connecting to Railway's internal PostgreSQL
-is_railway_internal = "railway.internal" in DATABASE_URL
+# Ensure the URL has the correct protocol prefix
+if not DATABASE_URL.startswith('postgresql://'):
+    if DATABASE_URL.startswith('postgres://'):
+        # Replace postgres:// with postgresql://
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://')
+        logger.info("Fixed database URL protocol (postgres:// → postgresql://)")
+    elif not '://' in DATABASE_URL:
+        # Add the protocol if missing
+        DATABASE_URL = f"postgresql://{DATABASE_URL}"
+        logger.info("Added postgresql:// protocol to database URL")
 
-# Create engine with appropriate configuration
-if is_railway_internal:
-    logger.info("Using Railway internal connection with SSL disabled")
-    engine = create_engine(
-        DATABASE_URL,
-        pool_pre_ping=True,
-        connect_args={"sslmode": "disable"}
-    )
+# Log the database URL (masked)
+if '@' in DATABASE_URL:
+    masked_url = DATABASE_URL.split('@')[1]
 else:
-    logger.info("Using standard connection")
-    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+    masked_url = 'masked'
+logger.info(f"Using database URL: {masked_url}")
+
+# Create engine with appropriate SSL settings
+logger.info("Creating database engine with SSL settings")
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    connect_args={"sslmode": "require"}  # Use require for production
+)
 
 def wait_for_database(url, max_attempts=5, delay=5):
     """Wait for the database to be available."""
     logger.info(f"Waiting for database to be available...")
     
-    # Check if we're connecting to Railway's internal PostgreSQL
-    is_railway_internal = "railway.internal" in url
-    
-    # Create engine with appropriate configuration
-    if is_railway_internal:
-        test_engine = create_engine(
-            url,
-            pool_pre_ping=True,
-            connect_args={"sslmode": "disable"}
-        )
-    else:
-        test_engine = create_engine(url, pool_pre_ping=True)
-    
     # Try to connect
     for attempt in range(max_attempts):
         try:
-            with test_engine.connect() as conn:
+            with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
                 logger.info("Database is available!")
                 return True
