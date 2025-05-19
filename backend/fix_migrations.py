@@ -172,6 +172,139 @@ def create_task_categories_table():
         return False
 
 
+def create_task_ai_usage_table():
+    """Create the task_ai_usage table if it doesn't exist."""
+    try:
+        if check_table_exists("task_ai_usage"):
+            print("task_ai_usage table already exists")
+            return True
+
+        print("Creating task_ai_usage table...")
+
+        # First try to create the table using SQL directly
+        try:
+            with engine.connect() as conn:
+                # Create the task_ai_usage table
+                conn.execute(
+                    text(
+                        """
+                CREATE TABLE task_ai_usage (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) NOT NULL,
+                    date DATE NOT NULL,
+                    count INTEGER NOT NULL DEFAULT 1,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                );
+                CREATE INDEX ix_task_ai_usage_id ON task_ai_usage (id);
+                CREATE INDEX ix_task_ai_usage_date ON task_ai_usage (date);
+                """
+                    )
+                )
+                conn.commit()
+                print("task_ai_usage table created successfully using SQL")
+                return True
+        except Exception as sql_error:
+            print(f"Error creating task_ai_usage table using SQL: {sql_error}")
+
+            # If SQL fails, try using SQLAlchemy
+            try:
+                metadata = MetaData()
+
+                # Define the task_ai_usage table
+                task_ai_usage = Table(
+                    "task_ai_usage",
+                    metadata,
+                    Column("id", Integer, primary_key=True, index=True),
+                    Column("user_id", Integer, ForeignKey("users.id"), nullable=False),
+                    Column("date", Date, nullable=False, index=True),
+                    Column("count", Integer, default=1, nullable=False),
+                    Column(
+                        "created_at", DateTime(timezone=True), server_default=func.now()
+                    ),
+                )
+
+                # Create the table
+                metadata.create_all(engine, tables=[task_ai_usage])
+                print("task_ai_usage table created successfully using SQLAlchemy")
+                return True
+            except Exception as sqlalchemy_error:
+                print(
+                    f"Error creating task_ai_usage table using SQLAlchemy: {sqlalchemy_error}"
+                )
+                traceback.print_exc()
+                return False
+    except Exception as e:
+        print(f"Error creating task_ai_usage table: {e}")
+        traceback.print_exc()
+        return False
+
+
+def create_task_ai_history_table():
+    """Create the task_ai_history table if it doesn't exist."""
+    try:
+        if check_table_exists("task_ai_history"):
+            print("task_ai_history table already exists")
+            return True
+
+        print("Creating task_ai_history table...")
+
+        # First try to create the table using SQL directly
+        try:
+            with engine.connect() as conn:
+                # Create the task_ai_history table
+                conn.execute(
+                    text(
+                        """
+                CREATE TABLE task_ai_history (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) NOT NULL,
+                    input_text TEXT NOT NULL,
+                    output_text TEXT NOT NULL,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                );
+                CREATE INDEX ix_task_ai_history_id ON task_ai_history (id);
+                """
+                    )
+                )
+                conn.commit()
+                print("task_ai_history table created successfully using SQL")
+                return True
+        except Exception as sql_error:
+            print(f"Error creating task_ai_history table using SQL: {sql_error}")
+
+            # If SQL fails, try using SQLAlchemy
+            try:
+                metadata = MetaData()
+
+                # Define the task_ai_history table
+                task_ai_history = Table(
+                    "task_ai_history",
+                    metadata,
+                    Column("id", Integer, primary_key=True, index=True),
+                    Column("user_id", Integer, ForeignKey("users.id"), nullable=False),
+                    Column("input_text", Text, nullable=False),
+                    Column("output_text", Text, nullable=False),
+                    Column(
+                        "created_at", DateTime(timezone=True), server_default=func.now()
+                    ),
+                )
+
+                # Create the table
+                metadata.create_all(engine, tables=[task_ai_history])
+                print("task_ai_history table created successfully using SQLAlchemy")
+                return True
+            except Exception as sqlalchemy_error:
+                print(
+                    f"Error creating task_ai_history table using SQLAlchemy: {sqlalchemy_error}"
+                )
+                traceback.print_exc()
+                return False
+    except Exception as e:
+        print(f"Error creating task_ai_history table: {e}")
+        traceback.print_exc()
+        return False
+
+
 def seed_default_task_categories():
     """Seed default task categories."""
     try:
@@ -291,6 +424,28 @@ def fix_migrations():
             if not task_categories_exists:
                 print("Failed to create task_categories table")
 
+        if "task_ai_usage" in missing_tables:
+            print("task_ai_usage table doesn't exist, creating it...")
+            create_task_ai_usage_table()
+
+            # Verify that the table exists now
+            table_exists = check_table_exists("task_ai_usage")
+            print(f"task_ai_usage table exists after fix: {table_exists}")
+
+            if not table_exists:
+                print("Failed to create task_ai_usage table")
+
+        if "task_ai_history" in missing_tables:
+            print("task_ai_history table doesn't exist, creating it...")
+            create_task_ai_history_table()
+
+            # Verify that the table exists now
+            table_exists = check_table_exists("task_ai_history")
+            print(f"task_ai_history table exists after fix: {table_exists}")
+
+            if not table_exists:
+                print("Failed to create task_ai_history table")
+
         # If we still have missing tables, try running migrations again
         if missing_tables and not all(
             check_table_exists(table) for table in missing_tables
@@ -306,6 +461,26 @@ def fix_migrations():
                 print(
                     f"Tables still missing after second migration attempt: {still_missing}"
                 )
+
+                # Try to create the tables directly if they're still missing
+                for table in still_missing:
+                    if table == "task_categories":
+                        create_task_categories_table()
+                    elif table == "task_ai_usage":
+                        create_task_ai_usage_table()
+                    elif table == "task_ai_history":
+                        create_task_ai_history_table()
+
+                # Final check
+                final_missing = [
+                    table for table in still_missing if not check_table_exists(table)
+                ]
+                if final_missing:
+                    print(
+                        f"Tables still missing after direct creation: {final_missing}"
+                    )
+                else:
+                    print("All tables created successfully after direct creation")
             else:
                 print("All tables created successfully after second migration attempt")
 

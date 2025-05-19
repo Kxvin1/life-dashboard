@@ -43,6 +43,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://life-dashboard-eta.vercel.app",
+        # Add any other origins that need access
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
@@ -52,6 +53,9 @@ app.add_middleware(
         "Accept",
         "Origin",
         "X-Requested-With",
+        "Access-Control-Allow-Origin",
+        "Access-Control-Allow-Methods",
+        "Access-Control-Allow-Headers",
     ],
     expose_headers=["*"],
     max_age=600,
@@ -60,51 +64,52 @@ app.add_middleware(
 # Add demo user middleware
 app.add_middleware(DemoUserMiddleware)
 
+
 # Add CORS headers to all responses
-# @app.middleware("http")
-# async def add_cors_headers(request: Request, call_next):
-#     # Get the origin from the request
-#     origin = request.headers.get("Origin")
+@app.middleware("http")
+async def add_cors_headers(request: Request, call_next):
+    # Get the origin from the request
+    origin = request.headers.get("Origin")
 
-#     # List of allowed origins
-#     allowed_origins = [
-#         "http://localhost:3000",
-#         "https://life-dashboard-eta.vercel.app",
-#     ]
+    # List of allowed origins
+    allowed_origins = [
+        "http://localhost:3000",
+        "https://life-dashboard-eta.vercel.app",
+    ]
 
-#     # For preflight OPTIONS requests
-#     if request.method == "OPTIONS":
-#         response = Response(status_code=200)
+    # For preflight OPTIONS requests
+    if request.method == "OPTIONS":
+        response = Response(status_code=200)
 
-#         # Set CORS headers based on origin
-#         if origin in allowed_origins:
-#             response.headers["Access-Control-Allow-Origin"] = origin
-#             response.headers["Access-Control-Allow-Credentials"] = "true"
-#         else:
-#             # For other origins, still allow but without credentials
-#             response.headers["Access-Control-Allow-Origin"] = "*"
+        # Set CORS headers based on origin
+        if origin in allowed_origins:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        else:
+            # For other origins, still allow but without credentials
+            response.headers["Access-Control-Allow-Origin"] = "*"
 
-#         response.headers["Access-Control-Allow-Methods"] = (
-#             "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-#         )
-#         response.headers["Access-Control-Allow-Headers"] = (
-#             "Authorization, Content-Type, Accept, Origin, X-Requested-With"
-#         )
-#         response.headers["Access-Control-Max-Age"] = "600"
-#         return response
+        response.headers["Access-Control-Allow-Methods"] = (
+            "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        )
+        response.headers["Access-Control-Allow-Headers"] = (
+            "Authorization, Content-Type, Accept, Origin, X-Requested-With"
+        )
+        response.headers["Access-Control-Max-Age"] = "600"
+        return response
 
-#     # For all other requests
-#     response = await call_next(request)
+    # For all other requests
+    response = await call_next(request)
 
-#     # Add CORS headers to the response
-#     if origin in allowed_origins:
-#         response.headers["Access-Control-Allow-Origin"] = origin
-#         response.headers["Access-Control-Allow-Credentials"] = "true"
-#     else:
-#         # For other origins, still allow but without credentials
-#         response.headers["Access-Control-Allow-Origin"] = "*"
+    # Add CORS headers to the response
+    if origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    else:
+        # For other origins, still allow but without credentials
+        response.headers["Access-Control-Allow-Origin"] = "*"
 
-#     return response
+    return response
 
 
 # Include routers
