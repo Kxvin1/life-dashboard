@@ -3,17 +3,9 @@ Shared database engine creation module.
 """
 
 import logging
-import socket
-import time
 from sqlalchemy import create_engine
 
 logger = logging.getLogger(__name__)
-
-
-# We don't need this function anymore
-def wait_for_dns(host: str, timeout: int = 60):
-    """Wait for DNS to resolve a hostname - not used anymore."""
-    logger.info(f"DNS resolution for {host} skipped - not needed")
 
 
 def make_engine(url: str):
@@ -26,46 +18,15 @@ def make_engine(url: str):
     if not url.startswith("postgresql://"):
         raise ValueError(f"Invalid database URL scheme: {url}")
 
-    # Extract components for logging
-    try:
-        proto, rest = url.split("://", 1)
-        if "@" in rest:
-            userinfo, hostinfo = rest.split("@", 1)
-            if ":" in userinfo:
-                user, _ = userinfo.split(":", 1)
-            else:
-                user = userinfo
-        else:
-            user = "unknown"
-            hostinfo = rest
+    # Mask the URL for logging
+    masked_url = url.split("@")[1] if "@" in url else "masked"
 
-        # Extract host for DNS check
-        if "/" in hostinfo:
-            host_and_port, dbname = hostinfo.split("/", 1)
-        else:
-            host_and_port = hostinfo
-            dbname = ""
-
-        if ":" in host_and_port:
-            host, port = host_and_port.split(":", 1)
-        else:
-            host = host_and_port
-            port = "5432"
-    except Exception as e:
-        logger.warning(f"Error parsing database URL: {e}")
-        host = "unknown"
-        user = "unknown"
-        hostinfo = url.split("@")[-1] if "@" in url else "masked"
-
-    # Determine SSL mode
+    # Determine SSL mode based on the URL
     is_railway_internal = "railway.internal" in url
     sslmode = "disable" if is_railway_internal else "require"
 
     # Log connection details
-    logger.info(f"Connecting as {user} to {hostinfo} with sslmode={sslmode}")
-
-    # Don't wait for DNS - it causes delays and timeouts
-    # Railway's internal DNS is only available inside the project network
+    logger.info(f"Creating engine for {masked_url} with sslmode={sslmode}")
 
     # Create and return the engine
     return create_engine(

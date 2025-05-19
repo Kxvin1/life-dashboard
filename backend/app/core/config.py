@@ -19,7 +19,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None  # OpenAI API key for AI insights
 
     class Config:
-        env_file = ".env"
+        # Only load .env file in development to prevent overriding Railway variables in production
+        if os.getenv("ENVIRONMENT") != "production":
+            env_file = ".env"
 
 
 settings = Settings()

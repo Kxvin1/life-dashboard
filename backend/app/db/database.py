@@ -12,13 +12,25 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Get database URL - prefer public URL over internal URL
-database_url = getattr(settings, "DATABASE_PUBLIC_URL", None) or settings.DATABASE_URL
+# Get database URL with the correct precedence
+# 1. Use DATABASE_PUBLIC_URL if available (works everywhere)
+# 2. Fall back to DATABASE_URL (only works inside Railway network)
+database_url = (
+    os.environ.get("DATABASE_PUBLIC_URL")
+    or os.environ.get("DATABASE_URL")
+    or getattr(settings, "DATABASE_PUBLIC_URL", None)
+    or settings.DATABASE_URL
+)
 
-# If we're using the internal URL but the public URL is available, use that instead
-if "railway.internal" in database_url and hasattr(settings, "DATABASE_PUBLIC_URL"):
-    database_url = settings.DATABASE_PUBLIC_URL
-    logger.info("Using DATABASE_PUBLIC_URL instead of internal DATABASE_URL")
+# Log which URL we're using
+if "railway.internal" in database_url:
+    logger.warning("Using internal Railway URL - this may not work during build/deploy")
+elif "proxy.rlwy.net" in database_url:
+    logger.info("Using Railway public URL - this should work everywhere")
+elif "localhost" in database_url:
+    logger.info("Using localhost database URL - for development only")
+else:
+    logger.info("Using custom database URL")
 
 # Create engine using shared module
 engine = make_engine(database_url)
