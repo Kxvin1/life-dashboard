@@ -70,7 +70,38 @@ export interface PomodoroAIHistoryItem {
   summary: string;
   insights: string[];
   recommendations: string[];
-  charts_data: any;
+  charts_data: {
+    daily_chart: {
+      labels: string[];
+      datasets: {
+        label: string;
+        data: number[];
+        backgroundColor: string;
+        borderColor: string;
+        borderWidth: number;
+      }[];
+    };
+    completion_chart: {
+      labels: string[];
+      datasets: {
+        label: string;
+        data: number[];
+        backgroundColor: string;
+        borderColor: string;
+        borderWidth: number;
+      }[];
+    };
+    time_of_day_chart: {
+      labels: number[];
+      datasets: {
+        label: string;
+        data: number[];
+        backgroundColor: string;
+        borderColor: string;
+        borderWidth: number;
+      }[];
+    };
+  };
   created_at: string;
 }
 

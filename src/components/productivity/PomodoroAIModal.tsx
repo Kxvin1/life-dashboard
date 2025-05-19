@@ -159,46 +159,109 @@ const PomodoroAIModal = ({ isOpen, onClose, data }: PomodoroAIModalProps) => {
     // Create daily chart
     if (dailyChartRef.current) {
       const ctx = dailyChartRef.current.getContext("2d");
-      if (ctx) {
-        dailyChartInstance.current = new Chart(ctx, {
-          type: "bar",
-          data: data.charts.daily_chart,
-          options: commonOptions,
-        });
+      if (ctx && data.charts && data.charts.daily_chart) {
+        try {
+          dailyChartInstance.current = new Chart(ctx, {
+            type: "bar",
+            data: data.charts.daily_chart,
+            options: commonOptions,
+          });
+        } catch (error) {
+          console.error("Error creating daily chart:", error);
+          // Create a fallback chart if there's an error
+          dailyChartInstance.current = new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels: ["No Data Available"],
+              datasets: [
+                {
+                  label: "No Data",
+                  data: [0],
+                  backgroundColor: "rgba(75, 192, 192, 0.2)",
+                  borderColor: "rgba(75, 192, 192, 1)",
+                  borderWidth: 1,
+                },
+              ],
+            },
+            options: commonOptions,
+          });
+        }
       }
     }
 
     // Create completion chart
     if (completionChartRef.current) {
       const ctx = completionChartRef.current.getContext("2d");
-      if (ctx) {
-        completionChartInstance.current = new Chart(ctx, {
-          type: "bar",
-          data: data.charts.completion_chart,
-          options: commonOptions,
-        });
+      if (ctx && data.charts && data.charts.completion_chart) {
+        try {
+          completionChartInstance.current = new Chart(ctx, {
+            type: "bar",
+            data: data.charts.completion_chart,
+            options: commonOptions,
+          });
+        } catch (error) {
+          console.error("Error creating completion chart:", error);
+          // Create a fallback chart if there's an error
+          completionChartInstance.current = new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels: ["No Data Available"],
+              datasets: [
+                {
+                  label: "No Data",
+                  data: [0],
+                  backgroundColor: "rgba(75, 192, 192, 0.2)",
+                  borderColor: "rgba(75, 192, 192, 1)",
+                  borderWidth: 1,
+                },
+              ],
+            },
+            options: commonOptions,
+          });
+        }
       }
     }
 
     // Create time of day chart
     if (timeOfDayChartRef.current) {
       const ctx = timeOfDayChartRef.current.getContext("2d");
-      if (ctx) {
-        // Format hour labels
-        const hourLabels = data.charts.time_of_day_chart.labels.map((hour) => {
-          return `${hour}:00`;
-        });
+      if (ctx && data.charts && data.charts.time_of_day_chart) {
+        try {
+          // Format hour labels
+          const hourLabels = Array.isArray(data.charts.time_of_day_chart.labels)
+            ? data.charts.time_of_day_chart.labels.map((hour) => `${hour}:00`)
+            : [];
 
-        const chartData = {
-          ...data.charts.time_of_day_chart,
-          labels: hourLabels,
-        };
+          const chartData = {
+            ...data.charts.time_of_day_chart,
+            labels: hourLabels,
+          };
 
-        timeOfDayChartInstance.current = new Chart(ctx, {
-          type: "bar",
-          data: chartData,
-          options: commonOptions,
-        });
+          timeOfDayChartInstance.current = new Chart(ctx, {
+            type: "bar",
+            data: chartData,
+            options: commonOptions,
+          });
+        } catch (error) {
+          console.error("Error creating time of day chart:", error);
+          // Create a fallback chart if there's an error
+          timeOfDayChartInstance.current = new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels: ["No Data Available"],
+              datasets: [
+                {
+                  label: "No Data",
+                  data: [0],
+                  backgroundColor: "rgba(75, 192, 192, 0.2)",
+                  borderColor: "rgba(75, 192, 192, 1)",
+                  borderWidth: 1,
+                },
+              ],
+            },
+            options: commonOptions,
+          });
+        }
       }
     }
 

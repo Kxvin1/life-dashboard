@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getPomodoroAIHistory,
   getPomodoroAIHistoryById,
@@ -26,7 +26,13 @@ export default function PomodoroAIHistoryModal({
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedInsight, setSelectedInsight] = useState<any | null>(null);
+  const [selectedInsight, setSelectedInsight] = useState<
+    | (PomodoroAIHistoryItem & {
+        remaining_uses?: number;
+        total_uses_allowed?: number;
+      })
+    | null
+  >(null);
   const observer = useRef<IntersectionObserver | null>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
 
@@ -55,6 +61,56 @@ export default function PomodoroAIHistoryModal({
     };
   }, [loading, hasMore]);
 
+  // Function to load history with pagination and search
+  const loadHistory = useCallback(
+    (pageNum: number) => {
+      setLoading(true);
+      setError(null);
+
+      const skip = pageNum * ITEMS_PER_PAGE;
+
+      getPomodoroAIHistory(skip, ITEMS_PER_PAGE)
+        .then((data) => {
+          // Filter data based on search term if provided
+          let filteredData = data;
+          if (searchTerm.trim().length >= 3) {
+            const searchLower = searchTerm.toLowerCase();
+            filteredData = data.filter(
+              (item) =>
+                item.summary.toLowerCase().includes(searchLower) ||
+                item.insights.some((insight) =>
+                  insight.toLowerCase().includes(searchLower)
+                ) ||
+                item.recommendations.some((rec) =>
+                  rec.toLowerCase().includes(searchLower)
+                )
+            );
+          }
+
+          if (pageNum === 0) {
+            // First page, replace history
+            setHistory(filteredData);
+          } else {
+            // Subsequent pages, append to history
+            setHistory((prev) => [...prev, ...filteredData]);
+          }
+
+          // Check if there are more items to load
+          setHasMore(filteredData.length === ITEMS_PER_PAGE);
+        })
+        .catch((err) => {
+          console.error("Failed to load history:", err);
+          // Don't show error to user, just set empty history
+          setHistory([]);
+          setHasMore(false);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    },
+    [searchTerm]
+  );
+
   // Load history when modal opens or search term changes
   useEffect(() => {
     if (isOpen) {
@@ -69,61 +125,14 @@ export default function PomodoroAIHistoryModal({
         loadHistory(0);
       }
     }
-  }, [isOpen, searchTerm]);
+  }, [isOpen, searchTerm, loadHistory]);
 
   // Load history when page changes
   useEffect(() => {
     if (page > 0 && hasMore) {
       loadHistory(page);
     }
-  }, [page]);
-
-  // Function to load history with pagination and search
-  const loadHistory = (pageNum: number) => {
-    setLoading(true);
-    setError(null);
-
-    const skip = pageNum * ITEMS_PER_PAGE;
-
-    getPomodoroAIHistory(skip, ITEMS_PER_PAGE)
-      .then((data) => {
-        // Filter data based on search term if provided
-        let filteredData = data;
-        if (searchTerm.trim().length >= 3) {
-          const searchLower = searchTerm.toLowerCase();
-          filteredData = data.filter(
-            (item) =>
-              item.summary.toLowerCase().includes(searchLower) ||
-              item.insights.some((insight) =>
-                insight.toLowerCase().includes(searchLower)
-              ) ||
-              item.recommendations.some((rec) =>
-                rec.toLowerCase().includes(searchLower)
-              )
-          );
-        }
-
-        if (pageNum === 0) {
-          // First page, replace history
-          setHistory(filteredData);
-        } else {
-          // Subsequent pages, append to history
-          setHistory((prev) => [...prev, ...filteredData]);
-        }
-
-        // Check if there are more items to load
-        setHasMore(filteredData.length === ITEMS_PER_PAGE);
-      })
-      .catch((err) => {
-        console.error("Failed to load history:", err);
-        // Don't show error to user, just set empty history
-        setHistory([]);
-        setHasMore(false);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  };
+  }, [page, hasMore, loadHistory]);
 
   const handleViewInsight = async (insight: PomodoroAIHistoryItem) => {
     try {
@@ -139,8 +148,19 @@ export default function PomodoroAIHistoryModal({
       // Get the current remaining uses
       try {
         const remainingData = await getRemainingPomodoroAIUses();
-        fullInsight.remaining_uses = remainingData.remaining_uses;
-        fullInsight.total_uses_allowed = remainingData.total_uses_allowed;
+        // Use type assertion to add these properties
+        (
+          fullInsight as PomodoroAIHistoryItem & {
+            remaining_uses: number;
+            total_uses_allowed: number;
+          }
+        ).remaining_uses = remainingData.remaining_uses;
+        (
+          fullInsight as PomodoroAIHistoryItem & {
+            remaining_uses: number;
+            total_uses_allowed: number;
+          }
+        ).total_uses_allowed = remainingData.total_uses_allowed;
       } catch (error) {
         console.error("Failed to fetch remaining uses:", error);
         // Continue even if this fails
@@ -174,7 +194,7 @@ export default function PomodoroAIHistoryModal({
         style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
       >
         <div className="bg-card rounded-lg shadow-xl border border-border w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col m-auto">
-          <div className="p-4 border-b border-border flex justify-between items-center">
+          <div className="flex items-center justify-between p-4 border-b border-border">
             <h2 className="text-xl font-semibold text-foreground">
               Productivity Analysis History
             </h2>
@@ -185,7 +205,7 @@ export default function PomodoroAIHistoryModal({
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
+                className="w-6 h-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -204,29 +224,29 @@ export default function PomodoroAIHistoryModal({
             <input
               type="text"
               placeholder="Search insights..."
-              className="w-full p-2 rounded-md border border-border bg-background text-foreground"
+              className="w-full p-2 border rounded-md border-border bg-background text-foreground"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 p-4 overflow-y-auto">
             {error ? (
-              <div className="text-center py-8">
-                <p className="text-destructive mb-4">{error}</p>
+              <div className="py-8 text-center">
+                <p className="mb-4 text-destructive">{error}</p>
                 <button
                   onClick={() => loadHistory(0)}
-                  className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                  className="px-4 py-2 mt-4 transition-colors rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   Try Again
                 </button>
               </div>
             ) : history.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+              <div className="py-8 text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-primary/10">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-8 w-8 text-primary"
+                    className="w-8 h-8 text-primary"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -239,17 +259,17 @@ export default function PomodoroAIHistoryModal({
                     />
                   </svg>
                 </div>
-                <h3 className="text-lg font-medium text-foreground mb-2">
+                <h3 className="mb-2 text-lg font-medium text-foreground">
                   No Analysis History Yet
                 </h3>
-                <p className="text-muted-foreground max-w-md mx-auto">
+                <p className="max-w-md mx-auto text-muted-foreground">
                   Generate your first productivity analysis to see insights
                   about your Pomodoro sessions. Your analysis history will
                   appear here.
                 </p>
                 <button
                   onClick={onClose}
-                  className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                  className="px-4 py-2 mt-4 transition-colors rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   Got it
                 </button>
@@ -259,20 +279,20 @@ export default function PomodoroAIHistoryModal({
                 {history.map((item) => (
                   <div
                     key={item.id}
-                    className="bg-card/50 border border-border rounded-lg p-4 hover:bg-accent/10 transition-colors cursor-pointer"
+                    className="p-4 transition-colors border rounded-lg cursor-pointer bg-card/50 border-border hover:bg-accent/10"
                     onClick={() => handleViewInsight(item)}
                   >
-                    <div className="flex justify-between items-start">
+                    <div className="flex items-start justify-between">
                       <div>
                         <h3 className="font-medium text-foreground">
                           Productivity Analysis
                         </h3>
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="mt-1 text-sm text-muted-foreground">
                           {formatDate(item.created_at)}
                         </p>
                       </div>
                       <button
-                        className="text-primary hover:text-primary/80 text-sm font-medium"
+                        className="text-sm font-medium text-primary hover:text-primary/80"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleViewInsight(item);
@@ -308,10 +328,51 @@ export default function PomodoroAIHistoryModal({
           isOpen={!!selectedInsight}
           onClose={() => setSelectedInsight(null)}
           data={{
-            summary: selectedInsight.summary,
-            insights: selectedInsight.insights,
-            recommendations: selectedInsight.recommendations,
-            charts: selectedInsight.charts_data,
+            summary: selectedInsight.summary || "No summary available",
+            insights: Array.isArray(selectedInsight.insights)
+              ? selectedInsight.insights
+              : [],
+            recommendations: Array.isArray(selectedInsight.recommendations)
+              ? selectedInsight.recommendations
+              : [],
+            charts: selectedInsight.charts_data || {
+              daily_chart: {
+                labels: [],
+                datasets: [
+                  {
+                    label: "No Data",
+                    data: [],
+                    backgroundColor: "rgba(75, 192, 192, 0.2)",
+                    borderColor: "rgba(75, 192, 192, 1)",
+                    borderWidth: 1,
+                  },
+                ],
+              },
+              completion_chart: {
+                labels: [],
+                datasets: [
+                  {
+                    label: "No Data",
+                    data: [],
+                    backgroundColor: "rgba(75, 192, 192, 0.2)",
+                    borderColor: "rgba(75, 192, 192, 1)",
+                    borderWidth: 1,
+                  },
+                ],
+              },
+              time_of_day_chart: {
+                labels: [],
+                datasets: [
+                  {
+                    label: "No Data",
+                    data: [],
+                    backgroundColor: "rgba(75, 192, 192, 0.2)",
+                    borderColor: "rgba(75, 192, 192, 1)",
+                    borderWidth: 1,
+                  },
+                ],
+              },
+            },
             remaining_uses: selectedInsight.remaining_uses || 0,
             total_uses_allowed: selectedInsight.total_uses_allowed || 0,
           }}
