@@ -8,9 +8,10 @@ import sys
 import time
 import traceback
 import logging
+import socket
 from alembic.config import Config
 from alembic import command
-from sqlalchemy import create_engine, text, inspect
+from sqlalchemy import text, inspect
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 # Configure logging
@@ -38,53 +39,138 @@ except ImportError:
         else:
             DATABASE_URL = "postgresql://placeholder:placeholder@localhost/placeholder"
 
-# Determine if we're in production environment
-is_production = os.environ.get("ENVIRONMENT", "development") != "development"
+# Import the shared engine module
+try:
+    from app.db.engine import make_engine
+except ImportError:
+    # If we can't import the shared module, define it here
+    def wait_for_dns(host: str, timeout: int = 60):
+        """Wait for DNS to resolve a hostname."""
+        start = time.time()
+        while True:
+            try:
+                socket.gethostbyname(host)
+                logger.info(f"DNS resolved {host}")
+                return
+            except socket.gaierror:
+                if time.time() - start > timeout:
+                    logger.warning(f"Timeout waiting for DNS: {host}")
+                    return
+                logger.info(f"Waiting for DNS: {host}")
+                time.sleep(2)
 
-# Add initial delay to allow database to initialize
-if is_production and __name__ == "__main__":
-    logger.info("Waiting 10 seconds for database to initialize...")
-    time.sleep(10)
+    def make_engine(url: str):
+        """Create a SQLAlchemy engine with appropriate settings."""
+        from sqlalchemy import create_engine
 
-# Ensure the URL has the correct protocol prefix
-if not DATABASE_URL.startswith("postgresql://"):
-    if DATABASE_URL.startswith("postgres://"):
-        # Replace postgres:// with postgresql://
-        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://")
-        logger.info("Fixed database URL protocol (postgres:// → postgresql://)")
-    elif not "://" in DATABASE_URL:
-        # Add the protocol if missing
-        DATABASE_URL = f"postgresql://{DATABASE_URL}"
-        logger.info("Added postgresql:// protocol to database URL")
+        # Normalize URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
 
-# Log the database URL (masked)
-if "@" in DATABASE_URL:
-    masked_url = DATABASE_URL.split("@")[1]
-else:
-    masked_url = "masked"
-logger.info(f"Using database URL: {masked_url}")
+        # Ensure URL has correct protocol
+        if not url.startswith("postgresql://"):
+            raise ValueError(f"Invalid database URL scheme: {url}")
 
-# Check if we're connecting to Railway's internal PostgreSQL
-is_railway_internal = "railway.internal" in DATABASE_URL
+        # Extract components for logging
+        try:
+            proto, rest = url.split("://", 1)
+            if "@" in rest:
+                userinfo, hostinfo = rest.split("@", 1)
+                if ":" in userinfo:
+                    user, _ = userinfo.split(":", 1)
+                else:
+                    user = userinfo
+            else:
+                user = "unknown"
+                hostinfo = rest
 
-# Create engine with appropriate SSL settings
-if is_railway_internal:
-    # For Railway internal connections, disable SSL completely
-    logger.info("Detected Railway internal connection, disabling SSL")
-    engine = create_engine(
-        DATABASE_URL, pool_pre_ping=True, connect_args={"sslmode": "disable"}
-    )
-else:
-    # For other connections, use SSL
-    logger.info("Using standard connection with SSL")
-    engine = create_engine(
-        DATABASE_URL, pool_pre_ping=True, connect_args={"sslmode": "require"}
-    )
+            # Extract host for DNS check
+            if "/" in hostinfo:
+                host_and_port, dbname = hostinfo.split("/", 1)
+            else:
+                host_and_port = hostinfo
+                dbname = ""
+
+            if ":" in host_and_port:
+                host, port = host_and_port.split(":", 1)
+            else:
+                host = host_and_port
+                port = "5432"
+        except Exception as e:
+            logger.warning(f"Error parsing database URL: {e}")
+            host = "unknown"
+            user = "unknown"
+            hostinfo = url.split("@")[-1] if "@" in url else "masked"
+
+        # Determine SSL mode
+        is_railway_internal = "railway.internal" in url
+        sslmode = "disable" if is_railway_internal else "require"
+
+        # Log connection details
+        logger.info(f"Connecting as {user} to {hostinfo} with sslmode={sslmode}")
+
+        # Wait for DNS to resolve if it's a hostname
+        if not host.replace(".", "").isdigit() and ":" not in host:
+            wait_for_dns(host)
+
+        # Create and return the engine
+        return create_engine(
+            url,
+            pool_pre_ping=True,
+            pool_recycle=300,
+            pool_size=5,
+            max_overflow=10,
+            connect_args={"sslmode": sslmode},
+        )
+
+
+# Create engine using the shared module
+engine = make_engine(DATABASE_URL)
+
+
+def check_raw_socket(host, port):
+    """Check if we're actually connecting to a PostgreSQL server."""
+    try:
+        logger.info(f"Checking raw socket connection to {host}:{port}")
+        s = socket.socket()
+        s.settimeout(5)
+        s.connect((host, int(port)))
+        data = s.recv(8)
+        s.close()
+
+        logger.info(f"Raw socket received: {data!r}")
+
+        # PostgreSQL servers typically respond with a single byte
+        # HTTP servers respond with "HTTP/1.1" or similar
+        if data.startswith(b"HTTP"):
+            logger.error(
+                f"ERROR: Received HTTP response instead of PostgreSQL protocol!"
+            )
+            logger.error(f"You are connecting to an HTTP server, not PostgreSQL!")
+            return False
+        return True
+    except Exception as e:
+        logger.error(f"Error in raw socket check: {e}")
+        return False
 
 
 def wait_for_database(max_attempts=5, delay=5):
     """Wait for the database to be available."""
     logger.info(f"Waiting for database to be available...")
+
+    # Extract host and port from DATABASE_URL
+    try:
+        parts = DATABASE_URL.split("@")[1].split("/")[0]
+        if ":" in parts:
+            host, port = parts.split(":")
+        else:
+            host = parts
+            port = "5432"
+
+        # Check raw socket first
+        check_raw_socket(host, port)
+    except Exception as e:
+        logger.warning(f"Could not extract host/port for raw check: {e}")
 
     # Try to connect
     for attempt in range(max_attempts):
