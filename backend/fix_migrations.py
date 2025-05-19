@@ -18,6 +18,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Import settings in a way that works in Railway environment
 try:
     from app.core.config import settings
+
     DATABASE_URL = settings.DATABASE_URL
 except ImportError:
     # Fallback for Railway environment
@@ -30,14 +31,38 @@ except ImportError:
         else:
             DATABASE_URL = "postgresql://placeholder:placeholder@localhost/placeholder"
 
-# Create engine
-engine = create_engine(DATABASE_URL)
+# Determine if we're in production environment
+is_production = os.environ.get("ENVIRONMENT", "development") != "development"
+
+# Configure SSL for production environments
+if is_production:
+    # Add SSL parameters to the connection string if not already present
+    if "sslmode" not in DATABASE_URL:
+        if "?" in DATABASE_URL:
+            DATABASE_URL += "&sslmode=prefer"
+        else:
+            DATABASE_URL += "?sslmode=prefer"
+
+    # Create engine with SSL configuration
+    engine = create_engine(DATABASE_URL, connect_args={"sslmode": "prefer"})
+else:
+    # Use regular connection for development
+    engine = create_engine(DATABASE_URL)
+
 
 def wait_for_database(url, max_attempts=10, delay=5):
     """Wait for the database to be available."""
     print(f"Waiting for database to be available at {url.split('@')[-1]}...")
 
-    engine = create_engine(url)
+    # Add SSL parameters to the connection string if not already present
+    if "sslmode" not in url:
+        if "?" in url:
+            url += "&sslmode=prefer"
+        else:
+            url += "?sslmode=prefer"
+
+    # Create engine with SSL configuration
+    engine = create_engine(url, connect_args={"sslmode": "prefer"})
     attempts = 0
 
     while attempts < max_attempts:
@@ -48,13 +73,16 @@ def wait_for_database(url, max_attempts=10, delay=5):
                 return True
         except OperationalError as e:
             attempts += 1
-            print(f"Database not available yet (attempt {attempts}/{max_attempts}): {e}")
+            print(
+                f"Database not available yet (attempt {attempts}/{max_attempts}): {e}"
+            )
             if attempts < max_attempts:
                 print(f"Waiting {delay} seconds before retrying...")
                 time.sleep(delay)
 
     print("ERROR: Could not connect to the database after multiple attempts")
     return False
+
 
 def check_table_exists(table_name):
     """Check if a table exists in the database."""
@@ -65,27 +93,30 @@ def check_table_exists(table_name):
         print(f"Error checking if table {table_name} exists: {e}")
         return False
 
+
 def run_migrations():
     """Run all pending migrations."""
     try:
         print("Running database migrations...")
-        
+
         # Get the directory of the current script
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        
+
         # Create an Alembic configuration object
         alembic_cfg = Config(os.path.join(current_dir, "alembic.ini"))
-        
+
         # Set the database URL
         alembic_cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
-        
+
         # Run the migration
         try:
             command.upgrade(alembic_cfg, "heads")
         except Exception as e:
             print(f"Error running upgrade to heads: {e}")
-            print("Migration may have already been applied or there might be multiple heads.")
-            
+            print(
+                "Migration may have already been applied or there might be multiple heads."
+            )
+
         print("Database migrations completed successfully!")
         return True
     except Exception as e:
@@ -93,18 +124,19 @@ def run_migrations():
         traceback.print_exc()
         return False
 
+
 def fix_migrations():
     """Fix migration issues by ensuring all migrations are applied."""
     try:
         print("Starting migration fix...")
-        
+
         # Wait for the database to be available
         if not wait_for_database(DATABASE_URL):
             return False
-        
+
         # Run migrations
         migration_success = run_migrations()
-        
+
         # Check for required tables
         tables_to_check = [
             "task_categories",
@@ -112,11 +144,11 @@ def fix_migrations():
             "task_ai_usage",
             "task_ai_history",
         ]
-        
+
         for table in tables_to_check:
             exists = check_table_exists(table)
             print(f"{table} table exists: {exists}")
-        
+
         print("Migration fix completed successfully!")
         return True
     except Exception as e:
@@ -124,6 +156,7 @@ def fix_migrations():
         traceback.print_exc()
         # Return True anyway to allow the application to start
         return True
+
 
 def main():
     """Main function."""
@@ -135,6 +168,7 @@ def main():
         traceback.print_exc()
         # Return 0 anyway to allow the application to start
         return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
