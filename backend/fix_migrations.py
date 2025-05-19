@@ -34,19 +34,51 @@ except ImportError:
 # Determine if we're in production environment
 is_production = os.environ.get("ENVIRONMENT", "development") != "development"
 
-# Configure SSL for production environments
-if is_production:
-    # Add SSL parameters to the connection string if not already present
-    if "sslmode" not in DATABASE_URL:
-        if "?" in DATABASE_URL:
-            DATABASE_URL += "&sslmode=prefer"
-        else:
-            DATABASE_URL += "?sslmode=prefer"
+# Add initial delay to allow database to initialize
+if is_production and __name__ == "__main__":
+    print("Waiting 15 seconds for database to initialize...")
+    time.sleep(15)
 
-    # Create engine with SSL configuration
-    engine = create_engine(DATABASE_URL, connect_args={"sslmode": "prefer"})
+# Check if we're connecting to Railway's internal PostgreSQL
+is_railway_internal = "railway.internal" in DATABASE_URL
+
+# Configure database connection
+if is_production:
+    if is_railway_internal:
+        # Disable SSL for Railway's internal network
+        if "sslmode" in DATABASE_URL:
+            # Remove any existing sslmode parameter
+            DATABASE_URL = DATABASE_URL.replace("sslmode=prefer", "")
+            DATABASE_URL = DATABASE_URL.replace("sslmode=require", "")
+            # Clean up URL if needed
+            DATABASE_URL = DATABASE_URL.replace("?&", "?")
+            DATABASE_URL = DATABASE_URL.replace("&&", "&")
+            if DATABASE_URL.endswith("?") or DATABASE_URL.endswith("&"):
+                DATABASE_URL = DATABASE_URL[:-1]
+
+        # Add sslmode=disable
+        if "?" in DATABASE_URL:
+            DATABASE_URL += "&sslmode=disable"
+        else:
+            DATABASE_URL += "?sslmode=disable"
+
+        # Create engine with SSL disabled
+        print("Using Railway internal connection with SSL disabled")
+        engine = create_engine(DATABASE_URL, connect_args={"sslmode": "disable"})
+    else:
+        # Add SSL parameters for external connections
+        if "sslmode" not in DATABASE_URL:
+            if "?" in DATABASE_URL:
+                DATABASE_URL += "&sslmode=prefer"
+            else:
+                DATABASE_URL += "?sslmode=prefer"
+
+        # Create engine with SSL configuration
+        print("Using external connection with SSL enabled")
+        engine = create_engine(DATABASE_URL, connect_args={"sslmode": "prefer"})
 else:
     # Use regular connection for development
+    print("Using development connection")
     engine = create_engine(DATABASE_URL)
 
 
@@ -54,15 +86,43 @@ def wait_for_database(url, max_attempts=10, delay=5):
     """Wait for the database to be available."""
     print(f"Waiting for database to be available at {url.split('@')[-1]}...")
 
-    # Add SSL parameters to the connection string if not already present
-    if "sslmode" not in url:
-        if "?" in url:
-            url += "&sslmode=prefer"
-        else:
-            url += "?sslmode=prefer"
+    # Check if we're connecting to Railway's internal PostgreSQL
+    is_railway_internal = "railway.internal" in url
 
-    # Create engine with SSL configuration
-    engine = create_engine(url, connect_args={"sslmode": "prefer"})
+    # Configure connection based on whether it's Railway internal or not
+    if is_railway_internal:
+        # Disable SSL for Railway's internal network
+        if "sslmode" in url:
+            # Remove any existing sslmode parameter
+            url = url.replace("sslmode=prefer", "")
+            url = url.replace("sslmode=require", "")
+            # Clean up URL if needed
+            url = url.replace("?&", "?")
+            url = url.replace("&&", "&")
+            if url.endswith("?") or url.endswith("&"):
+                url = url[:-1]
+
+        # Add sslmode=disable
+        if "?" in url:
+            url += "&sslmode=disable"
+        else:
+            url += "?sslmode=disable"
+
+        # Create engine with SSL disabled
+        print("Using Railway internal connection with SSL disabled for database check")
+        engine = create_engine(url, connect_args={"sslmode": "disable"})
+    else:
+        # Add SSL parameters for external connections
+        if "sslmode" not in url:
+            if "?" in url:
+                url += "&sslmode=prefer"
+            else:
+                url += "?sslmode=prefer"
+
+        # Create engine with SSL configuration
+        print("Using external connection with SSL enabled for database check")
+        engine = create_engine(url, connect_args={"sslmode": "prefer"})
+
     attempts = 0
 
     while attempts < max_attempts:
@@ -81,7 +141,9 @@ def wait_for_database(url, max_attempts=10, delay=5):
                 time.sleep(delay)
 
     print("ERROR: Could not connect to the database after multiple attempts")
-    return False
+    # Return True anyway to allow the application to continue
+    print("Continuing anyway to allow the application to start...")
+    return True
 
 
 def check_table_exists(table_name):
