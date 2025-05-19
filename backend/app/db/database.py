@@ -12,8 +12,13 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Get database URL
-database_url = settings.DATABASE_URL
+# Get database URL - prefer public URL over internal URL
+database_url = getattr(settings, "DATABASE_PUBLIC_URL", None) or settings.DATABASE_URL
+
+# If we're using the internal URL but the public URL is available, use that instead
+if "railway.internal" in database_url and hasattr(settings, "DATABASE_PUBLIC_URL"):
+    database_url = settings.DATABASE_PUBLIC_URL
+    logger.info("Using DATABASE_PUBLIC_URL instead of internal DATABASE_URL")
 
 # Create engine using shared module
 engine = make_engine(database_url)

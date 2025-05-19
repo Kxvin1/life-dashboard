@@ -30,34 +30,34 @@ try:
     DATABASE_URL = settings.DATABASE_URL
 except ImportError:
     # Fallback for Railway environment
-    DATABASE_URL = os.environ.get("DATABASE_URL")
+    # Try to use the public URL first, then fall back to the internal URL
+    DATABASE_URL = os.environ.get("DATABASE_PUBLIC_URL") or os.environ.get(
+        "DATABASE_URL"
+    )
     if not DATABASE_URL:
-        logger.warning("DATABASE_URL environment variable not set")
+        logger.warning(
+            "Neither DATABASE_PUBLIC_URL nor DATABASE_URL environment variable is set"
+        )
         # For testing purposes, don't exit if we're just importing the module
         if __name__ == "__main__":
             sys.exit(1)
         else:
             DATABASE_URL = "postgresql://placeholder:placeholder@localhost/placeholder"
+    else:
+        if "railway.internal" in DATABASE_URL and os.environ.get("DATABASE_PUBLIC_URL"):
+            # If we're using the internal URL but the public URL is available, use that instead
+            DATABASE_URL = os.environ.get("DATABASE_PUBLIC_URL")
+            logger.info("Using DATABASE_PUBLIC_URL instead of internal DATABASE_URL")
 
 # Import the shared engine module
 try:
     from app.db.engine import make_engine
 except ImportError:
     # If we can't import the shared module, define it here
+    # We don't need this function anymore
     def wait_for_dns(host: str, timeout: int = 60):
-        """Wait for DNS to resolve a hostname."""
-        start = time.time()
-        while True:
-            try:
-                socket.gethostbyname(host)
-                logger.info(f"DNS resolved {host}")
-                return
-            except socket.gaierror:
-                if time.time() - start > timeout:
-                    logger.warning(f"Timeout waiting for DNS: {host}")
-                    return
-                logger.info(f"Waiting for DNS: {host}")
-                time.sleep(2)
+        """Wait for DNS to resolve a hostname - not used anymore."""
+        logger.info(f"DNS resolution for {host} skipped - not needed")
 
     def make_engine(url: str):
         """Create a SQLAlchemy engine with appropriate settings."""
@@ -109,9 +109,8 @@ except ImportError:
         # Log connection details
         logger.info(f"Connecting as {user} to {hostinfo} with sslmode={sslmode}")
 
-        # Wait for DNS to resolve if it's a hostname
-        if not host.replace(".", "").isdigit() and ":" not in host:
-            wait_for_dns(host)
+        # Don't wait for DNS - it causes delays and timeouts
+        # Railway's internal DNS is only available inside the project network
 
         # Create and return the engine
         return create_engine(

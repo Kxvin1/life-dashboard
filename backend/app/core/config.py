@@ -5,6 +5,9 @@ from typing import Optional
 
 class Settings(BaseSettings):
     DATABASE_URL: str
+    DATABASE_PUBLIC_URL: Optional[str] = (
+        None  # Public database URL for external connections
+    )
     SECRET_KEY: str
     ENVIRONMENT: str = "development"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 300
