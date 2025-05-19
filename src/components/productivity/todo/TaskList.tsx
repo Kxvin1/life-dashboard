@@ -24,8 +24,6 @@ const TaskList = ({ tasks, isSelected, onSelect }: TaskListProps) => {
     if (currentIndex <= 0) return; // Already at the top
 
     try {
-      console.log("Moving task up:", taskId, "from index", currentIndex);
-
       // Update the local state immediately for responsive UI
       const newTasks = [...localTasks];
       const task = newTasks[currentIndex];
@@ -47,8 +45,6 @@ const TaskList = ({ tasks, isSelected, onSelect }: TaskListProps) => {
     if (currentIndex >= localTasks.length - 1) return; // Already at the bottom
 
     try {
-      console.log("Moving task down:", taskId, "from index", currentIndex);
-
       // Update the local state immediately for responsive UI
       const newTasks = [...localTasks];
       const task = newTasks[currentIndex];

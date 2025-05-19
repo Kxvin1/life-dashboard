@@ -331,46 +331,28 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
   // Move task up in the list
   const moveTaskUp = useCallback(
     async (taskId: number, currentIndex: number, isLongTerm: boolean) => {
-      console.log("moveTaskUp called with:", {
-        taskId,
-        currentIndex,
-        isLongTerm,
-      });
-
       if (currentIndex <= 0) {
-        console.log("Task already at the top, not moving");
         return; // Already at the top
       }
 
       try {
-        console.log("Calling reorderTask with:", {
-          taskId,
-          newPosition: currentIndex - 1,
-        });
         await reorderTask(taskId, currentIndex - 1);
-        console.log("reorderTask completed successfully");
 
         // Update the task list order
         if (isLongTerm) {
-          console.log("Updating long term tasks");
           setLongTermTasks((prev) => {
-            console.log("Previous long term tasks:", prev);
             const newList = [...prev];
             const task = newList[currentIndex];
             newList.splice(currentIndex, 1);
             newList.splice(currentIndex - 1, 0, task);
-            console.log("New long term tasks:", newList);
             return newList;
           });
         } else {
-          console.log("Updating short term tasks");
           setShortTermTasks((prev) => {
-            console.log("Previous short term tasks:", prev);
             const newList = [...prev];
             const task = newList[currentIndex];
             newList.splice(currentIndex, 1);
             newList.splice(currentIndex - 1, 0, task);
-            console.log("New short term tasks:", newList);
             return newList;
           });
         }
@@ -385,47 +367,29 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
   // Move task down in the list
   const moveTaskDown = useCallback(
     async (taskId: number, currentIndex: number, isLongTerm: boolean) => {
-      console.log("moveTaskDown called with:", {
-        taskId,
-        currentIndex,
-        isLongTerm,
-      });
-
       const taskList = isLongTerm ? longTermTasks : shortTermTasks;
       if (currentIndex >= taskList.length - 1) {
-        console.log("Task already at the bottom, not moving");
         return; // Already at the bottom
       }
 
       try {
-        console.log("Calling reorderTask with:", {
-          taskId,
-          newPosition: currentIndex + 1,
-        });
         await reorderTask(taskId, currentIndex + 1);
-        console.log("reorderTask completed successfully");
 
         // Update the task list order
         if (isLongTerm) {
-          console.log("Updating long term tasks");
           setLongTermTasks((prev) => {
-            console.log("Previous long term tasks:", prev);
             const newList = [...prev];
             const task = newList[currentIndex];
             newList.splice(currentIndex, 1);
             newList.splice(currentIndex + 1, 0, task);
-            console.log("New long term tasks:", newList);
             return newList;
           });
         } else {
-          console.log("Updating short term tasks");
           setShortTermTasks((prev) => {
-            console.log("Previous short term tasks:", prev);
             const newList = [...prev];
             const task = newList[currentIndex];
             newList.splice(currentIndex, 1);
             newList.splice(currentIndex + 1, 0, task);
-            console.log("New short term tasks:", newList);
             return newList;
           });
         }

@@ -319,8 +319,6 @@ export const reorderTask = async (
       throw new Error("Authentication token missing");
     }
 
-    console.log("Sending reorder request:", { taskId, newPosition });
-
     const response = await fetch(`${API_URL}/api/v1/tasks/reorder`, {
       method: "POST",
       headers: {
@@ -337,8 +335,6 @@ export const reorderTask = async (
       const errorData = await response.json();
       throw new Error(errorData.detail || "Failed to reorder task");
     }
-
-    console.log("Reorder task successful");
   } catch (error) {
     console.error("Error reordering task:", error);
     throw error;

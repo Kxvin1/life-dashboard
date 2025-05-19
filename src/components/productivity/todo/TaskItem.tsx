@@ -141,16 +141,12 @@ const TaskItem = ({
 
   // Direct handlers for move buttons
   const handleMoveUp = () => {
-    if (index > 0) {
-      console.log("Moving task up", task.id, index);
-      if (onMoveUp) {
-        onMoveUp(task.id, index);
-      }
+    if (index > 0 && onMoveUp) {
+      onMoveUp(task.id, index);
     }
   };
 
   const handleMoveDown = () => {
-    console.log("Moving task down", task.id, index);
     if (onMoveDown) {
       onMoveDown(task.id, index);
     }
@@ -428,7 +424,7 @@ const TaskItem = ({
                 {/* Mobile actions (up/down/edit/delete) */}
                 <div className="flex ml-auto space-x-2 sm:hidden">
                   {/* Move */}
-                  <div className="flex items-center p-1 space-x-1 rounded-lg shadow-sm bg-secondary/50 z-10">
+                  <div className="z-10 flex items-center p-1 space-x-1 rounded-lg shadow-sm bg-secondary/50">
                     <button
                       type="button"
                       onClick={handleMoveUp}
@@ -457,7 +453,7 @@ const TaskItem = ({
                     <button
                       type="button"
                       onClick={handleMoveDown}
-                      className="flex items-center justify-center w-7 h-7 rounded-md text-foreground hover:text-primary hover:bg-secondary"
+                      className="flex items-center justify-center rounded-md w-7 h-7 text-foreground hover:text-primary hover:bg-secondary"
                       title="Move down"
                     >
                       <svg
@@ -477,11 +473,11 @@ const TaskItem = ({
                   </div>
 
                   {/* Edit/Delete */}
-                  <div className="flex items-center p-1 space-x-1 rounded-lg shadow-sm bg-secondary/50 z-10">
+                  <div className="z-10 flex items-center p-1 space-x-1 rounded-lg shadow-sm bg-secondary/50">
                     <button
                       type="button"
                       onClick={() => setShowEditForm(true)}
-                      className="flex items-center justify-center w-7 h-7 rounded-md text-foreground hover:text-primary hover:bg-secondary"
+                      className="flex items-center justify-center rounded-md w-7 h-7 text-foreground hover:text-primary hover:bg-secondary"
                       title="Edit task"
                     >
                       <svg
@@ -502,7 +498,7 @@ const TaskItem = ({
                     <button
                       type="button"
                       onClick={handleDeleteClick}
-                      className="flex items-center justify-center w-7 h-7 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10"
+                      className="flex items-center justify-center rounded-md w-7 h-7 text-foreground hover:text-destructive hover:bg-destructive/10"
                       title="Delete task"
                     >
                       <svg
@@ -678,7 +674,7 @@ const TaskItem = ({
             {/* Desktop actions (up/down/edit/delete) */}
             <div className="items-center hidden ml-4 space-x-2 sm:flex">
               {/* Move */}
-              <div className="flex items-center p-1 space-x-1 rounded-lg shadow-sm bg-secondary/50 z-10">
+              <div className="z-10 flex items-center p-1 space-x-1 rounded-lg shadow-sm bg-secondary/50">
                 <button
                   type="button"
                   onClick={handleMoveUp}
@@ -707,7 +703,7 @@ const TaskItem = ({
                 <button
                   type="button"
                   onClick={handleMoveDown}
-                  className="flex items-center justify-center transition-all duration-200 rounded-md w-8 h-8 text-foreground hover:text-primary hover:bg-secondary"
+                  className="flex items-center justify-center w-8 h-8 transition-all duration-200 rounded-md text-foreground hover:text-primary hover:bg-secondary"
                   title="Move down"
                 >
                   <svg
@@ -727,11 +723,11 @@ const TaskItem = ({
               </div>
 
               {/* Edit/Delete */}
-              <div className="flex items-center p-1 space-x-1 rounded-lg shadow-sm bg-secondary/50 z-10">
+              <div className="z-10 flex items-center p-1 space-x-1 rounded-lg shadow-sm bg-secondary/50">
                 <button
                   type="button"
                   onClick={() => setShowEditForm(true)}
-                  className="flex items-center justify-center transition-all duration-200 rounded-md w-8 h-8 text-foreground hover:text-primary hover:bg-secondary"
+                  className="flex items-center justify-center w-8 h-8 transition-all duration-200 rounded-md text-foreground hover:text-primary hover:bg-secondary"
                   title="Edit task"
                 >
                   <svg
@@ -752,7 +748,7 @@ const TaskItem = ({
                 <button
                   type="button"
                   onClick={handleDeleteClick}
-                  className="flex items-center justify-center transition-all duration-200 rounded-md w-8 h-8 text-foreground hover:text-destructive hover:bg-destructive/10"
+                  className="flex items-center justify-center w-8 h-8 transition-all duration-200 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10"
                   title="Delete task"
                 >
                   <svg
