@@ -59,7 +59,7 @@ def warmup_db_connection():
     try:
         logger.info("Warming up database connections...")
         # Number of connections to establish during warmup
-        num_connections = 10
+        num_connections = 25  # Increased from 10 to 25
 
         # Use a thread pool to establish multiple connections concurrently
         with concurrent.futures.ThreadPoolExecutor(
@@ -75,7 +75,13 @@ def warmup_db_connection():
             # Wait for all connections to be established
             concurrent.futures.wait(futures)
 
-        logger.info(f"Successfully warmed up {num_connections} database connections")
+        # Now warm up common queries
+        logger.info("Warming up common database queries...")
+        warm_up_common_queries()
+
+        logger.info(
+            f"Successfully warmed up {num_connections} database connections and common queries"
+        )
     except Exception as e:
         logger.error(f"Error warming up database connections: {str(e)}")
 
@@ -85,11 +91,46 @@ def establish_db_connection(connection_id):
     try:
         # Create a connection and execute a simple query
         with engine.connect() as conn:
+            # Execute a simple query to establish the connection
             result = conn.execute(text("SELECT 1"))
             value = result.scalar()
+
+            # Execute a few more queries to warm up the connection
+            conn.execute(text("SELECT current_timestamp"))
+
             logger.info(f"Connection {connection_id} established successfully: {value}")
     except Exception as e:
         logger.error(f"Error establishing connection {connection_id}: {str(e)}")
+
+
+def warm_up_common_queries():
+    """Execute common queries to warm up the database cache."""
+    try:
+        # Create a session
+        db = SessionLocal()
+        try:
+            # Execute common queries that are likely to be used frequently
+
+            # Query 1: Check database version
+            db.execute(text("SELECT version()"))
+
+            # Query 2: Get current timestamp
+            db.execute(text("SELECT current_timestamp"))
+
+            # Query 3: Count users
+            db.execute(text("SELECT COUNT(*) FROM users"))
+
+            # Query 4: Count transactions
+            db.execute(text("SELECT COUNT(*) FROM transactions"))
+
+            # Query 5: Count categories
+            db.execute(text("SELECT COUNT(*) FROM categories"))
+
+            logger.info("Common queries executed successfully")
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Error executing common queries: {str(e)}")
 
 
 # Start connection warmup in a background thread

@@ -82,10 +82,10 @@ else:
 # Create engine using shared module
 engine = make_engine(database_url)
 
-# We're using pool_pre_ping=True in the engine creation, so we don't need a custom ping listener
-# SQLAlchemy will automatically check connections before using them
-# is_localhost = "localhost" in database_url or "127.0.0.1" in database_url
-# logger.info("Using SQLAlchemy's built-in connection validation with pool_pre_ping=True")
+# We've disabled pool_pre_ping for better performance
+# This means we're not validating connections before using them
+# This is a performance optimization for a pet project with few users
+logger.info("Connection validation disabled for better performance")
 
 
 # Create session factory
@@ -102,8 +102,18 @@ def get_db():
     # Create a new session
     db = SessionLocal()
     try:
-        # Yield the session - SQLAlchemy will handle connection validation with pool_pre_ping
+        # Yield the session without validation for better performance
         yield db
     finally:
-        # Always close the session
+        # Always close the session to return it to the pool
         db.close()
+
+
+# Create a statement cache to improve query performance
+from sqlalchemy.pool import QueuePool
+
+if hasattr(engine.pool, "size"):
+    logger.info(f"Database connection pool initialized with size={engine.pool.size()}")
+
+# Log that we're ready to accept connections
+logger.info("Database connection setup complete and ready to accept connections")

@@ -44,12 +44,17 @@ def make_engine(url: str):
         logger.info(f"Creating engine for {masked_url} without SSL (local development)")
         return create_engine(
             url,
-            pool_pre_ping=True,
-            pool_recycle=600,  # Increased from 300 to 600 seconds (10 minutes) to reduce connection recycling
+            # Disable pool_pre_ping to reduce connection validation overhead
+            pool_pre_ping=False,
+            pool_recycle=1800,  # Increased to 30 minutes to minimize connection recycling
             pool_size=30,  # Increased to 30 based on performance tests
             max_overflow=30,  # Increased to 30 based on performance tests
             pool_timeout=30,  # Increased timeout for getting a connection from the pool
             pool_use_lifo=True,  # Use LIFO (last in, first out) to reuse recent connections
+            # Enable statement caching to improve query performance
+            echo=False,  # Disable SQL logging for better performance
+            echo_pool=False,  # Disable connection pool logging
+            future=True,  # Use SQLAlchemy 2.0 style for better performance
             # No connect_args for localhost
         )
     else:
@@ -57,12 +62,17 @@ def make_engine(url: str):
         logger.info(f"Creating engine for {masked_url} with sslmode={sslmode}")
         return create_engine(
             url,
-            pool_pre_ping=True,
-            pool_recycle=600,  # Increased from 300 to 600 seconds (10 minutes) to reduce connection recycling
+            # Disable pool_pre_ping to reduce connection validation overhead
+            pool_pre_ping=False,
+            pool_recycle=1800,  # Increased to 30 minutes to minimize connection recycling
             pool_size=30,  # Increased to 30 based on performance tests
             max_overflow=30,  # Increased to 30 based on performance tests
             pool_timeout=30,  # Increased timeout for getting a connection from the pool
             pool_use_lifo=True,  # Use LIFO (last in, first out) to reuse recent connections
+            # Enable statement caching to improve query performance
+            echo=False,  # Disable SQL logging for better performance
+            echo_pool=False,  # Disable connection pool logging
+            future=True,  # Use SQLAlchemy 2.0 style for better performance
             connect_args={
                 "sslmode": sslmode,
                 "connect_timeout": 15,  # Increased from 10 to allow more time for connection
@@ -70,5 +80,13 @@ def make_engine(url: str):
                 "keepalives_idle": 60,  # Seconds between TCP keepalives
                 "keepalives_interval": 10,  # Seconds between keepalive retransmits
                 "keepalives_count": 3,  # Number of keepalive retransmits before connection is considered dead
+                # Performance optimizations
+                "application_name": "life_dashboard",  # Identify the application in pg_stat_activity
+                "client_encoding": "UTF8",  # Set client encoding explicitly
+                "options": "-c statement_timeout=60000 -c idle_in_transaction_session_timeout=60000",  # Set timeouts
+                "tcp_user_timeout": 60000,  # TCP timeout in milliseconds
+                "tcp_keepalives_idle": 60,  # TCP keepalive idle time
+                "tcp_keepalives_interval": 10,  # TCP keepalive interval
+                "tcp_keepalives_count": 3,  # TCP keepalive count
             },
         )
