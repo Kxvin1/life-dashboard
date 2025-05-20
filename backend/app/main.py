@@ -43,10 +43,10 @@ def run_migrations() -> None:
 
 
 # Verify categories in background after startup
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(verify_categories())
-    asyncio.create_task(verify_task_categories_async())
+# @app.on_event("startup")
+# async def startup_event():
+#     asyncio.create_task(verify_categories())
+#     asyncio.create_task(verify_task_categories_async())
 
 
 # Add demo user middleware first

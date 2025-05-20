@@ -87,9 +87,15 @@ def verify_task_categories(db: Session) -> None:
 
 
 async def verify_task_categories_async() -> None:
-    """Run verify_task_categories in the background."""
-    try:
-        async with asyncio.to_thread(SessionLocal) as db:
+    """Run verify_task_categories in a background thread so startup isn't blocked."""
+    loop = asyncio.get_running_loop()
+
+    # this wrapper opens/closes its own session
+    def _run():
+        db = SessionLocal()
+        try:
             verify_task_categories(db)
-    except Exception as e:
-        logger.error(f"verify_task_categories failed: {e}")
+        finally:
+            db.close()
+
+    await loop.run_in_executor(None, _run)  # ← no second import of SessionLocal
