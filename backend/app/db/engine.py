@@ -24,7 +24,11 @@ def make_engine(url: str):
     # Determine connection settings based on the URL
     is_railway_internal = "railway.internal" in url
     is_localhost = "localhost" in url or "127.0.0.1" in url
-    sslmode = "disable" if is_railway_internal else "require"
+
+    # Use 'prefer' instead of 'require' for production to improve performance
+    # 'prefer' will try SSL first but fall back to non-SSL if that fails
+    # This is more efficient than 'require' which will only use SSL
+    sslmode = "disable" if is_railway_internal else "prefer"
 
     # if is_railway_internal:
     #     sslmode = "disable"
@@ -43,8 +47,8 @@ def make_engine(url: str):
             url,
             pool_pre_ping=True,
             pool_recycle=300,
-            pool_size=5,
-            max_overflow=10,
+            pool_size=20,  # Increased from 5 to handle more concurrent connections
+            max_overflow=20,  # Increased from 10 to handle more concurrent connections
             # No connect_args for localhost
         )
     else:
@@ -54,10 +58,14 @@ def make_engine(url: str):
             url,
             pool_pre_ping=True,
             pool_recycle=300,
-            pool_size=5,
-            max_overflow=10,
+            pool_size=20,  # Increased from 5 to handle more concurrent connections
+            max_overflow=20,  # Increased from 10 to handle more concurrent connections
             connect_args={
                 "sslmode": sslmode,
-                "connect_timeout": 10,
+                "connect_timeout": 15,  # Increased from 10 to allow more time for connection
+                "keepalives": 1,  # Enable TCP keepalives
+                "keepalives_idle": 60,  # Seconds between TCP keepalives
+                "keepalives_interval": 10,  # Seconds between keepalive retransmits
+                "keepalives_count": 3,  # Number of keepalive retransmits before connection is considered dead
             },
         )

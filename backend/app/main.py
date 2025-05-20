@@ -5,6 +5,8 @@ from datetime import datetime
 from app.core.config import settings
 from app.db.database import SessionLocal
 import json
+import time
+import logging
 from app.api import (
     transactions_router,
     health_router,
@@ -33,6 +35,9 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Configure logging
+logger = logging.getLogger(__name__)
+
 ALEMBIC_CFG = Config(str(Path(__file__).parent.parent / "alembic.ini"))
 
 
@@ -49,7 +54,24 @@ def run_migrations() -> None:
 #     asyncio.create_task(verify_task_categories_async())
 
 
-# Add demo user middleware first
+# Add performance monitoring middleware
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = str(process_time)
+
+    # Log requests that take more than 0.5 seconds
+    if process_time > 0.5:
+        logger.warning(
+            f"Slow request: {request.method} {request.url.path} took {process_time:.2f}s"
+        )
+
+    return response
+
+
+# Add demo user middleware
 app.add_middleware(DemoUserMiddleware)
 
 # Configure CORS - Allow specific origins (add this AFTER other middleware)
