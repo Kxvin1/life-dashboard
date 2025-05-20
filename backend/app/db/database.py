@@ -7,6 +7,10 @@ from app.db.engine import make_engine
 import os
 import time
 import logging
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
