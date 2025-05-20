@@ -109,9 +109,7 @@ def get_db():
         db.close()
 
 
-# Create a statement cache to improve query performance
-from sqlalchemy.pool import QueuePool
-
+# Log connection pool size
 if hasattr(engine.pool, "size"):
     logger.info(f"Database connection pool initialized with size={engine.pool.size()}")
 

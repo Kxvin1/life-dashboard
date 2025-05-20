@@ -82,11 +82,5 @@ def make_engine(url: str):
                 "keepalives_count": 3,  # Number of keepalive retransmits before connection is considered dead
                 # Performance optimizations
                 "application_name": "life_dashboard",  # Identify the application in pg_stat_activity
-                "client_encoding": "UTF8",  # Set client encoding explicitly
-                "options": "-c statement_timeout=60000 -c idle_in_transaction_session_timeout=60000",  # Set timeouts
-                "tcp_user_timeout": 60000,  # TCP timeout in milliseconds
-                "tcp_keepalives_idle": 60,  # TCP keepalive idle time
-                "tcp_keepalives_interval": 10,  # TCP keepalive interval
-                "tcp_keepalives_count": 3,  # TCP keepalive count
             },
         )
