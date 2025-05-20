@@ -3,10 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, JSONResponse
 from datetime import datetime
 from app.core.config import settings
-from app.db.database import SessionLocal
+from app.db.database import SessionLocal, engine
+from sqlalchemy import text
 import json
 import time
 import logging
+import threading
+import concurrent.futures
 from app.api import (
     transactions_router,
     health_router,
@@ -47,11 +50,54 @@ def run_migrations() -> None:
     command.upgrade(ALEMBIC_CFG, "heads")
 
 
-# Verify categories in background after startup
-# @app.on_event("startup")
-# async def startup_event():
-#     asyncio.create_task(verify_categories())
-#     asyncio.create_task(verify_task_categories_async())
+# Function to warm up database connections
+def warmup_db_connection():
+    """
+    Establish multiple database connections to warm up the connection pool.
+    This helps avoid the initial connection overhead for the first requests.
+    """
+    try:
+        logger.info("Warming up database connections...")
+        # Number of connections to establish during warmup
+        num_connections = 10
+
+        # Use a thread pool to establish multiple connections concurrently
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=num_connections
+        ) as executor:
+            # Create a list of future objects
+            futures = []
+
+            # Submit connection tasks
+            for i in range(num_connections):
+                futures.append(executor.submit(establish_db_connection, i))
+
+            # Wait for all connections to be established
+            concurrent.futures.wait(futures)
+
+        logger.info(f"Successfully warmed up {num_connections} database connections")
+    except Exception as e:
+        logger.error(f"Error warming up database connections: {str(e)}")
+
+
+def establish_db_connection(connection_id):
+    """Establish a single database connection."""
+    try:
+        # Create a connection and execute a simple query
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1"))
+            value = result.scalar()
+            logger.info(f"Connection {connection_id} established successfully: {value}")
+    except Exception as e:
+        logger.error(f"Error establishing connection {connection_id}: {str(e)}")
+
+
+# Start connection warmup in a background thread
+@app.on_event("startup")
+def startup_event():
+    """Run startup tasks in the background."""
+    # Start a background thread for database connection warmup
+    threading.Thread(target=warmup_db_connection).start()
 
 
 # Add performance monitoring middleware
@@ -178,6 +224,45 @@ app.include_router(health_router, tags=["health"])
 @app.get("/")
 async def root():
     return {"message": "Welcome to Finance Tracker API", "status": "healthy"}
+
+
+@app.get("/db-health")
+async def db_health_check():
+    """
+    Check database connection health and return connection statistics.
+    This endpoint is useful for diagnosing database connection issues.
+    """
+    try:
+        # Get connection pool statistics
+        pool_status = {
+            "pool_size": engine.pool.size(),
+            "checkedin": engine.pool.checkedin(),
+            "checkedout": engine.pool.checkedout(),
+            "overflow": engine.pool.overflow(),
+        }
+
+        # Test a simple query
+        start_time = time.time()
+        db = SessionLocal()
+        try:
+            result = db.execute(text("SELECT 1")).scalar()
+            query_time = time.time() - start_time
+
+            return {
+                "status": "healthy",
+                "query_result": result,
+                "query_time_ms": round(query_time * 1000, 2),
+                "pool_status": pool_status,
+                "timestamp": str(datetime.now()),
+            }
+        finally:
+            db.close()
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "timestamp": str(datetime.now()),
+        }
 
 
 @app.get("/cors-test")

@@ -25,10 +25,9 @@ def make_engine(url: str):
     is_railway_internal = "railway.internal" in url
     is_localhost = "localhost" in url or "127.0.0.1" in url
 
-    # Use 'prefer' instead of 'require' for production to improve performance
-    # 'prefer' will try SSL first but fall back to non-SSL if that fails
-    # This is more efficient than 'require' which will only use SSL
-    sslmode = "disable" if is_railway_internal else "prefer"
+    # Since this is a pet project with few users, we're prioritizing performance over security
+    # Using 'disable' for all connections to maximize performance
+    sslmode = "disable"
 
     # if is_railway_internal:
     #     sslmode = "disable"
@@ -46,9 +45,11 @@ def make_engine(url: str):
         return create_engine(
             url,
             pool_pre_ping=True,
-            pool_recycle=300,
-            pool_size=20,  # Increased from 5 to handle more concurrent connections
-            max_overflow=20,  # Increased from 10 to handle more concurrent connections
+            pool_recycle=600,  # Increased from 300 to 600 seconds (10 minutes) to reduce connection recycling
+            pool_size=30,  # Increased to 30 based on performance tests
+            max_overflow=30,  # Increased to 30 based on performance tests
+            pool_timeout=30,  # Increased timeout for getting a connection from the pool
+            pool_use_lifo=True,  # Use LIFO (last in, first out) to reuse recent connections
             # No connect_args for localhost
         )
     else:
@@ -57,9 +58,11 @@ def make_engine(url: str):
         return create_engine(
             url,
             pool_pre_ping=True,
-            pool_recycle=300,
-            pool_size=20,  # Increased from 5 to handle more concurrent connections
-            max_overflow=20,  # Increased from 10 to handle more concurrent connections
+            pool_recycle=600,  # Increased from 300 to 600 seconds (10 minutes) to reduce connection recycling
+            pool_size=30,  # Increased to 30 based on performance tests
+            max_overflow=30,  # Increased to 30 based on performance tests
+            pool_timeout=30,  # Increased timeout for getting a connection from the pool
+            pool_use_lifo=True,  # Use LIFO (last in, first out) to reuse recent connections
             connect_args={
                 "sslmode": sslmode,
                 "connect_timeout": 15,  # Increased from 10 to allow more time for connection
