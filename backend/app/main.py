@@ -39,7 +39,7 @@ ALEMBIC_CFG = Config(str(Path(__file__).parent.parent / "alembic.ini"))
 @app.on_event("startup")
 def run_migrations() -> None:
     """Ensure DB schema is up to date before serving requests."""
-    command.upgrade(ALEMBIC_CFG, "head")
+    command.upgrade(ALEMBIC_CFG, "heads")
 
 
 # Verify categories in background after startup
