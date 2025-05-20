@@ -3,7 +3,6 @@ Shared database engine creation module.
 """
 
 import logging
-import os
 from sqlalchemy import create_engine
 
 logger = logging.getLogger(__name__)
@@ -25,12 +24,17 @@ def make_engine(url: str):
     # Determine connection settings based on the URL
     is_railway_internal = "railway.internal" in url
     is_localhost = "localhost" in url or "127.0.0.1" in url
-    
-    # Set SSL mode based on connection type
-    # For Railway internal connections, disable SSL
-    # For public connections (including Railway proxy), require SSL
     sslmode = "disable" if is_railway_internal else "require"
-    
+
+    # if is_railway_internal:
+    #     sslmode = "disable"
+    # else:
+    #     sslmode = (
+    #         os.getenv("FORCE_DISABLE_TLS", "false").lower() == "true"
+    #         and "disable"
+    #         or "require"
+    #     )
+
     # Create engine with appropriate settings
     if is_localhost:
         # For localhost, don't use any SSL settings

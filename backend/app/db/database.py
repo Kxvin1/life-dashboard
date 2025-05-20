@@ -35,53 +35,59 @@ if use_pg_vars and all(
     )
 # Next check if we have a direct connection string
 elif direct_url := os.environ.get("DIRECT_DATABASE_URL"):
-    logger.info("Using direct database connection string")
     database_url = direct_url
+    logger.info("Using direct database connection string")
 else:
-    # Check if we should prioritize internal URL
-    use_internal = os.environ.get("USE_INTERNAL_DATABASE_URL", "").lower() == "true"
+    # default – rely on the DATABASE_URL that Railway injects
+    database_url = os.environ["DATABASE_URL"]
+    logger.info("Using DATABASE_URL from environment")
+# else:
+#     # Check if we should prioritize internal URL
+#     use_internal = os.environ.get("USE_INTERNAL_DATABASE_URL", "").lower() == "true"
 
-    if use_internal:
-        # 1. Use DATABASE_URL (internal Railway network) if available
-        # 2. Fall back to DATABASE_PUBLIC_URL
-        database_url = (
-            os.environ.get("DATABASE_URL")
-            or os.environ.get("DATABASE_PUBLIC_URL")
-            or getattr(settings, "DATABASE_URL", None)
-            or getattr(settings, "DATABASE_PUBLIC_URL", None)
-            or settings.DATABASE_URL
-        )
-    else:
-        # 1. Use DATABASE_PUBLIC_URL if available (works everywhere)
-        # 2. Fall back to DATABASE_URL (only works inside Railway network)
-        database_url = (
-            os.environ.get("DATABASE_PUBLIC_URL")
-            or os.environ.get("DATABASE_URL")
-            or getattr(settings, "DATABASE_PUBLIC_URL", None)
-            or settings.DATABASE_URL
-        )
+#     if use_internal:
+#         # 1. Use DATABASE_URL (internal Railway network) if available
+#         # 2. Fall back to DATABASE_PUBLIC_URL
+#         database_url = (
+#             os.environ.get("DATABASE_URL")
+#             or os.environ.get("DATABASE_PUBLIC_URL")
+#             or getattr(settings, "DATABASE_URL", None)
+#             or getattr(settings, "DATABASE_PUBLIC_URL", None)
+#             or settings.DATABASE_URL
+#         )
+#     else:
+#         # 1. Use DATABASE_PUBLIC_URL if available (works everywhere)
+#         # 2. Fall back to DATABASE_URL (only works inside Railway network)
+#         database_url = (
+#             os.environ.get("DATABASE_PUBLIC_URL")
+#             or os.environ.get("DATABASE_URL")
+#             or getattr(settings, "DATABASE_PUBLIC_URL", None)
+#             or settings.DATABASE_URL
+#         )
 
 # Log which URL we're using
-if "railway.internal" in database_url:
-    logger.warning("Using internal Railway URL - this may not work during build/deploy")
-elif "proxy.rlwy.net" in database_url:
-    logger.info("Using Railway public URL - this should work everywhere")
-elif "localhost" in database_url:
-    logger.info("Using localhost database URL - for development only")
-else:
-    logger.info("Using custom database URL")
+# if "railway.internal" in database_url:
+#     logger.warning("Using internal Railway URL - this may not work during build/deploy")
+# elif "proxy.rlwy.net" in database_url:
+#     logger.info("Using Railway public URL - this should work everywhere")
+# elif "localhost" in database_url:
+#     logger.info("Using localhost database URL - for development only")
+# else:
+#     logger.info("Using custom database URL")
 
 # Create engine using shared module
 engine = make_engine(database_url)
 
 # We're using pool_pre_ping=True in the engine creation, so we don't need a custom ping listener
 # SQLAlchemy will automatically check connections before using them
-is_localhost = "localhost" in database_url or "127.0.0.1" in database_url
-logger.info("Using SQLAlchemy's built-in connection validation with pool_pre_ping=True")
+# is_localhost = "localhost" in database_url or "127.0.0.1" in database_url
+# logger.info("Using SQLAlchemy's built-in connection validation with pool_pre_ping=True")
 
 
 # Create session factory
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(
+    autocommit=False, autoflush=False, bind=engine, expire_on_commit=False
+)
 
 # Create base class for models
 Base = declarative_base()
