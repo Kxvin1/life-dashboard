@@ -1,5 +1,6 @@
 """Add AI insight history table
 
+
 Revision ID: 00e60163cdeb
 Revises: 793a099393e3
 Create Date: 2025-05-12 17:08:42.875551
