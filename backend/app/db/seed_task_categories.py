@@ -87,25 +87,9 @@ def verify_task_categories(db: Session) -> None:
 
 
 async def verify_task_categories_async() -> None:
-    """
-    Async wrapper for verify_task_categories with error handling
-    """
+    """Run verify_task_categories in the background."""
     try:
-        # Check if we're in a local development environment
-        from app.db.database import is_localhost
-
-        # For local development, just log a message and skip verification
-        if is_localhost:
-            logger.info("Skipping task categories verification in local development")
-            return
-
-        db = SessionLocal()
-        try:
+        async with asyncio.to_thread(SessionLocal) as db:
             verify_task_categories(db)
-        except Exception as e:
-            logger.error(f"Error verifying/updating categories: {str(e)}")
-        finally:
-            db.close()
     except Exception as e:
-        logger.error(f"Failed to create database session: {str(e)}")
-        # Continue anyway to allow the application to start
+        logger.error(f"verify_task_categories failed: {e}")

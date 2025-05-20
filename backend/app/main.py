@@ -23,12 +23,23 @@ from app.db.seed_task_categories import (
 )
 from app.core.demo_middleware import DemoUserMiddleware
 import asyncio
+from alembic import command
+from alembic.config import Config
+from pathlib import Path
 
 app = FastAPI(
     title="Life Dashboard API",
     description="API for managing personal finances, productivity, and more",
     version="1.0.0",
 )
+
+ALEMBIC_CFG = Config(str(Path(__file__).parent.parent / "alembic.ini"))
+
+
+@app.on_event("startup")
+def run_migrations() -> None:
+    """Ensure DB schema is up to date before serving requests."""
+    command.upgrade(ALEMBIC_CFG, "head")
 
 
 # Verify categories in background after startup
