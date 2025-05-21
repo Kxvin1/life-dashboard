@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from typing import List, Optional
 from datetime import date, datetime, timedelta
 import pytz
@@ -34,18 +34,18 @@ async def get_task_categories(
     """
     Get all task categories (system defaults and user-created)
     """
-    # Get system default categories
-    default_categories = (
-        db.query(TaskCategory).filter(TaskCategory.is_default == True).all()
+    # Use a single query with an OR condition for better performance
+    # This avoids making two separate database queries
+    categories = (
+        db.query(TaskCategory)
+        .filter(
+            (TaskCategory.is_default == True)
+            | (TaskCategory.user_id == current_user.id)
+        )
+        .all()
     )
 
-    # Get user-created categories
-    user_categories = (
-        db.query(TaskCategory).filter(TaskCategory.user_id == current_user.id).all()
-    )
-
-    # Combine and return
-    return default_categories + user_categories
+    return categories
 
 
 @router.post("/categories", response_model=TaskCategorySchema)
@@ -86,34 +86,54 @@ async def get_tasks(
     """
     Get tasks with optional filtering
     """
-    # Start with base query for user's tasks
-    query = db.query(Task).filter(Task.user_id == current_user.id)
+    # Optimize the query by selecting only necessary columns for the count
+    # This avoids loading entire objects just to count them
+    count_query = db.query(Task.id).filter(Task.user_id == current_user.id)
 
-    # Apply filters
+    # Build the main query with eager loading of category relationship
+    # This reduces the number of database queries by loading categories in a single query
+    query = (
+        db.query(Task)
+        .options(
+            # Use selectinload for better performance with collections
+            # This loads the category in a separate query but is more efficient
+            # than using a JOIN for this particular case
+            selectinload(Task.category)
+        )
+        .filter(Task.user_id == current_user.id)
+    )
+
+    # Apply filters to both queries
     if is_long_term is not None:
+        count_query = count_query.filter(Task.is_long_term == is_long_term)
         query = query.filter(Task.is_long_term == is_long_term)
 
     if status:
+        count_query = count_query.filter(Task.status == status)
         query = query.filter(Task.status == status)
 
     if category_id:
+        count_query = count_query.filter(Task.category_id == category_id)
         query = query.filter(Task.category_id == category_id)
 
     if priority:
+        count_query = count_query.filter(Task.priority == priority)
         query = query.filter(Task.priority == priority)
 
     if due_date_start:
         start_date = datetime.strptime(due_date_start, "%Y-%m-%d").date()
+        count_query = count_query.filter(Task.due_date >= start_date)
         query = query.filter(Task.due_date >= start_date)
 
     if due_date_end:
         end_date = datetime.strptime(due_date_end, "%Y-%m-%d").date()
+        count_query = count_query.filter(Task.due_date <= end_date)
         query = query.filter(Task.due_date <= end_date)
 
-    # Get total count before pagination
-    total_count = query.count()
+    # Get total count efficiently
+    total_count = count_query.count()
 
-    # Apply pagination
+    # Apply pagination and ordering
     tasks = query.order_by(Task.created_at.desc()).offset(skip).limit(limit).all()
 
     return {"tasks": tasks, "total_count": total_count}
