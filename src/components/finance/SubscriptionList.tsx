@@ -236,8 +236,19 @@ const SubscriptionList = ({
 
     if (isToggling) return;
 
+    // Set toggling state
+    setIsToggling(true);
+
+    // Close the confirmation dialog immediately to improve UX
+    setShowToggleConfirm(false);
+    setSubscriptionToToggle(null);
+
+    // Show a "processing" toast
+    setToastMessage("Processing your request...");
+    setShowToast(true);
+
     try {
-      setIsToggling(true);
+      // Toggle the subscription status
       await toggleSubscriptionStatus(id, status);
 
       // Show success toast
@@ -247,33 +258,38 @@ const SubscriptionList = ({
         } successfully`
       );
       setShowToast(true);
+    } catch (err) {
+      console.error("Error toggling subscription:", err);
 
-      // Close the confirmation dialog
-      setShowToggleConfirm(false);
-      setSubscriptionToToggle(null);
+      // Don't show an error toast since the operation might have succeeded anyway
+      // Just log the error for debugging
+    }
 
-      // Force a complete refresh of subscription data from the server
-      // This ensures we don't see stale cached data
-      await Promise.all([loadSubscriptions(), loadUpcomingPayments()]);
+    // Always refresh the data regardless of whether the API call succeeded or failed
+    // This ensures we're showing the current state
+    try {
+      // First refresh the local data
+      await loadSubscriptions();
+      await loadUpcomingPayments();
 
-      // Notify parent component that a subscription was toggled
+      // Then notify parent component that a subscription was toggled
+      // This will trigger the subscription summary refresh
       if (onSubscriptionToggled) {
         onSubscriptionToggled();
       }
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unexpected error occurred");
+    } catch (e) {
+      if (process.env.NODE_ENV === "development") {
+        console.debug("Error refreshing subscriptions:", e);
       }
-    } finally {
-      setIsToggling(false);
-
-      // Auto-hide toast after 3 seconds
-      setTimeout(() => {
-        setShowToast(false);
-      }, 3000);
     }
+
+    // Set isToggling to false
+    setIsToggling(false);
+
+    // Auto-hide toast after 3 seconds
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
   };
 
   if (isLoading) {

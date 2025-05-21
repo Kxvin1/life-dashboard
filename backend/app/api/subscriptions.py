@@ -15,6 +15,7 @@ from app.core.security import get_current_user
 from app.models.user import User
 from app.services.cache_service import (
     cached,
+    invalidate_cache,
     invalidate_cache_pattern,
     invalidate_user_cache,
     get_cache,
@@ -47,8 +48,16 @@ async def create_subscription(
     db.commit()
     db.refresh(db_subscription)
 
-    # Invalidate only subscription-related cache entries for this user
-    invalidate_user_cache(current_user.id, feature="subscriptions")
+    # Invalidate all cache entries for this user to ensure everything is fresh
+    invalidate_user_cache(current_user.id)
+
+    # Also explicitly invalidate specific cache keys
+    summary_cache_key = f"user_{current_user.id}_subscription_summary"
+    invalidate_cache(summary_cache_key)
+
+    # Invalidate any cache keys that might contain subscription data
+    invalidate_cache_pattern(f"user_{current_user.id}_subscriptions")
+    invalidate_cache_pattern("subscription")
 
     return db_subscription
 
@@ -173,39 +182,60 @@ async def update_subscription(
     if db_subscription is None:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
-    # Update subscription fields
-    update_data = subscription.model_dump(exclude_unset=True)
+    try:
+        # Update subscription fields
+        update_data = subscription.model_dump(exclude_unset=True)
 
-    # If status is being updated to inactive and last_active_date is not provided,
-    # set it to today's date
-    if (
-        "status" in update_data
-        and update_data["status"] == SubscriptionStatus.inactive
-        and "last_active_date" not in update_data
-    ):
-        update_data["last_active_date"] = date.today()
+        # Log the update data for debugging
+        logger.info(f"Updating subscription {subscription_id} with data: {update_data}")
 
-    # If billing_frequency or start_date is updated, recalculate next_payment_date
-    if "billing_frequency" in update_data or "start_date" in update_data:
-        # Get the updated values or use the existing ones
-        billing_frequency = update_data.get(
-            "billing_frequency", db_subscription.billing_frequency
+        # If status is being updated to inactive and last_active_date is not provided,
+        # set it to today's date
+        if (
+            "status" in update_data
+            and update_data["status"] == SubscriptionStatus.inactive
+            and "last_active_date" not in update_data
+        ):
+            update_data["last_active_date"] = date.today()
+
+        # If billing_frequency or start_date is updated, recalculate next_payment_date
+        if "billing_frequency" in update_data or "start_date" in update_data:
+            # Get the updated values or use the existing ones
+            billing_frequency = update_data.get(
+                "billing_frequency", db_subscription.billing_frequency
+            )
+            start_date = update_data.get("start_date", db_subscription.start_date)
+
+            # Calculate the new next_payment_date
+            update_data["next_payment_date"] = calculate_next_payment_date(
+                start_date, billing_frequency
+            )
+
+        for key, value in update_data.items():
+            setattr(db_subscription, key, value)
+
+        db.commit()
+        db.refresh(db_subscription)
+    except Exception as e:
+        # Log the error and rollback the transaction
+        logger.error(f"Error updating subscription {subscription_id}: {str(e)}")
+        db.rollback()
+
+        # Re-raise the exception with a more helpful message
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update subscription: {str(e)}"
         )
-        start_date = update_data.get("start_date", db_subscription.start_date)
 
-        # Calculate the new next_payment_date
-        update_data["next_payment_date"] = calculate_next_payment_date(
-            start_date, billing_frequency
-        )
+    # Invalidate all cache entries for this user to ensure everything is fresh
+    invalidate_user_cache(current_user.id)
 
-    for key, value in update_data.items():
-        setattr(db_subscription, key, value)
+    # Also explicitly invalidate specific cache keys
+    summary_cache_key = f"user_{current_user.id}_subscription_summary"
+    invalidate_cache(summary_cache_key)
 
-    db.commit()
-    db.refresh(db_subscription)
-
-    # Invalidate only subscription-related cache entries for this user
-    invalidate_user_cache(current_user.id, feature="subscriptions")
+    # Invalidate any cache keys that might contain subscription data
+    invalidate_cache_pattern(f"user_{current_user.id}_subscriptions")
+    invalidate_cache_pattern("subscription")
 
     return db_subscription
 
@@ -229,8 +259,16 @@ async def delete_subscription(
     db.delete(db_subscription)
     db.commit()
 
-    # Invalidate only subscription-related cache entries for this user
-    invalidate_user_cache(current_user.id, feature="subscriptions")
+    # Invalidate all cache entries for this user to ensure everything is fresh
+    invalidate_user_cache(current_user.id)
+
+    # Also explicitly invalidate specific cache keys
+    summary_cache_key = f"user_{current_user.id}_subscription_summary"
+    invalidate_cache(summary_cache_key)
+
+    # Invalidate any cache keys that might contain subscription data
+    invalidate_cache_pattern(f"user_{current_user.id}_subscriptions")
+    invalidate_cache_pattern("subscription")
 
     return True
 
@@ -309,8 +347,8 @@ async def get_subscriptions_summary(
             "total_subscriptions_count": len(active_subscriptions),
         }
 
-        # Cache the result for 1 hour (summary data changes more frequently)
-        set_cache(cache_key, result, ttl_seconds=3600)
+        # Cache the result for 5 minutes (summary data changes frequently)
+        set_cache(cache_key, result, ttl_seconds=300)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"

@@ -5,12 +5,16 @@ Simple in-memory cache service for frequently accessed data.
 import time
 from typing import Dict, Any, Tuple, Optional, Callable
 import logging
+import threading
 
 logger = logging.getLogger(__name__)
 
 # Global cache storage
 # Structure: {cache_key: (data, expiry_timestamp)}
 _cache: Dict[str, Tuple[Any, float]] = {}
+
+# Lock for thread-safe cache operations
+_cache_lock = threading.RLock()
 
 
 def get_cache(key: str) -> Optional[Any]:
@@ -23,19 +27,25 @@ def get_cache(key: str) -> Optional[Any]:
     Returns:
         The cached data or None if not found or expired
     """
-    if key not in _cache:
-        return None
+    with _cache_lock:
+        if key not in _cache:
+            logger.info(f"Cache miss for key: {key}")
+            return None
 
-    data, expiry = _cache[key]
-    current_time = time.time()
+        data, expiry = _cache[key]
+        current_time = time.time()
 
-    # Check if cache has expired
-    if current_time > expiry:
-        # Remove expired cache
-        del _cache[key]
-        return None
+        # Check if cache has expired
+        if current_time > expiry:
+            # Remove expired cache
+            logger.info(f"Cache expired for key: {key}, removing")
+            del _cache[key]
+            return None
 
-    return data
+        logger.info(
+            f"Cache hit for key: {key}, expires in {int(expiry - current_time)} seconds"
+        )
+        return data
 
 
 def set_cache(key: str, data: Any, ttl_seconds: int = 300) -> None:
@@ -47,8 +57,10 @@ def set_cache(key: str, data: Any, ttl_seconds: int = 300) -> None:
         data: The data to cache
         ttl_seconds: Time to live in seconds (default: 5 minutes)
     """
-    expiry = time.time() + ttl_seconds
-    _cache[key] = (data, expiry)
+    with _cache_lock:
+        expiry = time.time() + ttl_seconds
+        _cache[key] = (data, expiry)
+        logger.info(f"Cached data with key: {key}, expires in {ttl_seconds} seconds")
 
 
 def invalidate_cache(key: str) -> None:
@@ -58,8 +70,10 @@ def invalidate_cache(key: str) -> None:
     Args:
         key: The cache key to remove
     """
-    if key in _cache:
-        del _cache[key]
+    with _cache_lock:
+        if key in _cache:
+            logger.info(f"Invalidating cache key: {key}")
+            del _cache[key]
 
 
 def invalidate_cache_pattern(pattern: str) -> None:
@@ -69,9 +83,14 @@ def invalidate_cache_pattern(pattern: str) -> None:
     Args:
         pattern: The pattern to match against cache keys
     """
-    keys_to_remove = [k for k in _cache.keys() if pattern in k]
-    for key in keys_to_remove:
-        del _cache[key]
+    with _cache_lock:
+        keys_to_remove = [k for k in _cache.keys() if pattern in k]
+        logger.info(
+            f"Invalidating cache with pattern: {pattern}, keys to remove: {keys_to_remove}"
+        )
+
+        for key in keys_to_remove:
+            del _cache[key]
 
 
 def invalidate_user_cache(user_id: int, feature: str = None) -> None:
@@ -82,35 +101,36 @@ def invalidate_user_cache(user_id: int, feature: str = None) -> None:
         user_id: The user ID whose cache entries should be invalidated
         feature: Optional feature name to limit invalidation scope (e.g., 'tasks', 'transactions')
     """
-    # Log the cache invalidation for debugging
-    logger.info(f"Invalidating cache for user_id: {user_id}, feature: {feature}")
+    with _cache_lock:
+        # Log the cache invalidation for debugging
+        logger.info(f"Invalidating cache for user_id: {user_id}, feature: {feature}")
 
-    # Create a pattern that will match user-specific cache entries
-    user_pattern = f"user_{user_id}"
+        # Create a pattern that will match user-specific cache entries
+        user_pattern = f"user_{user_id}"
 
-    if feature:
-        # If a feature is specified, only invalidate cache entries for that feature
-        pattern = f"{user_pattern}_{feature}"
-        logger.info(f"Invalidating cache with pattern: {pattern}")
+        if feature:
+            # If a feature is specified, only invalidate cache entries for that feature
+            pattern = f"{user_pattern}_{feature}"
+            logger.info(f"Invalidating cache with pattern: {pattern}")
 
-        # Find all keys that match the pattern
-        keys_to_remove = [k for k in _cache.keys() if pattern in k]
-    else:
-        # If no feature is specified, invalidate all user cache entries
-        logger.info(f"Invalidating all cache for user: {user_pattern}")
+            # Find all keys that match the pattern
+            keys_to_remove = [k for k in _cache.keys() if pattern in k]
+        else:
+            # If no feature is specified, invalidate all user cache entries
+            logger.info(f"Invalidating all cache for user: {user_pattern}")
 
-        # Find all keys that contain the user pattern
-        keys_to_remove = [k for k in _cache.keys() if user_pattern in k]
+            # Find all keys that contain the user pattern
+            keys_to_remove = [k for k in _cache.keys() if user_pattern in k]
 
-    # Log the keys that will be removed
-    logger.info(f"Keys to be removed: {keys_to_remove}")
+        # Log the keys that will be removed
+        logger.info(f"Keys to be removed: {keys_to_remove}")
 
-    # Remove each key
-    for key in keys_to_remove:
-        del _cache[key]
+        # Remove each key
+        for key in keys_to_remove:
+            del _cache[key]
 
-    # Log the remaining cache keys after invalidation
-    logger.info(f"Current cache keys after invalidation: {list(_cache.keys())}")
+        # Log the remaining cache keys after invalidation
+        logger.info(f"Current cache keys after invalidation: {list(_cache.keys())}")
 
 
 def cached(ttl_seconds: int = 300):
@@ -169,13 +189,22 @@ def cached(ttl_seconds: int = 300):
             # Try to get from cache
             cached_result = get_cache(cache_key)
             if cached_result is not None:
-                logger.debug(f"Cache hit for {cache_key}")
+                logger.info(f"Cache decorator hit for {cache_key}")
                 return cached_result
 
             # Execute function and cache result
+            logger.info(f"Cache decorator miss for {cache_key}, executing function")
+            start_time = time.time()
             result = func(*args, **kwargs)
+            execution_time = time.time() - start_time
+            logger.info(
+                f"Function {func.__name__} executed in {execution_time:.4f} seconds"
+            )
+
             set_cache(cache_key, result, ttl_seconds)
-            logger.debug(f"Cache miss for {cache_key}, stored result")
+            logger.info(
+                f"Stored result in cache with key {cache_key} for {ttl_seconds} seconds"
+            )
             return result
 
         return wrapper

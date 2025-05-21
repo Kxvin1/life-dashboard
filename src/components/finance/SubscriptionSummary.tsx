@@ -124,7 +124,12 @@ const SubscriptionSummary = ({ refreshKey }: SubscriptionSummaryProps) => {
 
   // Load data when component mounts or when refreshKey changes
   useEffect(() => {
-    loadData();
+    // Load data with a small delay to ensure backend has updated
+    const timer = setTimeout(() => {
+      loadData();
+    }, 300);
+
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshKey]);
 

@@ -38,7 +38,10 @@ const SubscriptionsPage = () => {
 
   const handleSubscriptionToggled = () => {
     // Refresh the subscription summary when a subscription is toggled
-    setRefreshKey((prev) => prev + 1);
+    // Use a single timeout to ensure the backend has time to update
+    setTimeout(() => {
+      setRefreshKey((prev) => prev + 1);
+    }, 500);
   };
 
   const handleTabChange = (tab: SubscriptionStatus) => {
