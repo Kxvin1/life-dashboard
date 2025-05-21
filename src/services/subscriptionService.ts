@@ -12,15 +12,22 @@ export const fetchSubscriptions = async (
       throw new Error("Authentication token missing");
     }
 
+    // Add a timestamp to prevent browser caching
+    const timestamp = new Date().getTime();
+
     let url = `${API_URL}/api/v1/subscriptions/`;
     if (status) {
-      url += `?status=${status}`;
+      url += `?status=${status}&_=${timestamp}`;
+    } else {
+      url += `?_=${timestamp}`;
     }
 
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      // Use cache: 'no-store' which is safer for CORS
+      cache: "no-store",
     });
 
     if (!response.ok) {
@@ -42,10 +49,16 @@ export const fetchSubscriptionSummary =
         throw new Error("Authentication token missing");
       }
 
-      const response = await fetch(`${API_URL}/api/v1/subscriptions-summary/`, {
+      // Add a timestamp to prevent browser caching
+      const timestamp = new Date().getTime();
+      const url = `${API_URL}/api/v1/subscriptions-summary/?_=${timestamp}`;
+
+      const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        // Use cache: 'no-store' which is safer for CORS
+        cache: "no-store",
       });
 
       if (!response.ok) {
@@ -68,14 +81,21 @@ export const createSubscription = async (
       throw new Error("Authentication token missing");
     }
 
-    const response = await fetch(`${API_URL}/api/v1/subscriptions/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(subscription),
-    });
+    // Add a timestamp to prevent browser caching
+    const timestamp = new Date().getTime();
+    const response = await fetch(
+      `${API_URL}/api/v1/subscriptions/?_=${timestamp}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(subscription),
+        // Use cache: 'no-store' which is safer for CORS
+        cache: "no-store",
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to create subscription");

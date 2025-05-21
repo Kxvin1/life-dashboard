@@ -70,7 +70,10 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
     // Create a direct XMLHttpRequest for maximum compatibility
     const xhr = new XMLHttpRequest();
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const url = `${baseUrl}/api/v1/transactions/`;
+
+    // Add a timestamp to prevent browser caching
+    const timestamp = new Date().getTime();
+    const url = `${baseUrl}/api/v1/transactions/?_=${timestamp}`;
 
     xhr.open("POST", url, true);
     xhr.setRequestHeader("Content-Type", "application/json");

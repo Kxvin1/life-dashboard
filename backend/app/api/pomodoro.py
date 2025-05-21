@@ -1,13 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import pytz
+import logging
 from app.db.database import get_db
 from app.models.user import User
 from app.services.pomodoro_service import PomodoroService
 from app.api.auth import get_current_user
 from app.core.config import settings
+from app.services.cache_service import (
+    cached,
+    invalidate_cache_pattern,
+    invalidate_user_cache,
+    get_cache,
+    set_cache,
+)
+
+logger = logging.getLogger(__name__)
+
 from app.schemas.pomodoro import (
     PomodoroSession,
     PomodoroSessionCreate,
@@ -108,11 +119,15 @@ async def create_pomodoro_session(
         user_id=current_user.id, session_data=session_data
     )
 
+    # Invalidate all cache entries for this user
+    invalidate_user_cache(current_user.id)
+
     return created_session
 
 
 @router.get("/pomodoro/sessions", response_model=PomodoroSessionsPage)
 async def get_pomodoro_sessions(
+    response: Response,
     skip: int = 0,
     limit: int = 10,
     db: Session = Depends(get_db),
@@ -121,12 +136,34 @@ async def get_pomodoro_sessions(
     """
     Get paginated Pomodoro sessions for the current user
     """
-    service = PomodoroService(db)
+    # Create a cache key based on the parameters
+    cache_key = f"user_{current_user.id}_pomodoro_sessions_{skip}_{limit}"
 
-    # Get sessions
-    result = service.get_pomodoro_sessions(
-        user_id=current_user.id, skip=skip, limit=limit
-    )
+    # Try to get from cache first
+    cached_result = get_cache(cache_key)
+    if cached_result is not None:
+        logger.info(f"Cache hit for pomodoro sessions: {cache_key}")
+        result = cached_result
+    else:
+        logger.info(f"Cache miss for pomodoro sessions: {cache_key}")
+
+        service = PomodoroService(db)
+
+        # Get sessions
+        result = service.get_pomodoro_sessions(
+            user_id=current_user.id, skip=skip, limit=limit
+        )
+
+        # Cache the result for 60 seconds
+        set_cache(cache_key, result, ttl_seconds=60)
+
+    # Set cache control headers to prevent browser caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
+    # Add cache validators
+    response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return result
 
@@ -162,6 +199,9 @@ async def analyze_pomodoro_sessions(
                 status_code=status.HTTP_403_FORBIDDEN, detail=result["error"]
             )
 
+        # Invalidate all cache entries for this user
+        invalidate_user_cache(current_user.id)
+
         return result
     except Exception as e:
         # Handle the error from the OpenAI service
@@ -181,7 +221,9 @@ async def analyze_pomodoro_sessions(
 
 @router.get("/pomodoro/remaining", response_model=PomodoroAIRemainingResponse)
 async def get_remaining_pomodoro_ai_uses(
-    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get the number of remaining Pomodoro AI visualization uses for the current day
@@ -204,24 +246,48 @@ async def get_remaining_pomodoro_ai_uses(
             "reset_time": reset_time.isoformat(),
         }
 
-    service = PomodoroService(db)
+    # Create a cache key based on the user
+    cache_key = f"user_{current_user.id}_pomodoro_remaining_uses"
 
-    # Get remaining uses
-    remaining_uses, total_uses = service.get_remaining_uses(current_user)
+    # Try to get from cache first
+    cached_result = get_cache(cache_key)
+    if cached_result is not None:
+        logger.info(f"Cache hit for pomodoro remaining uses: {cache_key}")
+        result = cached_result
+    else:
+        logger.info(f"Cache miss for pomodoro remaining uses: {cache_key}")
 
-    # Get reset time (midnight PST)
-    pst = pytz.timezone("America/Los_Angeles")
-    reset_time = service._get_midnight_pst()
+        service = PomodoroService(db)
 
-    return {
-        "remaining_uses": remaining_uses,
-        "total_uses_allowed": total_uses,
-        "reset_time": reset_time.isoformat(),
-    }
+        # Get remaining uses
+        remaining_uses, total_uses = service.get_remaining_uses(current_user)
+
+        # Get reset time (midnight PST)
+        reset_time = service._get_midnight_pst()
+
+        result = {
+            "remaining_uses": remaining_uses,
+            "total_uses_allowed": total_uses,
+            "reset_time": reset_time.isoformat(),
+        }
+
+        # Cache the result for 60 seconds
+        set_cache(cache_key, result, ttl_seconds=60)
+
+    # Set cache control headers to prevent browser caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
+    # Add cache validators
+    response.headers["Vary"] = "Authorization"  # Cache varies by user
+
+    return result
 
 
 @router.get("/pomodoro/history", response_model=List[Dict[str, Any]])
 async def get_pomodoro_ai_history(
+    response: Response,
     skip: int = 0,
     limit: int = 10,
     db: Session = Depends(get_db),
@@ -237,18 +303,41 @@ async def get_pomodoro_ai_history(
             detail="AI Pomodoro Analysis history is not available in demo mode",
         )
 
-    service = PomodoroService(db)
+    # Create a cache key based on the parameters
+    cache_key = f"user_{current_user.id}_pomodoro_history_{skip}_{limit}"
 
-    # Get history
-    history = service.get_pomodoro_ai_history(
-        user_id=current_user.id, skip=skip, limit=limit
-    )
+    # Try to get from cache first
+    cached_result = get_cache(cache_key)
+    if cached_result is not None:
+        logger.info(f"Cache hit for pomodoro history: {cache_key}")
+        history = cached_result
+    else:
+        logger.info(f"Cache miss for pomodoro history: {cache_key}")
+
+        service = PomodoroService(db)
+
+        # Get history
+        history = service.get_pomodoro_ai_history(
+            user_id=current_user.id, skip=skip, limit=limit
+        )
+
+        # Cache the result for 60 seconds
+        set_cache(cache_key, history, ttl_seconds=60)
+
+    # Set cache control headers to prevent browser caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
+    # Add cache validators
+    response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return history
 
 
 @router.get("/pomodoro/history/{history_id}", response_model=Dict[str, Any])
 async def get_pomodoro_ai_history_by_id(
+    response: Response,
     history_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -263,24 +352,47 @@ async def get_pomodoro_ai_history_by_id(
             detail="AI Pomodoro Analysis history is not available in demo mode",
         )
 
-    service = PomodoroService(db)
+    # Create a cache key based on the parameters
+    cache_key = f"user_{current_user.id}_pomodoro_history_{history_id}"
 
-    # Get history entry
-    history_entry = service.get_pomodoro_ai_history_by_id(
-        user_id=current_user.id, history_id=history_id
-    )
+    # Try to get from cache first
+    cached_result = get_cache(cache_key)
+    if cached_result is not None:
+        logger.info(f"Cache hit for pomodoro history entry: {cache_key}")
+        history_entry = cached_result
+    else:
+        logger.info(f"Cache miss for pomodoro history entry: {cache_key}")
 
-    if not history_entry:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Pomodoro AI history entry with ID {history_id} not found",
+        service = PomodoroService(db)
+
+        # Get history entry
+        history_entry = service.get_pomodoro_ai_history_by_id(
+            user_id=current_user.id, history_id=history_id
         )
+
+        if not history_entry:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Pomodoro AI history entry with ID {history_id} not found",
+            )
+
+        # Cache the result for 60 seconds
+        set_cache(cache_key, history_entry, ttl_seconds=60)
+
+    # Set cache control headers to prevent browser caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
+    # Add cache validators
+    response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return history_entry
 
 
 @router.get("/pomodoro/counts", response_model=Dict[str, int])
 async def get_pomodoro_counts(
+    response: Response,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -296,16 +408,40 @@ async def get_pomodoro_counts(
             "total": 42,
         }
 
-    service = PomodoroService(db)
+    # Create a cache key based on the user
+    cache_key = f"user_{current_user.id}_pomodoro_counts"
 
-    # Get counts
-    today_count, week_count, total_count = service.get_pomodoro_counts(
-        user_id=current_user.id
-    )
+    # Try to get from cache first
+    cached_result = get_cache(cache_key)
+    if cached_result is not None:
+        logger.info(f"Cache hit for pomodoro counts: {cache_key}")
+        result = cached_result
+    else:
+        logger.info(f"Cache miss for pomodoro counts: {cache_key}")
 
-    return {
-        "today": today_count,
-        "week": week_count,
-        "total": total_count,
-        "user_id": current_user.id,  # Include user ID for debugging
-    }
+        service = PomodoroService(db)
+
+        # Get counts
+        today_count, week_count, total_count = service.get_pomodoro_counts(
+            user_id=current_user.id
+        )
+
+        result = {
+            "today": today_count,
+            "week": week_count,
+            "total": total_count,
+            "user_id": current_user.id,  # Include user ID for debugging
+        }
+
+        # Cache the result for 60 seconds
+        set_cache(cache_key, result, ttl_seconds=60)
+
+    # Set cache control headers to prevent browser caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
+    # Add cache validators
+    response.headers["Vary"] = "Authorization"  # Cache varies by user
+
+    return result

@@ -3,11 +3,21 @@ from sqlalchemy.orm import Session, selectinload, joinedload
 from typing import List, Optional
 from datetime import date, datetime, timedelta
 import pytz
+import logging
+
+logger = logging.getLogger(__name__)
+
 from app.db.database import get_db
 from app.models.user import User
 from app.models.task import Task, TaskCategory, TaskStatus, TaskPriority, EnergyLevel
 from app.services.task_service import TaskService
-from app.services.cache_service import cached, invalidate_cache_pattern
+from app.services.cache_service import (
+    cached,
+    invalidate_cache_pattern,
+    invalidate_user_cache,
+    set_cache,
+    get_cache,
+)
 from app.api.auth import get_current_user
 from app.schemas.task import (
     Task as TaskSchema,
@@ -38,48 +48,33 @@ async def get_task_categories(
     """
     from app.services.cache_service import get_cache
 
-    # First, try to get default categories from application-level cache
-    default_categories = get_cache("default_task_categories")
+    # Create a user-specific cache key
+    user_cache_key = f"user_{current_user.id}_categories"
 
-    # Use a user-specific cache key for user's custom categories
-    user_cache_key = f"user_task_categories:{current_user.id}"
-
-    # Function to get user-specific categories with a long TTL
-    @cached(ttl_seconds=86400)  # Cache for 24 hours
-    def get_user_categories(user_id: int):
-        return db.query(TaskCategory).filter(TaskCategory.user_id == user_id).all()
-
-    # If we have default categories in the application cache
-    if default_categories is not None:
-        # Get user-specific categories from cache or database
-        user_categories = get_user_categories(current_user.id)
-
-        # Combine default and user categories
-        categories = default_categories + user_categories
+    # Try to get categories from cache first
+    cached_categories = get_cache(user_cache_key)
+    if cached_categories is not None:
+        logger.info(f"Cache hit for user categories: {user_cache_key}")
+        categories = cached_categories
     else:
-        # Fallback to the original approach if application cache is not available
-        @cached(ttl_seconds=86400)  # Cache for 24 hours
-        def get_all_categories(user_id: int):
-            return (
-                db.query(TaskCategory)
-                .filter(
-                    (TaskCategory.is_default == True)
-                    | (TaskCategory.user_id == user_id)
-                )
-                .all()
-            )
-
+        logger.info(f"Cache miss for user categories: {user_cache_key}")
         # Get all categories in one query
-        categories = get_all_categories(current_user.id)
+        categories = (
+            db.query(TaskCategory)
+            .filter(
+                (TaskCategory.is_default == True)
+                | (TaskCategory.user_id == current_user.id)
+            )
+            .all()
+        )
 
-    # Set aggressive cache control headers for client-side caching
-    # Use a longer max-age since categories rarely change
-    response.headers["Cache-Control"] = (
-        "private, max-age=3600"  # 1 hour client-side cache
-    )
+        # Cache the result
+        set_cache(user_cache_key, categories, ttl_seconds=3600)  # Cache for 1 hour
 
-    # Add ETag for efficient validation
-    response.headers["ETag"] = f'W/"categories-{len(categories)}"'
+    # Set cache control headers for client-side caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
 
     # Add cache validators
     response.headers["Vary"] = "Authorization"  # Cache varies by user
@@ -106,8 +101,8 @@ async def create_task_category(
     db.commit()
     db.refresh(db_category)
 
-    # Invalidate the categories cache for this user
-    invalidate_cache_pattern(f"get_categories_for_user:{current_user.id}")
+    # Invalidate all cache entries for this user
+    invalidate_user_cache(current_user.id)
 
     return db_category
 
@@ -130,26 +125,19 @@ async def get_tasks(
     """
     Get tasks with optional filtering
     """
-    # Use caching for common task queries
-    cache_key = f"tasks:{current_user.id}:{is_long_term}:{skip}:{limit}"
+    # Create a cache key that includes all filter parameters
+    cache_key = f"user_{current_user.id}_tasks_{is_long_term}_{status}_{category_id}_{priority}_{due_date_start}_{due_date_end}_{skip}_{limit}"
 
-    @cached(ttl_seconds=60)  # Cache for 1 minute
-    def get_filtered_tasks(
-        user_id,
-        is_long_term,
-        status,
-        category_id,
-        priority,
-        due_date_start,
-        due_date_end,
-        skip,
-        limit,
-    ):
-        # Use a CTE (Common Table Expression) for better query performance
-        # This is more efficient than separate count and data queries
+    # Try to get from cache first
+    cached_result = get_cache(cache_key)
+    if cached_result is not None:
+        logger.info(f"Cache hit for tasks: {cache_key}")
+        result = cached_result
+    else:
+        logger.info(f"Cache miss for tasks: {cache_key}")
 
         # Build base query with all filters
-        base_query = db.query(Task).filter(Task.user_id == user_id)
+        base_query = db.query(Task).filter(Task.user_id == current_user.id)
 
         # Apply filters
         if is_long_term is not None:
@@ -186,23 +174,18 @@ async def get_tasks(
             .all()
         )
 
-        return {"tasks": tasks, "total_count": total_count}
+        result = {"tasks": tasks, "total_count": total_count}
 
-    # Get tasks from cache or database
-    result = get_filtered_tasks(
-        current_user.id,
-        is_long_term,
-        status,
-        category_id,
-        priority,
-        due_date_start,
-        due_date_end,
-        skip,
-        limit,
-    )
+        # Cache the result for 60 seconds
+        set_cache(cache_key, result, ttl_seconds=60)
 
-    # Set cache control headers
-    response.headers["Cache-Control"] = "private, max-age=60"
+    # Set cache control headers to prevent browser caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
+    # Add cache validators
+    response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return result
 
@@ -283,8 +266,8 @@ async def create_task(
     db.commit()
     db.refresh(db_task)
 
-    # Invalidate task cache for this user
-    invalidate_cache_pattern(f"tasks:{current_user.id}")
+    # Invalidate all cache entries for this user
+    invalidate_user_cache(current_user.id)
 
     return db_task
 
@@ -372,8 +355,8 @@ async def update_task(
     db.commit()
     db.refresh(task)
 
-    # Invalidate task cache for this user
-    invalidate_cache_pattern(f"tasks:{current_user.id}")
+    # Invalidate all cache entries for this user
+    invalidate_user_cache(current_user.id)
 
     return task
 
@@ -403,8 +386,8 @@ async def delete_task(
     db.delete(task)
     db.commit()
 
-    # Invalidate task cache for this user
-    invalidate_cache_pattern(f"tasks:{current_user.id}")
+    # Invalidate all cache entries for this user
+    invalidate_user_cache(current_user.id)
 
     return None
 
@@ -433,8 +416,8 @@ async def reorder_task(
             status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
         )
 
-    # Invalidate task cache for this user
-    invalidate_cache_pattern(f"tasks:{current_user.id}")
+    # Invalidate all cache entries for this user
+    invalidate_user_cache(current_user.id)
 
     # For this simplified implementation, we'll just return success
     # In a real implementation, you would update position fields
@@ -496,8 +479,8 @@ async def batch_action(
 
     db.commit()
 
-    # Invalidate task cache for this user
-    invalidate_cache_pattern(f"tasks:{current_user.id}")
+    # Invalidate all cache entries for this user
+    invalidate_user_cache(current_user.id)
 
     return {"message": f"Batch {batch_request.action} completed successfully"}
 

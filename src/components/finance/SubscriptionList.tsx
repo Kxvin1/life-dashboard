@@ -207,9 +207,9 @@ const SubscriptionList = ({
       setToastMessage("Subscription deleted successfully");
       setShowToast(true);
 
-      // Refresh the current tab's data without changing tabs
-      loadSubscriptions();
-      loadUpcomingPayments();
+      // Force a complete refresh of subscription data from the server
+      // This ensures we don't see stale cached data
+      await Promise.all([loadSubscriptions(), loadUpcomingPayments()]);
 
       // Auto-hide toast after 3 seconds
       setTimeout(() => {
@@ -252,9 +252,9 @@ const SubscriptionList = ({
       setShowToggleConfirm(false);
       setSubscriptionToToggle(null);
 
-      // Refresh the current tab's data without changing tabs
-      loadSubscriptions();
-      loadUpcomingPayments();
+      // Force a complete refresh of subscription data from the server
+      // This ensures we don't see stale cached data
+      await Promise.all([loadSubscriptions(), loadUpcomingPayments()]);
 
       // Notify parent component that a subscription was toggled
       if (onSubscriptionToggled) {

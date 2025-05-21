@@ -207,14 +207,8 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
       try {
         const newTask = await createTask(task);
 
-        // Update the appropriate task list
-        if (task.is_long_term) {
-          setLongTermTasks((prev) => [newTask, ...prev]);
-          setTotalLongTermTasks((prev) => prev + 1);
-        } else {
-          setShortTermTasks((prev) => [newTask, ...prev]);
-          setTotalShortTermTasks((prev) => prev + 1);
-        }
+        // Refresh the task list completely to ensure we have the latest data
+        await fetchTasksByType(task.is_long_term);
 
         return newTask;
       } catch (err) {
@@ -225,7 +219,7 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
         setIsLoading(false);
       }
     },
-    []
+    [fetchTasksByType]
   );
 
   // Edit an existing task
@@ -242,40 +236,29 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
       try {
         const updatedTask = await updateTask(taskId, taskUpdate);
 
-        // Find which list the task is in and update it
+        // Find which list the task is in
         const isInShortTerm = shortTermTasks.some((task) => task.id === taskId);
         const isInLongTerm = longTermTasks.some((task) => task.id === taskId);
 
-        if (isInShortTerm) {
-          // If task type changed, remove from short-term and add to long-term
-          if (taskUpdate.is_long_term === true) {
-            setShortTermTasks((prev) =>
-              prev.filter((task) => task.id !== taskId)
-            );
-            setLongTermTasks((prev) => [updatedTask, ...prev]);
-            setTotalShortTermTasks((prev) => prev - 1);
-            setTotalLongTermTasks((prev) => prev + 1);
-          } else {
-            // Just update in the short-term list
-            setShortTermTasks((prev) =>
-              prev.map((task) => (task.id === taskId ? updatedTask : task))
-            );
-          }
+        // Refresh the appropriate task list to ensure we have the latest data
+        if (isInShortTerm && taskUpdate.is_long_term === true) {
+          // If task moved from short-term to long-term, refresh both lists
+          await Promise.all([
+            fetchTasksByType(false), // Refresh short-term tasks
+            fetchTasksByType(true), // Refresh long-term tasks
+          ]);
+        } else if (isInLongTerm && taskUpdate.is_long_term === false) {
+          // If task moved from long-term to short-term, refresh both lists
+          await Promise.all([
+            fetchTasksByType(false), // Refresh short-term tasks
+            fetchTasksByType(true), // Refresh long-term tasks
+          ]);
+        } else if (isInShortTerm) {
+          // Just refresh short-term list
+          await fetchTasksByType(false);
         } else if (isInLongTerm) {
-          // If task type changed, remove from long-term and add to short-term
-          if (taskUpdate.is_long_term === false) {
-            setLongTermTasks((prev) =>
-              prev.filter((task) => task.id !== taskId)
-            );
-            setShortTermTasks((prev) => [updatedTask, ...prev]);
-            setTotalLongTermTasks((prev) => prev - 1);
-            setTotalShortTermTasks((prev) => prev + 1);
-          } else {
-            // Just update in the long-term list
-            setLongTermTasks((prev) =>
-              prev.map((task) => (task.id === taskId ? updatedTask : task))
-            );
-          }
+          // Just refresh long-term list
+          await fetchTasksByType(true);
         }
 
         return updatedTask;
@@ -287,7 +270,7 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
         setIsLoading(false);
       }
     },
-    [shortTermTasks, longTermTasks]
+    [shortTermTasks, longTermTasks, fetchTasksByType]
   );
 
   // Remove a task
@@ -299,17 +282,14 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
       try {
         await deleteTask(taskId);
 
-        // Remove from the appropriate task list
+        // Find which list the task is in
         const isInShortTerm = shortTermTasks.some((task) => task.id === taskId);
 
+        // Refresh the appropriate task list
         if (isInShortTerm) {
-          setShortTermTasks((prev) =>
-            prev.filter((task) => task.id !== taskId)
-          );
-          setTotalShortTermTasks((prev) => prev - 1);
+          await fetchTasksByType(false); // Refresh short-term tasks
         } else {
-          setLongTermTasks((prev) => prev.filter((task) => task.id !== taskId));
-          setTotalLongTermTasks((prev) => prev - 1);
+          await fetchTasksByType(true); // Refresh long-term tasks
         }
       } catch (err) {
         console.error("Error removing task:", err);
@@ -319,7 +299,7 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
         setIsLoading(false);
       }
     },
-    [shortTermTasks, longTermTasks]
+    [shortTermTasks, longTermTasks, fetchTasksByType]
   );
 
   // Change task status with optimistic update
@@ -433,31 +413,25 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
   );
 
   // Batch action: Complete multiple tasks
-  const completeTasks = useCallback(async (taskIds: number[]) => {
-    try {
-      await batchActionTasks(taskIds, "complete");
+  const completeTasks = useCallback(
+    async (taskIds: number[]) => {
+      try {
+        await batchActionTasks(taskIds, "complete");
 
-      // Update both task lists
-      setShortTermTasks((prev) =>
-        prev.map((task) =>
-          taskIds.includes(task.id)
-            ? { ...task, status: TaskStatus.COMPLETED }
-            : task
-        )
-      );
-
-      setLongTermTasks((prev) =>
-        prev.map((task) =>
-          taskIds.includes(task.id)
-            ? { ...task, status: TaskStatus.COMPLETED }
-            : task
-        )
-      );
-    } catch (err) {
-      console.error("Error completing tasks:", err);
-      setError(err instanceof Error ? err.message : "Failed to complete tasks");
-    }
-  }, []);
+        // Refresh both task lists to ensure we have the latest data
+        await Promise.all([
+          fetchTasksByType(false), // Refresh short-term tasks
+          fetchTasksByType(true), // Refresh long-term tasks
+        ]);
+      } catch (err) {
+        console.error("Error completing tasks:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to complete tasks"
+        );
+      }
+    },
+    [fetchTasksByType]
+  );
 
   // Batch action: Delete multiple tasks
   const deleteTasks = useCallback(
@@ -465,30 +439,17 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
       try {
         await batchActionTasks(taskIds, "delete");
 
-        // Remove from both task lists
-        setShortTermTasks((prev) =>
-          prev.filter((task) => !taskIds.includes(task.id))
-        );
-        setLongTermTasks((prev) =>
-          prev.filter((task) => !taskIds.includes(task.id))
-        );
-
-        // Update counts
-        const shortTermDeleted = shortTermTasks.filter((task) =>
-          taskIds.includes(task.id)
-        ).length;
-        const longTermDeleted = longTermTasks.filter((task) =>
-          taskIds.includes(task.id)
-        ).length;
-
-        setTotalShortTermTasks((prev) => prev - shortTermDeleted);
-        setTotalLongTermTasks((prev) => prev - longTermDeleted);
+        // Refresh both task lists to ensure we have the latest data
+        await Promise.all([
+          fetchTasksByType(false), // Refresh short-term tasks
+          fetchTasksByType(true), // Refresh long-term tasks
+        ]);
       } catch (err) {
         console.error("Error deleting tasks:", err);
         setError(err instanceof Error ? err.message : "Failed to delete tasks");
       }
     },
-    [shortTermTasks, longTermTasks]
+    [fetchTasksByType]
   );
 
   // Batch action: Change status of multiple tasks
@@ -497,18 +458,11 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
       try {
         await batchActionTasks(taskIds, "change_status", status);
 
-        // Update both task lists
-        setShortTermTasks((prev) =>
-          prev.map((task) =>
-            taskIds.includes(task.id) ? { ...task, status } : task
-          )
-        );
-
-        setLongTermTasks((prev) =>
-          prev.map((task) =>
-            taskIds.includes(task.id) ? { ...task, status } : task
-          )
-        );
+        // Refresh both task lists to ensure we have the latest data
+        await Promise.all([
+          fetchTasksByType(false), // Refresh short-term tasks
+          fetchTasksByType(true), // Refresh long-term tasks
+        ]);
       } catch (err) {
         console.error("Error changing tasks status:", err);
         setError(
@@ -516,7 +470,7 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
         );
       }
     },
-    []
+    [fetchTasksByType]
   );
 
   // Batch action: Change priority of multiple tasks
@@ -525,18 +479,11 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
       try {
         await batchActionTasks(taskIds, "change_priority", priority);
 
-        // Update both task lists
-        setShortTermTasks((prev) =>
-          prev.map((task) =>
-            taskIds.includes(task.id) ? { ...task, priority } : task
-          )
-        );
-
-        setLongTermTasks((prev) =>
-          prev.map((task) =>
-            taskIds.includes(task.id) ? { ...task, priority } : task
-          )
-        );
+        // Refresh both task lists to ensure we have the latest data
+        await Promise.all([
+          fetchTasksByType(false), // Refresh short-term tasks
+          fetchTasksByType(true), // Refresh long-term tasks
+        ]);
       } catch (err) {
         console.error("Error changing tasks priority:", err);
         setError(
@@ -544,7 +491,7 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
         );
       }
     },
-    []
+    [fetchTasksByType]
   );
 
   // We no longer automatically load tasks when the context is mounted

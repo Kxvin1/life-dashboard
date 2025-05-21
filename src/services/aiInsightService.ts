@@ -115,11 +115,19 @@ export const getRemainingInsights =
         throw new Error("Authentication token missing");
       }
 
-      const response = await fetch(`${API_URL}/api/v1/insights/remaining`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      // Add a timestamp to prevent browser caching
+      const timestamp = new Date().getTime();
+
+      const response = await fetch(
+        `${API_URL}/api/v1/insights/remaining?_=${timestamp}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          // Use cache: 'no-store' which is safer for CORS
+          cache: "no-store",
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -140,11 +148,19 @@ export const testOpenAIConnection = async (): Promise<any> => {
       throw new Error("Authentication token missing");
     }
 
-    const response = await fetch(`${API_URL}/api/v1/insights/test`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    // Add a timestamp to prevent browser caching
+    const timestamp = new Date().getTime();
+
+    const response = await fetch(
+      `${API_URL}/api/v1/insights/test?_=${timestamp}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        // Use cache: 'no-store' which is safer for CORS
+        cache: "no-store",
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -168,12 +184,17 @@ export const getInsightHistory = async (
       throw new Error("Authentication token missing");
     }
 
+    // Add a timestamp to prevent browser caching
+    const timestamp = new Date().getTime();
+
     const response = await fetch(
-      `${API_URL}/api/v1/insights/history?skip=${skip}&limit=${limit}`,
+      `${API_URL}/api/v1/insights/history?skip=${skip}&limit=${limit}&_=${timestamp}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        // Use cache: 'no-store' which is safer for CORS
+        cache: "no-store",
       }
     );
 
@@ -198,12 +219,17 @@ export const getInsightById = async (
       throw new Error("Authentication token missing");
     }
 
+    // Add a timestamp to prevent browser caching
+    const timestamp = new Date().getTime();
+
     const response = await fetch(
-      `${API_URL}/api/v1/insights/history/${insightId}`,
+      `${API_URL}/api/v1/insights/history/${insightId}?_=${timestamp}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        // Use cache: 'no-store' which is safer for CORS
+        cache: "no-store",
       }
     );
 
@@ -228,12 +254,17 @@ export const checkTransactionRequirements = async (
       throw new Error("Authentication token missing");
     }
 
+    // Add a timestamp to prevent browser caching
+    const timestamp = new Date().getTime();
+
     const response = await fetch(
-      `${API_URL}/api/v1/transactions/has-income-and-expense/?time_period=${timePeriod}`,
+      `${API_URL}/api/v1/transactions/has-income-and-expense/?time_period=${timePeriod}&_=${timestamp}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        // Use cache: 'no-store' which is safer for CORS
+        cache: "no-store",
       }
     );
 

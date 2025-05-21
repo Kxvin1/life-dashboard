@@ -93,12 +93,17 @@ export const fetchTasks = async (
     params.append("skip", String(skip));
     params.append("limit", String(limit));
 
+    // Add a timestamp to prevent browser caching
+    params.append("_", String(new Date().getTime()));
+
     const response = await fetch(
       `${API_URL}/api/v1/tasks/?${params.toString()}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        // Use cache: 'no-store' which is safer for CORS
+        cache: "no-store",
       }
     );
 
@@ -128,12 +133,17 @@ export const fetchTaskHierarchy = async (
     if (isLongTerm !== undefined)
       params.append("is_long_term", String(isLongTerm));
 
+    // Add a timestamp to prevent browser caching
+    params.append("_", String(new Date().getTime()));
+
     const response = await fetch(
       `${API_URL}/api/v1/tasks/hierarchy?${params.toString()}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        // Use cache: 'no-store' which is safer for CORS
+        cache: "no-store",
       }
     );
 
@@ -156,10 +166,16 @@ export const fetchTaskCategories = async (): Promise<TaskCategory[]> => {
       throw new Error("Authentication token missing");
     }
 
-    const response = await fetch(`${API_URL}/api/v1/tasks/categories`, {
+    // Add a timestamp to prevent browser caching
+    const timestamp = new Date().getTime();
+    const url = `${API_URL}/api/v1/tasks/categories?_=${timestamp}`;
+
+    const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      // Use cache: 'no-store' which is safer for CORS
+      cache: "no-store",
     });
 
     if (!response.ok) {

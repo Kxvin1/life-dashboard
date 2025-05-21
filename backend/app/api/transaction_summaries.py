@@ -11,6 +11,7 @@ from app.models.user import User
 from app.services.cache_service import (
     cached,
     invalidate_cache_pattern,
+    invalidate_user_cache,
     get_cache,
     set_cache,
 )

@@ -227,8 +227,12 @@ const TransactionDetailPanel = ({
           : transaction.id;
 
       const token = Cookies.get("token");
+
+      // Add a timestamp to prevent browser caching
+      const timestamp = new Date().getTime();
+
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/${transactionId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/${transactionId}?_=${timestamp}`,
         {
           method: "PUT",
           headers: {
@@ -236,6 +240,8 @@ const TransactionDetailPanel = ({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(updateData),
+          // Use cache: 'no-store' which is safer for CORS
+          cache: "no-store",
         }
       );
 
@@ -278,13 +284,18 @@ const TransactionDetailPanel = ({
 
       const baseUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const url = `${baseUrl}/api/v1/transactions/${transactionId}`;
+
+      // Add a timestamp to prevent browser caching
+      const timestamp = new Date().getTime();
+      const url = `${baseUrl}/api/v1/transactions/${transactionId}?_=${timestamp}`;
 
       const response = await fetch(url, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        // Use cache: 'no-store' which is safer for CORS
+        cache: "no-store",
       });
 
       if (!response.ok) {

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, extract, and_, desc, case
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date, timedelta
+import logging
 from app.db.database import get_db
 from app.models.subscription import Subscription, SubscriptionStatus, BillingFrequency
 from app.schemas.subscription import (
@@ -15,9 +16,12 @@ from app.models.user import User
 from app.services.cache_service import (
     cached,
     invalidate_cache_pattern,
+    invalidate_user_cache,
     get_cache,
     set_cache,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -43,9 +47,8 @@ async def create_subscription(
     db.commit()
     db.refresh(db_subscription)
 
-    # Invalidate subscription-related caches
-    invalidate_cache_pattern(f"subscription_summary:{current_user.id}")
-    invalidate_cache_pattern(f"subscriptions:{current_user.id}")
+    # Invalidate all cache entries for this user
+    invalidate_user_cache(current_user.id)
 
     return db_subscription
 
@@ -64,25 +67,20 @@ async def get_subscriptions(
     Uses caching to improve performance.
     """
     # Create a cache key based on the parameters
-    cache_key = f"subscriptions:{current_user.id}:{status}:{skip}:{limit}"
+    cache_key = f"user_{current_user.id}_subscriptions_{status}_{skip}_{limit}"
 
     # Try to get from cache first
     cached_subscriptions = get_cache(cache_key)
     if cached_subscriptions is not None:
-        # Set cache control headers
-        response.headers["Cache-Control"] = (
-            "private, max-age=3600"  # 1 hour client-side cache
-        )
-        response.headers["ETag"] = f'W/"subscriptions-{len(cached_subscriptions)}"'
-        return cached_subscriptions
+        logger.info(f"Cache hit for subscriptions: {cache_key}")
+        subscriptions = cached_subscriptions
+    else:
+        logger.info(f"Cache miss for subscriptions: {cache_key}")
 
-    # If not in cache, fetch from database with caching
-    @cached(ttl_seconds=86400)  # Cache for 24 hours
-    def get_subscriptions_from_db(user_id, status_val, skip_val, limit_val):
-        query = db.query(Subscription).filter(Subscription.user_id == user_id)
+        query = db.query(Subscription).filter(Subscription.user_id == current_user.id)
 
-        if status_val:
-            query = query.filter(Subscription.status == status_val)
+        if status:
+            query = query.filter(Subscription.status == status)
 
         # Order by status (active first) and then by name
         # Create a case statement to order active status first
@@ -94,16 +92,18 @@ async def get_subscriptions(
             status_order, Subscription.name  # Active first (1 comes before 2)
         )
 
-        return query.offset(skip_val).limit(limit_val).all()
+        subscriptions = query.offset(skip).limit(limit).all()
 
-    # Get subscriptions from database and cache them
-    subscriptions = get_subscriptions_from_db(current_user.id, status, skip, limit)
+        # Cache the result for 60 seconds
+        set_cache(cache_key, subscriptions, ttl_seconds=60)
 
-    # Set cache control headers
-    response.headers["Cache-Control"] = (
-        "private, max-age=3600"  # 1 hour client-side cache
-    )
-    response.headers["ETag"] = f'W/"subscriptions-{len(subscriptions)}"'
+    # Set cache control headers to prevent browser caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
+    # Add cache validators
+    response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return subscriptions
 
@@ -120,36 +120,38 @@ async def get_subscription(
     Uses caching to improve performance.
     """
     # Create a cache key based on the parameters
-    cache_key = f"subscription:{current_user.id}:{subscription_id}"
+    cache_key = f"user_{current_user.id}_subscription_{subscription_id}"
 
     # Try to get from cache first
     cached_subscription = get_cache(cache_key)
     if cached_subscription is not None:
-        # Set cache control headers
-        response.headers["Cache-Control"] = (
-            "private, max-age=3600"  # 1 hour client-side cache
-        )
-        return cached_subscription
+        logger.info(f"Cache hit for subscription: {cache_key}")
+        subscription = cached_subscription
+    else:
+        logger.info(f"Cache miss for subscription: {cache_key}")
 
-    # If not in cache, fetch from database with caching
-    @cached(ttl_seconds=86400)  # Cache for 24 hours
-    def get_subscription_from_db(user_id, sub_id):
-        return (
+        subscription = (
             db.query(Subscription)
-            .filter(Subscription.id == sub_id, Subscription.user_id == user_id)
+            .filter(
+                Subscription.id == subscription_id,
+                Subscription.user_id == current_user.id,
+            )
             .first()
         )
 
-    # Get subscription from database and cache it
-    subscription = get_subscription_from_db(current_user.id, subscription_id)
+        if subscription is None:
+            raise HTTPException(status_code=404, detail="Subscription not found")
 
-    if subscription is None:
-        raise HTTPException(status_code=404, detail="Subscription not found")
+        # Cache the result for 60 seconds
+        set_cache(cache_key, subscription, ttl_seconds=60)
 
-    # Set cache control headers
-    response.headers["Cache-Control"] = (
-        "private, max-age=3600"  # 1 hour client-side cache
-    )
+    # Set cache control headers to prevent browser caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
+    # Add cache validators
+    response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return subscription
 
@@ -202,10 +204,8 @@ async def update_subscription(
     db.commit()
     db.refresh(db_subscription)
 
-    # Invalidate subscription-related caches
-    invalidate_cache_pattern(f"subscription_summary:{current_user.id}")
-    invalidate_cache_pattern(f"subscriptions:{current_user.id}")
-    invalidate_cache_pattern(f"subscription:{current_user.id}:{subscription_id}")
+    # Invalidate all cache entries for this user
+    invalidate_user_cache(current_user.id)
 
     return db_subscription
 
@@ -229,10 +229,8 @@ async def delete_subscription(
     db.delete(db_subscription)
     db.commit()
 
-    # Invalidate subscription-related caches
-    invalidate_cache_pattern(f"subscription_summary:{current_user.id}")
-    invalidate_cache_pattern(f"subscriptions:{current_user.id}")
-    invalidate_cache_pattern(f"subscription:{current_user.id}:{subscription_id}")
+    # Invalidate all cache entries for this user
+    invalidate_user_cache(current_user.id)
 
     return True
 
@@ -248,23 +246,16 @@ async def get_subscriptions_summary(
     Uses caching to improve performance.
     """
     # Create a cache key based on the user
-    cache_key = f"subscription_summary:{current_user.id}"
+    cache_key = f"user_{current_user.id}_subscription_summary"
 
     # Try to get from cache first
     cached_summary = get_cache(cache_key)
     if cached_summary is not None:
-        # Set cache control headers
-        response.headers["Cache-Control"] = (
-            "private, max-age=3600"  # 1 hour client-side cache
-        )
-        response.headers["ETag"] = (
-            f'W/"subscription-summary-{hash(str(cached_summary))}"'
-        )
-        return cached_summary
+        logger.info(f"Cache hit for subscription summary: {cache_key}")
+        result = cached_summary
+    else:
+        logger.info(f"Cache miss for subscription summary: {cache_key}")
 
-    # If not in cache, calculate the summary with caching
-    @cached(ttl_seconds=3600)  # Cache for 1 hour
-    def calculate_subscription_summary(user_id):
         # Get total monthly cost of active subscriptions
         monthly_cost = 0
         future_monthly_cost = 0
@@ -274,7 +265,7 @@ async def get_subscriptions_summary(
         active_subscriptions = (
             db.query(Subscription)
             .filter(
-                Subscription.user_id == user_id,
+                Subscription.user_id == current_user.id,
                 Subscription.status == SubscriptionStatus.active,
             )
             .all()
@@ -309,7 +300,7 @@ async def get_subscriptions_summary(
                 monthly_cost += subscription_monthly_cost
                 current_active_count += 1
 
-        return {
+        result = {
             "total_monthly_cost": round(monthly_cost, 2),
             "future_monthly_cost": round(future_monthly_cost, 2),
             "total_combined_monthly_cost": round(monthly_cost + future_monthly_cost, 2),
@@ -318,14 +309,16 @@ async def get_subscriptions_summary(
             "total_subscriptions_count": len(active_subscriptions),
         }
 
-    # Get summary from database and cache it
-    result = calculate_subscription_summary(current_user.id)
+        # Cache the result for 60 seconds
+        set_cache(cache_key, result, ttl_seconds=60)
 
-    # Set cache control headers
-    response.headers["Cache-Control"] = (
-        "private, max-age=3600"  # 1 hour client-side cache
-    )
-    response.headers["ETag"] = f'W/"subscription-summary-{hash(str(result))}"'
+    # Set cache control headers to prevent browser caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
+    # Add cache validators
+    response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return result
 

@@ -13,6 +13,7 @@ from app.models.user import User
 from app.services.cache_service import (
     cached,
     invalidate_cache_pattern,
+    invalidate_user_cache,
     get_cache,
     set_cache,
 )
@@ -72,7 +73,8 @@ async def create_category(
     db.commit()
     db.refresh(db_category)
 
-    # Invalidate the categories cache when a new category is created
+    # Invalidate all cache entries for this user and the global categories cache
+    invalidate_user_cache(current_user.id)
     invalidate_cache_pattern("transaction_categories")
 
     return db_category
@@ -96,7 +98,8 @@ async def update_category(
     db.commit()
     db.refresh(db_category)
 
-    # Invalidate the categories cache when a category is updated
+    # Invalidate all cache entries for this user and the global categories cache
+    invalidate_user_cache(current_user.id)
     invalidate_cache_pattern("transaction_categories")
 
     return db_category
@@ -122,7 +125,8 @@ async def delete_category(
     db.delete(db_category)
     db.commit()
 
-    # Invalidate the categories cache when a category is deleted
+    # Invalidate all cache entries for this user and the global categories cache
+    invalidate_user_cache(current_user.id)
     invalidate_cache_pattern("transaction_categories")
 
     return {"ok": True}

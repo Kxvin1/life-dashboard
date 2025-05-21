@@ -18,14 +18,18 @@ const TransactionList = () => {
   const fetchTransactions = async () => {
     try {
       const token = Cookies.get("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+
+      // Add a timestamp to prevent browser caching
+      const timestamp = new Date().getTime();
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/?_=${timestamp}`;
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        // Use cache: 'no-store' which is safer for CORS
+        cache: "no-store",
+      });
 
       if (!response.ok) {
         throw new Error("Failed to fetch transactions");

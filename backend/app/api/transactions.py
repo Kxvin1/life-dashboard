@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime, timedelta
+import logging
 from app.db.database import get_db
 from app.models.transaction import Transaction, TransactionType
 from app.schemas.transaction import (
@@ -16,9 +17,12 @@ from app.models.category import Category
 from app.services.cache_service import (
     cached,
     invalidate_cache_pattern,
+    invalidate_user_cache,
     get_cache,
     set_cache,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -47,10 +51,8 @@ async def create_transaction(
     db.commit()
     db.refresh(db_transaction)
 
-    # Invalidate transaction-related caches
-    invalidate_cache_pattern(f"transactions:{current_user.id}")
-    invalidate_cache_pattern(f"monthly_summary:{current_user.id}")
-    invalidate_cache_pattern(f"yearly_summary:{current_user.id}")
+    # Invalidate all cache entries for this user
+    invalidate_user_cache(current_user.id)
 
     return db_transaction
 
@@ -74,31 +76,16 @@ async def get_transactions(
     Uses caching to improve performance.
     """
     # Create a cache key based on the parameters
-    cache_key = f"transactions:{current_user.id}:{type}:{start_date}:{end_date}:{category_id}:{year}:{month}:{skip}:{limit}"
+    cache_key = f"user_{current_user.id}_transactions_{type}_{start_date}_{end_date}_{category_id}_{year}_{month}_{skip}_{limit}"
 
     # Try to get from cache first
     cached_transactions = get_cache(cache_key)
     if cached_transactions is not None:
-        # Set cache control headers
-        response.headers["Cache-Control"] = (
-            "private, max-age=300"  # 5 minutes client-side cache
-        )
-        response.headers["ETag"] = f'W/"transactions-{len(cached_transactions)}"'
-        return cached_transactions
+        logger.info(f"Cache hit for transactions: {cache_key}")
+        transactions = cached_transactions
+    else:
+        logger.info(f"Cache miss for transactions: {cache_key}")
 
-    # If not in cache, fetch from database with caching
-    @cached(ttl_seconds=300)  # Cache for 5 minutes
-    def get_transactions_from_db(
-        user_id,
-        transaction_type,
-        start_date_val,
-        end_date_val,
-        category_id_val,
-        year_val,
-        month_val,
-        skip_val,
-        limit_val,
-    ):
         # Build the query with eager loading of category
         query = (
             db.query(Transaction)
@@ -107,60 +94,50 @@ async def get_transactions(
                     Transaction.category
                 )  # Eager load category to avoid N+1 queries
             )
-            .filter(Transaction.user_id == user_id)
+            .filter(Transaction.user_id == current_user.id)
         )
 
         # Apply filters
-        if transaction_type:
-            query = query.filter(Transaction.type == transaction_type)
-        if start_date_val:
-            query = query.filter(Transaction.date >= start_date_val)
-        if end_date_val:
-            query = query.filter(Transaction.date <= end_date_val)
-        if category_id_val:
-            query = query.filter(Transaction.category_id == category_id_val)
+        if type:
+            query = query.filter(Transaction.type == type)
+        if start_date:
+            query = query.filter(Transaction.date >= start_date)
+        if end_date:
+            query = query.filter(Transaction.date <= end_date)
+        if category_id:
+            query = query.filter(Transaction.category_id == category_id)
 
         # Add filtering by year and month
-        if year_val:
+        if year:
             from sqlalchemy import extract
 
-            query = query.filter(extract("year", Transaction.date) == year_val)
-        if month_val:
+            query = query.filter(extract("year", Transaction.date) == year)
+        if month:
             from sqlalchemy import extract
 
-            query = query.filter(extract("month", Transaction.date) == month_val)
+            query = query.filter(extract("month", Transaction.date) == month)
 
         # Order by date descending for most recent transactions first
         query = query.order_by(Transaction.date.desc())
 
         # Apply pagination
-        transactions = query.offset(skip_val).limit(limit_val).all()
+        transactions = query.offset(skip).limit(limit).all()
 
         # Ensure all transactions have valid is_recurring values
         for transaction in transactions:
             if transaction.is_recurring is None:
                 transaction.is_recurring = False
 
-        return transactions
+        # Cache the result for 60 seconds
+        set_cache(cache_key, transactions, ttl_seconds=60)
 
-    # Get transactions from database and cache them
-    transactions = get_transactions_from_db(
-        current_user.id,
-        type,
-        start_date,
-        end_date,
-        category_id,
-        year,
-        month,
-        skip,
-        limit,
-    )
+    # Set cache control headers to prevent browser caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
 
-    # Set cache control headers
-    response.headers["Cache-Control"] = (
-        "private, max-age=300"  # 5 minutes client-side cache
-    )
-    response.headers["ETag"] = f'W/"transactions-{len(transactions)}"'
+    # Add cache validators
+    response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return transactions
 
@@ -243,10 +220,8 @@ async def update_transaction(
     db.commit()
     db.refresh(db_transaction)
 
-    # Invalidate transaction-related caches
-    invalidate_cache_pattern(f"transactions:{current_user.id}")
-    invalidate_cache_pattern(f"monthly_summary:{current_user.id}")
-    invalidate_cache_pattern(f"yearly_summary:{current_user.id}")
+    # Invalidate all cache entries for this user
+    invalidate_user_cache(current_user.id)
 
     return db_transaction
 
@@ -274,10 +249,8 @@ async def delete_transaction(
     db.delete(db_transaction)
     db.commit()
 
-    # Invalidate transaction-related caches
-    invalidate_cache_pattern(f"transactions:{current_user.id}")
-    invalidate_cache_pattern(f"monthly_summary:{current_user.id}")
-    invalidate_cache_pattern(f"yearly_summary:{current_user.id}")
+    # Invalidate all cache entries for this user
+    invalidate_user_cache(current_user.id)
 
     return {"success": True, "message": "Transaction deleted successfully"}
 
@@ -288,37 +261,65 @@ async def delete_transaction(
 # Define a separate route for transaction summary to avoid conflicts with the transaction_id route
 @router.get("/transactions-summary/")
 async def get_transaction_summary(
+    response: Response,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     category_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = db.query(Transaction).filter(Transaction.user_id == current_user.id)
+    # Create a cache key based on the parameters
+    cache_key = f"user_{current_user.id}_transaction_summary_{start_date}_{end_date}_{category_id}"
 
-    if start_date:
-        query = query.filter(Transaction.date >= start_date)
-    if end_date:
-        query = query.filter(Transaction.date <= end_date)
-    if category_id:
-        query = query.filter(Transaction.category_id == category_id)
+    # Try to get from cache first
+    cached_result = get_cache(cache_key)
+    if cached_result is not None:
+        logger.info(f"Cache hit for transaction summary: {cache_key}")
+        result = cached_result
+    else:
+        logger.info(f"Cache miss for transaction summary: {cache_key}")
 
-    transactions = query.all()
+        query = db.query(Transaction).filter(Transaction.user_id == current_user.id)
 
-    income = sum(t.amount for t in transactions if t.type == TransactionType.income)
-    expenses = sum(t.amount for t in transactions if t.type == TransactionType.expense)
+        if start_date:
+            query = query.filter(Transaction.date >= start_date)
+        if end_date:
+            query = query.filter(Transaction.date <= end_date)
+        if category_id:
+            query = query.filter(Transaction.category_id == category_id)
 
-    return {
-        "total_income": income,
-        "total_expenses": expenses,
-        "net_income": income - expenses,
-        "transaction_count": len(transactions),
-    }
+        transactions = query.all()
+
+        income = sum(t.amount for t in transactions if t.type == TransactionType.income)
+        expenses = sum(
+            t.amount for t in transactions if t.type == TransactionType.expense
+        )
+
+        result = {
+            "total_income": income,
+            "total_expenses": expenses,
+            "net_income": income - expenses,
+            "transaction_count": len(transactions),
+        }
+
+        # Cache the result for 60 seconds
+        set_cache(cache_key, result, ttl_seconds=60)
+
+    # Set cache control headers to prevent browser caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
+    # Add cache validators
+    response.headers["Vary"] = "Authorization"  # Cache varies by user
+
+    return result
 
 
 # Keep the old route for backward compatibility
 @router.get("/transactions/summary/")
 async def get_transaction_summary_legacy(
+    response: Response,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     category_id: Optional[int] = None,
@@ -326,6 +327,7 @@ async def get_transaction_summary_legacy(
     current_user: User = Depends(get_current_user),
 ):
     return await get_transaction_summary(
+        response=response,
         start_date=start_date,
         end_date=end_date,
         category_id=category_id,
@@ -352,28 +354,24 @@ async def has_income_and_expense_transactions(
         Dict with has_income, has_expense, can_generate_insights flags, and time_period
     """
     # Create a cache key based on the parameters
-    cache_key = f"has_transactions:{current_user.id}:{time_period}"
+    cache_key = f"user_{current_user.id}_has_transactions_{time_period}"
 
     # Try to get from cache first
     cached_result = get_cache(cache_key)
     if cached_result is not None:
-        # Set cache control headers
-        response.headers["Cache-Control"] = (
-            "private, max-age=300"  # 5 minutes client-side cache
-        )
-        return cached_result
+        logger.info(f"Cache hit for has_transactions: {cache_key}")
+        result = cached_result
+    else:
+        logger.info(f"Cache miss for has_transactions: {cache_key}")
 
-    # If not in cache, fetch from database with caching
-    @cached(ttl_seconds=300)  # Cache for 5 minutes
-    def check_transactions(user_id, time_period_val):
         # Base query for transactions from this user
         income_query = db.query(Transaction).filter(
-            Transaction.user_id == user_id,
+            Transaction.user_id == current_user.id,
             Transaction.type == TransactionType.income,
         )
 
         expense_query = db.query(Transaction).filter(
-            Transaction.user_id == user_id,
+            Transaction.user_id == current_user.id,
             Transaction.type == TransactionType.expense,
         )
 
@@ -382,13 +380,13 @@ async def has_income_and_expense_transactions(
         current_year = today.year
         current_month = today.month
 
-        if time_period_val == "month":
+        if time_period == "month":
             # Current month
             start_date = date(current_year, current_month, 1)
             income_query = income_query.filter(Transaction.date >= start_date)
             expense_query = expense_query.filter(Transaction.date >= start_date)
 
-        elif time_period_val == "prev_month":
+        elif time_period == "prev_month":
             # Previous month
             if current_month == 1:
                 # If January, previous month is December of previous year
@@ -413,13 +411,13 @@ async def has_income_and_expense_transactions(
                 Transaction.date >= start_date, Transaction.date <= end_date
             )
 
-        elif time_period_val == "year":
+        elif time_period == "year":
             # Current year
             start_date = date(current_year, 1, 1)
             income_query = income_query.filter(Transaction.date >= start_date)
             expense_query = expense_query.filter(Transaction.date >= start_date)
 
-        elif time_period_val == "prev_year":
+        elif time_period == "prev_year":
             # Previous year
             prev_year = current_year - 1
             start_date = date(prev_year, 1, 1)
@@ -439,19 +437,22 @@ async def has_income_and_expense_transactions(
         # User can generate insights if they have at least one income and one expense transaction
         can_generate_insights = has_income and has_expense
 
-        return {
+        result = {
             "has_income": has_income,
             "has_expense": has_expense,
             "can_generate_insights": can_generate_insights,
-            "time_period": time_period_val,
+            "time_period": time_period,
         }
 
-    # Get result from database and cache it
-    result = check_transactions(current_user.id, time_period)
+        # Cache the result for 60 seconds
+        set_cache(cache_key, result, ttl_seconds=60)
 
-    # Set cache control headers
-    response.headers["Cache-Control"] = (
-        "private, max-age=300"  # 5 minutes client-side cache
-    )
+    # Set cache control headers to prevent browser caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
+    # Add cache validators
+    response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return result
