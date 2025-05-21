@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract, and_, desc, case
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, date, timedelta
 from app.db.database import get_db
 from app.models.subscription import Subscription, SubscriptionStatus, BillingFrequency
@@ -12,6 +12,12 @@ from app.schemas.subscription import (
 )
 from app.core.security import get_current_user
 from app.models.user import User
+from app.services.cache_service import (
+    cached,
+    invalidate_cache_pattern,
+    get_cache,
+    set_cache,
+)
 
 router = APIRouter()
 
@@ -36,6 +42,10 @@ async def create_subscription(
     db.add(db_subscription)
     db.commit()
     db.refresh(db_subscription)
+
+    # Invalidate subscription summary cache
+    invalidate_cache_pattern(f"subscription_summary:{current_user.id}")
+
     return db_subscription
 
 
@@ -129,6 +139,10 @@ async def update_subscription(
 
     db.commit()
     db.refresh(db_subscription)
+
+    # Invalidate subscription summary cache
+    invalidate_cache_pattern(f"subscription_summary:{current_user.id}")
+
     return db_subscription
 
 
@@ -150,66 +164,104 @@ async def delete_subscription(
 
     db.delete(db_subscription)
     db.commit()
+
+    # Invalidate subscription summary cache
+    invalidate_cache_pattern(f"subscription_summary:{current_user.id}")
+
     return True
 
 
 @router.get("/subscriptions-summary/")
 async def get_subscriptions_summary(
+    response: Response,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # Get total monthly cost of active subscriptions
-    monthly_cost = 0
-    future_monthly_cost = 0
-    today = date.today()
+    """
+    Get summary of user's subscriptions including total costs and counts.
+    Uses caching to improve performance.
+    """
+    # Create a cache key based on the user
+    cache_key = f"subscription_summary:{current_user.id}"
 
-    # Get all active subscriptions
-    active_subscriptions = (
-        db.query(Subscription)
-        .filter(
-            Subscription.user_id == current_user.id,
-            Subscription.status == SubscriptionStatus.active,
+    # Try to get from cache first
+    cached_summary = get_cache(cache_key)
+    if cached_summary is not None:
+        # Set cache control headers
+        response.headers["Cache-Control"] = (
+            "private, max-age=300"  # 5 minutes client-side cache
         )
-        .all()
+        response.headers["ETag"] = (
+            f'W/"subscription-summary-{hash(str(cached_summary))}"'
+        )
+        return cached_summary
+
+    # If not in cache, calculate the summary with caching
+    @cached(ttl_seconds=300)  # Cache for 5 minutes
+    def calculate_subscription_summary(user_id):
+        # Get total monthly cost of active subscriptions
+        monthly_cost = 0
+        future_monthly_cost = 0
+        today = date.today()
+
+        # Get all active subscriptions - use a more efficient query
+        active_subscriptions = (
+            db.query(Subscription)
+            .filter(
+                Subscription.user_id == user_id,
+                Subscription.status == SubscriptionStatus.active,
+            )
+            .all()
+        )
+
+        # Count current and future subscriptions separately
+        current_active_count = 0
+        future_active_count = 0
+
+        for subscription in active_subscriptions:
+            # Determine if this is a future subscription
+            is_future = subscription.start_date > today
+
+            # Calculate the monthly cost based on billing frequency
+            subscription_monthly_cost = 0
+            if subscription.billing_frequency == BillingFrequency.monthly:
+                subscription_monthly_cost = subscription.amount
+            elif subscription.billing_frequency == BillingFrequency.yearly:
+                subscription_monthly_cost = subscription.amount / 12
+            elif subscription.billing_frequency == BillingFrequency.quarterly:
+                subscription_monthly_cost = subscription.amount / 3
+            elif subscription.billing_frequency == BillingFrequency.weekly:
+                subscription_monthly_cost = (
+                    subscription.amount * 4.33
+                )  # Average weeks in a month
+
+            # Add to the appropriate total
+            if is_future:
+                future_monthly_cost += subscription_monthly_cost
+                future_active_count += 1
+            else:
+                monthly_cost += subscription_monthly_cost
+                current_active_count += 1
+
+        return {
+            "total_monthly_cost": round(monthly_cost, 2),
+            "future_monthly_cost": round(future_monthly_cost, 2),
+            "total_combined_monthly_cost": round(monthly_cost + future_monthly_cost, 2),
+            "active_subscriptions_count": current_active_count,
+            "future_subscriptions_count": future_active_count,
+            "total_subscriptions_count": len(active_subscriptions),
+        }
+
+    # Get summary from database and cache it
+    result = calculate_subscription_summary(current_user.id)
+
+    # Set cache control headers
+    response.headers["Cache-Control"] = (
+        "private, max-age=300"  # 5 minutes client-side cache
     )
+    response.headers["ETag"] = f'W/"subscription-summary-{hash(str(result))}"'
 
-    # Count current and future subscriptions separately
-    current_active_count = 0
-    future_active_count = 0
-
-    for subscription in active_subscriptions:
-        # Determine if this is a future subscription
-        is_future = subscription.start_date > today
-
-        # Calculate the monthly cost based on billing frequency
-        subscription_monthly_cost = 0
-        if subscription.billing_frequency == BillingFrequency.monthly:
-            subscription_monthly_cost = subscription.amount
-        elif subscription.billing_frequency == BillingFrequency.yearly:
-            subscription_monthly_cost = subscription.amount / 12
-        elif subscription.billing_frequency == BillingFrequency.quarterly:
-            subscription_monthly_cost = subscription.amount / 3
-        elif subscription.billing_frequency == BillingFrequency.weekly:
-            subscription_monthly_cost = (
-                subscription.amount * 4.33
-            )  # Average weeks in a month
-
-        # Add to the appropriate total
-        if is_future:
-            future_monthly_cost += subscription_monthly_cost
-            future_active_count += 1
-        else:
-            monthly_cost += subscription_monthly_cost
-            current_active_count += 1
-
-    return {
-        "total_monthly_cost": round(monthly_cost, 2),
-        "future_monthly_cost": round(future_monthly_cost, 2),
-        "total_combined_monthly_cost": round(monthly_cost + future_monthly_cost, 2),
-        "active_subscriptions_count": current_active_count,
-        "future_subscriptions_count": future_active_count,
-        "total_subscriptions_count": len(active_subscriptions),
-    }
+    return result
 
 
 def calculate_next_payment_date(
