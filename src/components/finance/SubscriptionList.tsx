@@ -99,6 +99,10 @@ const SubscriptionList = ({
   const loadSubscriptions = async () => {
     try {
       setIsLoading(true);
+
+      // Force a small delay to ensure backend cache is invalidated
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       const data = await fetchSubscriptions(status);
 
       // Sort the subscriptions based on the sortField and sortDirection props

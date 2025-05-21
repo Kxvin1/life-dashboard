@@ -202,8 +202,39 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
   const [weeklyCount, setWeeklyCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
 
-  // Fetch counts from database
+  // Fetch counts from database - but only when on the Pomodoro page
+  const [shouldFetchCounts, setShouldFetchCounts] = useState(false);
+
+  // Check if we're on the Pomodoro page
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Only fetch counts if we're on the Pomodoro page
+      const isPomodoroPage = window.location.pathname.includes(
+        "/productivity/pomodoro"
+      );
+      setShouldFetchCounts(isPomodoroPage);
+
+      // Set up navigation listener
+      const handleRouteChange = () => {
+        const newIsPomodoroPage = window.location.pathname.includes(
+          "/productivity/pomodoro"
+        );
+        setShouldFetchCounts(newIsPomodoroPage);
+      };
+
+      // Listen for route changes
+      window.addEventListener("popstate", handleRouteChange);
+
+      return () => {
+        window.removeEventListener("popstate", handleRouteChange);
+      };
+    }
+  }, []);
+
+  // Fetch counts only when needed
+  useEffect(() => {
+    if (!shouldFetchCounts) return;
+
     const fetchCounts = async () => {
       try {
         if (!isDemoUser && user) {
@@ -219,11 +250,11 @@ export const PomodoroProvider = ({ children }: { children: ReactNode }) => {
 
     fetchCounts();
 
-    // Refresh counts every 5 minutes
+    // Refresh counts every 5 minutes, but only when on the Pomodoro page
     const interval = setInterval(fetchCounts, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [isDemoUser, user]);
+  }, [isDemoUser, user, shouldFetchCounts]);
 
   // State to track if user has completed a Pomodoro today
   const [hasCompletedTodayPomodoro, setHasCompletedTodayPomodoro] =

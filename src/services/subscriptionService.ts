@@ -12,7 +12,7 @@ export const fetchSubscriptions = async (
       throw new Error("Authentication token missing");
     }
 
-    // Add a timestamp to prevent browser caching
+    // Add a timestamp to force a fresh request after CRUD operations
     const timestamp = new Date().getTime();
 
     let url = `${API_URL}/api/v1/subscriptions/`;
@@ -26,7 +26,7 @@ export const fetchSubscriptions = async (
       headers: {
         Authorization: `Bearer ${token}`,
       },
-      // Use cache: 'no-store' which is safer for CORS
+      // Disable caching to ensure fresh data
       cache: "no-store",
     });
 
@@ -49,17 +49,15 @@ export const fetchSubscriptionSummary =
         throw new Error("Authentication token missing");
       }
 
-      // Add a timestamp to prevent browser caching
+      // Add a timestamp to force a fresh request after CRUD operations
       const timestamp = new Date().getTime();
-      // Add a random number to further prevent caching
-      const random = Math.floor(Math.random() * 1000000);
-      const url = `${API_URL}/api/v1/subscriptions-summary/?_=${timestamp}&r=${random}`;
+      const url = `${API_URL}/api/v1/subscriptions-summary/?_=${timestamp}`;
 
       const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        // Use cache: 'no-store' which is safer for CORS
+        // Disable caching to ensure fresh data
         cache: "no-store",
       });
 
@@ -211,6 +209,9 @@ export const toggleSubscriptionStatus = async (
     // We'll let the UI handle refreshing the subscription summary
     // No need to make a separate call here
 
+    // Force a delay to ensure the backend has time to process the update
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
     // Even if we got an error, try to fetch the subscription to see if it was updated
     const getResponse = await fetch(
       `${API_URL}/api/v1/subscriptions/${id}?_=${new Date().getTime()}`,
@@ -272,16 +273,26 @@ export const deleteSubscription = async (id: string): Promise<boolean> => {
       throw new Error("Authentication token missing");
     }
 
-    const response = await fetch(`${API_URL}/api/v1/subscriptions/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    // Add timestamp to prevent caching
+    const timestamp = new Date().getTime();
+
+    const response = await fetch(
+      `${API_URL}/api/v1/subscriptions/${id}?_=${timestamp}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to delete subscription");
     }
+
+    // Force a delay to ensure the backend has time to process the deletion
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
     return true;
   } catch (error) {

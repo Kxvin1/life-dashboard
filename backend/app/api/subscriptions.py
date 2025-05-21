@@ -107,8 +107,6 @@ async def get_subscriptions(
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
-
-    # Add cache validators
     response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return subscriptions
@@ -155,8 +153,6 @@ async def get_subscription(
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
-
-    # Add cache validators
     response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return subscription
@@ -344,8 +340,6 @@ async def get_subscriptions_summary(
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
-
-    # Add cache validators
     response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return result

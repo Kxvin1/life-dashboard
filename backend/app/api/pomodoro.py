@@ -433,15 +433,16 @@ async def get_pomodoro_counts(
             "user_id": current_user.id,  # Include user ID for debugging
         }
 
-        # Cache the result for 5 minutes (300 seconds)
-        set_cache(cache_key, result, ttl_seconds=300)
+        # Cache the result for 30 minutes (1800 seconds)
+        set_cache(cache_key, result, ttl_seconds=1800)
 
-    # Set cache control headers to prevent browser caching
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-
-    # Add cache validators
+    # Set cache control headers to allow browser caching
+    response.headers["Cache-Control"] = (
+        "private, max-age=1800"  # 30 minutes client-side cache
+    )
+    response.headers["ETag"] = (
+        f'W/"pomodoro-counts-{result["today"]}-{result["week"]}-{result["total"]}"'
+    )
     response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return result

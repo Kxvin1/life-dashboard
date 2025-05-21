@@ -192,10 +192,10 @@ def invalidate_task_cache(
 
 def invalidate_subscription_cache(user_id: int, subscription_id: int = None) -> None:
     """
-    Invalidate subscription-related caches for a specific user and subscription in a more targeted way.
+    Invalidate subscription-related caches for a specific user and subscription.
 
-    This function is more selective than invalidate_user_cache and only invalidates
-    the specific caches that are affected by changes to a subscription.
+    This function aggressively invalidates all subscription-related caches to ensure
+    that the UI always shows the latest data after any subscription changes.
 
     Args:
         user_id: The user ID
@@ -204,50 +204,21 @@ def invalidate_subscription_cache(user_id: int, subscription_id: int = None) -> 
     with _cache_lock:
         # Log the cache invalidation for debugging
         logger.info(
-            f"Targeted invalidation of subscription cache for user_id: {user_id}, subscription_id: {subscription_id}"
+            f"Aggressive invalidation of subscription cache for user_id: {user_id}, subscription_id: {subscription_id}"
         )
 
-        # Create patterns to match
-        patterns = []
+        # Invalidate all user-related caches to ensure fresh data
+        user_pattern = f"user_{user_id}"
 
-        if subscription_id:
-            # Invalidate specific subscription cache
-            patterns.append(f"user_{user_id}_subscription_{subscription_id}")
-
-        # Always invalidate all subscription list caches to ensure UI updates
-        # This is less targeted but ensures the UI always shows the latest data
-        patterns.append(f"user_{user_id}_subscriptions")
-
-        # Invalidate subscription summary cache
-        patterns.append(f"user_{user_id}_subscription_summary")
-
-        # Find and remove matching keys
-        keys_to_remove = []
-        for pattern in patterns:
-            matching_keys = [k for k in _cache.keys() if pattern in k]
-            keys_to_remove.extend(matching_keys)
-            logger.info(f"Pattern '{pattern}' matches {len(matching_keys)} keys")
-
-        # If no keys were found with the patterns, invalidate all user subscription caches
-        if not keys_to_remove:
-            logger.info(
-                f"No keys matched patterns, invalidating all user subscription caches"
-            )
-            user_pattern = f"user_{user_id}"
-            subscription_pattern = "subscription"
-            keys_to_remove = [
-                k
-                for k in _cache.keys()
-                if user_pattern in k and subscription_pattern in k
-            ]
-            logger.info(f"Found {len(keys_to_remove)} keys with broader pattern")
+        # Find all keys that contain the user pattern
+        keys_to_remove = [k for k in _cache.keys() if user_pattern in k]
 
         # Log the keys that will be removed
         logger.info(f"Keys to be removed: {keys_to_remove}")
 
         # Remove each key
         for key in keys_to_remove:
-            logger.info(f"Invalidating subscription cache key: {key}")
+            logger.info(f"Invalidating cache key: {key}")
             del _cache[key]
 
         # Log the remaining cache keys after invalidation

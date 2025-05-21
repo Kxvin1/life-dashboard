@@ -73,6 +73,9 @@ const SubscriptionSummary = ({ refreshKey }: SubscriptionSummaryProps) => {
     try {
       setIsLoading(true);
 
+      // Force a small delay to ensure backend cache is invalidated
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // Fetch summary data
       const summaryData = await fetchSubscriptionSummary();
 

@@ -166,16 +166,15 @@ export const fetchTaskCategories = async (): Promise<TaskCategory[]> => {
       throw new Error("Authentication token missing");
     }
 
-    // Add a timestamp to prevent browser caching
-    const timestamp = new Date().getTime();
-    const url = `${API_URL}/api/v1/tasks/categories?_=${timestamp}`;
+    const url = `${API_URL}/api/v1/tasks/categories`;
 
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
-      // Use cache: 'no-store' which is safer for CORS
-      cache: "no-store",
+      // Allow browser caching with revalidation
+      cache: "default",
+      next: { revalidate: 86400 }, // Revalidate after 24 hours
     });
 
     if (!response.ok) {

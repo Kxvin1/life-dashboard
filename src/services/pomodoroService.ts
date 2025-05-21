@@ -330,19 +330,14 @@ export const getPomodoroCounts = async (): Promise<PomodoroCountsResponse> => {
   try {
     const token = Cookies.get("token");
 
-    // Add a timestamp to prevent browser caching
-    const timestamp = new Date().getTime();
-
-    const response = await fetch(
-      `${API_URL}/api/v1/pomodoro/counts?_=${timestamp}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        // Use cache: 'no-store' which is safer for CORS
-        cache: "no-store",
-      }
-    );
+    const response = await fetch(`${API_URL}/api/v1/pomodoro/counts`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      // Allow browser caching with revalidation
+      cache: "default",
+      next: { revalidate: 1800 }, // Revalidate after 30 minutes
+    });
 
     if (!response.ok) {
       const errorData = await response.json();

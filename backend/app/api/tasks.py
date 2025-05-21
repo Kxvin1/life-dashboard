@@ -50,15 +50,15 @@ async def get_task_categories(
     from app.services.cache_service import get_cache
 
     # Create a user-specific cache key
-    user_cache_key = f"user_{current_user.id}_categories"
+    user_cache_key = f"user_{current_user.id}_task_categories"
 
     # Try to get categories from cache first
     cached_categories = get_cache(user_cache_key)
     if cached_categories is not None:
-        logger.info(f"Cache hit for user categories: {user_cache_key}")
+        logger.info(f"Cache hit for user task categories: {user_cache_key}")
         categories = cached_categories
     else:
-        logger.info(f"Cache miss for user categories: {user_cache_key}")
+        logger.info(f"Cache miss for user task categories: {user_cache_key}")
         # Get all categories in one query
         categories = (
             db.query(TaskCategory)
@@ -69,15 +69,13 @@ async def get_task_categories(
             .all()
         )
 
-        # Cache the result for 24 hours (categories rarely change)
-        set_cache(user_cache_key, categories, ttl_seconds=86400)
+        # Cache the result for 7 days (categories rarely change)
+        set_cache(user_cache_key, categories, ttl_seconds=604800)  # 7 days
 
     # Set cache control headers for client-side caching
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-
-    # Add cache validators
+    # Allow browser caching for 1 day
+    response.headers["Cache-Control"] = "private, max-age=86400"  # 24 hours
+    response.headers["ETag"] = f'W/"task-categories-{len(categories)}"'
     response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return categories
@@ -104,7 +102,7 @@ async def create_task_category(
 
     # Invalidate the categories cache for this user
     # We also need to invalidate task caches since they might include category information
-    invalidate_cache(f"user_{current_user.id}_categories")
+    invalidate_cache(f"user_{current_user.id}_task_categories")
     invalidate_task_cache(current_user.id)
 
     return db_category
