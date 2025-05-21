@@ -43,52 +43,114 @@ async def create_subscription(
     db.commit()
     db.refresh(db_subscription)
 
-    # Invalidate subscription summary cache
+    # Invalidate subscription-related caches
     invalidate_cache_pattern(f"subscription_summary:{current_user.id}")
+    invalidate_cache_pattern(f"subscriptions:{current_user.id}")
 
     return db_subscription
 
 
 @router.get("/subscriptions/", response_model=List[SubscriptionSchema])
 async def get_subscriptions(
+    response: Response,
     skip: int = 0,
     limit: int = 100,
     status: Optional[SubscriptionStatus] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = db.query(Subscription).filter(Subscription.user_id == current_user.id)
+    """
+    Get subscriptions with optional filtering by status.
+    Uses caching to improve performance.
+    """
+    # Create a cache key based on the parameters
+    cache_key = f"subscriptions:{current_user.id}:{status}:{skip}:{limit}"
 
-    if status:
-        query = query.filter(Subscription.status == status)
+    # Try to get from cache first
+    cached_subscriptions = get_cache(cache_key)
+    if cached_subscriptions is not None:
+        # Set cache control headers
+        response.headers["Cache-Control"] = (
+            "private, max-age=3600"  # 1 hour client-side cache
+        )
+        response.headers["ETag"] = f'W/"subscriptions-{len(cached_subscriptions)}"'
+        return cached_subscriptions
 
-    # Order by status (active first) and then by name
-    # Create a case statement to order active status first
-    status_order = case((Subscription.status == SubscriptionStatus.active, 1), else_=2)
+    # If not in cache, fetch from database with caching
+    @cached(ttl_seconds=86400)  # Cache for 24 hours
+    def get_subscriptions_from_db(user_id, status_val, skip_val, limit_val):
+        query = db.query(Subscription).filter(Subscription.user_id == user_id)
 
-    query = query.order_by(
-        status_order, Subscription.name  # Active first (1 comes before 2)
+        if status_val:
+            query = query.filter(Subscription.status == status_val)
+
+        # Order by status (active first) and then by name
+        # Create a case statement to order active status first
+        status_order = case(
+            (Subscription.status == SubscriptionStatus.active, 1), else_=2
+        )
+
+        query = query.order_by(
+            status_order, Subscription.name  # Active first (1 comes before 2)
+        )
+
+        return query.offset(skip_val).limit(limit_val).all()
+
+    # Get subscriptions from database and cache them
+    subscriptions = get_subscriptions_from_db(current_user.id, status, skip, limit)
+
+    # Set cache control headers
+    response.headers["Cache-Control"] = (
+        "private, max-age=3600"  # 1 hour client-side cache
     )
+    response.headers["ETag"] = f'W/"subscriptions-{len(subscriptions)}"'
 
-    subscriptions = query.offset(skip).limit(limit).all()
     return subscriptions
 
 
 @router.get("/subscriptions/{subscription_id}", response_model=SubscriptionSchema)
 async def get_subscription(
+    response: Response,
     subscription_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    subscription = (
-        db.query(Subscription)
-        .filter(
-            Subscription.id == subscription_id, Subscription.user_id == current_user.id
+    """
+    Get a specific subscription by ID.
+    Uses caching to improve performance.
+    """
+    # Create a cache key based on the parameters
+    cache_key = f"subscription:{current_user.id}:{subscription_id}"
+
+    # Try to get from cache first
+    cached_subscription = get_cache(cache_key)
+    if cached_subscription is not None:
+        # Set cache control headers
+        response.headers["Cache-Control"] = (
+            "private, max-age=3600"  # 1 hour client-side cache
         )
-        .first()
-    )
+        return cached_subscription
+
+    # If not in cache, fetch from database with caching
+    @cached(ttl_seconds=86400)  # Cache for 24 hours
+    def get_subscription_from_db(user_id, sub_id):
+        return (
+            db.query(Subscription)
+            .filter(Subscription.id == sub_id, Subscription.user_id == user_id)
+            .first()
+        )
+
+    # Get subscription from database and cache it
+    subscription = get_subscription_from_db(current_user.id, subscription_id)
+
     if subscription is None:
         raise HTTPException(status_code=404, detail="Subscription not found")
+
+    # Set cache control headers
+    response.headers["Cache-Control"] = (
+        "private, max-age=3600"  # 1 hour client-side cache
+    )
+
     return subscription
 
 
@@ -140,8 +202,10 @@ async def update_subscription(
     db.commit()
     db.refresh(db_subscription)
 
-    # Invalidate subscription summary cache
+    # Invalidate subscription-related caches
     invalidate_cache_pattern(f"subscription_summary:{current_user.id}")
+    invalidate_cache_pattern(f"subscriptions:{current_user.id}")
+    invalidate_cache_pattern(f"subscription:{current_user.id}:{subscription_id}")
 
     return db_subscription
 
@@ -165,8 +229,10 @@ async def delete_subscription(
     db.delete(db_subscription)
     db.commit()
 
-    # Invalidate subscription summary cache
+    # Invalidate subscription-related caches
     invalidate_cache_pattern(f"subscription_summary:{current_user.id}")
+    invalidate_cache_pattern(f"subscriptions:{current_user.id}")
+    invalidate_cache_pattern(f"subscription:{current_user.id}:{subscription_id}")
 
     return True
 
@@ -189,7 +255,7 @@ async def get_subscriptions_summary(
     if cached_summary is not None:
         # Set cache control headers
         response.headers["Cache-Control"] = (
-            "private, max-age=300"  # 5 minutes client-side cache
+            "private, max-age=3600"  # 1 hour client-side cache
         )
         response.headers["ETag"] = (
             f'W/"subscription-summary-{hash(str(cached_summary))}"'
@@ -197,7 +263,7 @@ async def get_subscriptions_summary(
         return cached_summary
 
     # If not in cache, calculate the summary with caching
-    @cached(ttl_seconds=300)  # Cache for 5 minutes
+    @cached(ttl_seconds=3600)  # Cache for 1 hour
     def calculate_subscription_summary(user_id):
         # Get total monthly cost of active subscriptions
         monthly_cost = 0
@@ -257,7 +323,7 @@ async def get_subscriptions_summary(
 
     # Set cache control headers
     response.headers["Cache-Control"] = (
-        "private, max-age=300"  # 5 minutes client-side cache
+        "private, max-age=3600"  # 1 hour client-side cache
     )
     response.headers["ETag"] = f'W/"subscription-summary-{hash(str(result))}"'
 
