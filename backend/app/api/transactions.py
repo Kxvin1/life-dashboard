@@ -51,8 +51,8 @@ async def create_transaction(
     db.commit()
     db.refresh(db_transaction)
 
-    # Invalidate all cache entries for this user
-    invalidate_user_cache(current_user.id)
+    # Invalidate only transaction-related cache entries for this user
+    invalidate_user_cache(current_user.id, feature="transactions")
 
     return db_transaction
 
@@ -128,8 +128,8 @@ async def get_transactions(
             if transaction.is_recurring is None:
                 transaction.is_recurring = False
 
-        # Cache the result for 60 seconds
-        set_cache(cache_key, transactions, ttl_seconds=60)
+        # Cache the result for 5 minutes (300 seconds)
+        set_cache(cache_key, transactions, ttl_seconds=300)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -220,8 +220,8 @@ async def update_transaction(
     db.commit()
     db.refresh(db_transaction)
 
-    # Invalidate all cache entries for this user
-    invalidate_user_cache(current_user.id)
+    # Invalidate only transaction-related cache entries for this user
+    invalidate_user_cache(current_user.id, feature="transactions")
 
     return db_transaction
 
@@ -249,8 +249,8 @@ async def delete_transaction(
     db.delete(db_transaction)
     db.commit()
 
-    # Invalidate all cache entries for this user
-    invalidate_user_cache(current_user.id)
+    # Invalidate only transaction-related cache entries for this user
+    invalidate_user_cache(current_user.id, feature="transactions")
 
     return {"success": True, "message": "Transaction deleted successfully"}
 
@@ -302,8 +302,8 @@ async def get_transaction_summary(
             "transaction_count": len(transactions),
         }
 
-        # Cache the result for 60 seconds
-        set_cache(cache_key, result, ttl_seconds=60)
+        # Cache the result for 5 minutes (300 seconds)
+        set_cache(cache_key, result, ttl_seconds=300)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -444,8 +444,8 @@ async def has_income_and_expense_transactions(
             "time_period": time_period,
         }
 
-        # Cache the result for 60 seconds
-        set_cache(cache_key, result, ttl_seconds=60)
+        # Cache the result for 5 minutes (300 seconds)
+        set_cache(cache_key, result, ttl_seconds=300)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"

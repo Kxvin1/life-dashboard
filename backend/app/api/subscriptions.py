@@ -47,8 +47,8 @@ async def create_subscription(
     db.commit()
     db.refresh(db_subscription)
 
-    # Invalidate all cache entries for this user
-    invalidate_user_cache(current_user.id)
+    # Invalidate only subscription-related cache entries for this user
+    invalidate_user_cache(current_user.id, feature="subscriptions")
 
     return db_subscription
 
@@ -94,8 +94,8 @@ async def get_subscriptions(
 
         subscriptions = query.offset(skip).limit(limit).all()
 
-        # Cache the result for 60 seconds
-        set_cache(cache_key, subscriptions, ttl_seconds=60)
+        # Cache the result for 24 hours (subscriptions rarely change)
+        set_cache(cache_key, subscriptions, ttl_seconds=86400)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -142,8 +142,8 @@ async def get_subscription(
         if subscription is None:
             raise HTTPException(status_code=404, detail="Subscription not found")
 
-        # Cache the result for 60 seconds
-        set_cache(cache_key, subscription, ttl_seconds=60)
+        # Cache the result for 24 hours (subscriptions rarely change)
+        set_cache(cache_key, subscription, ttl_seconds=86400)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -204,8 +204,8 @@ async def update_subscription(
     db.commit()
     db.refresh(db_subscription)
 
-    # Invalidate all cache entries for this user
-    invalidate_user_cache(current_user.id)
+    # Invalidate only subscription-related cache entries for this user
+    invalidate_user_cache(current_user.id, feature="subscriptions")
 
     return db_subscription
 
@@ -229,8 +229,8 @@ async def delete_subscription(
     db.delete(db_subscription)
     db.commit()
 
-    # Invalidate all cache entries for this user
-    invalidate_user_cache(current_user.id)
+    # Invalidate only subscription-related cache entries for this user
+    invalidate_user_cache(current_user.id, feature="subscriptions")
 
     return True
 
@@ -309,8 +309,8 @@ async def get_subscriptions_summary(
             "total_subscriptions_count": len(active_subscriptions),
         }
 
-        # Cache the result for 60 seconds
-        set_cache(cache_key, result, ttl_seconds=60)
+        # Cache the result for 1 hour (summary data changes more frequently)
+        set_cache(cache_key, result, ttl_seconds=3600)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"

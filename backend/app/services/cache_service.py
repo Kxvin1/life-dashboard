@@ -74,22 +74,33 @@ def invalidate_cache_pattern(pattern: str) -> None:
         del _cache[key]
 
 
-def invalidate_user_cache(user_id: int) -> None:
+def invalidate_user_cache(user_id: int, feature: str = None) -> None:
     """
-    Remove all cache entries for a specific user.
+    Remove cache entries for a specific user, optionally filtered by feature.
 
     Args:
         user_id: The user ID whose cache entries should be invalidated
+        feature: Optional feature name to limit invalidation scope (e.g., 'tasks', 'transactions')
     """
     # Log the cache invalidation for debugging
-    logger.info(f"Invalidating cache for user_id: {user_id}")
-    logger.info(f"Current cache keys before invalidation: {list(_cache.keys())}")
+    logger.info(f"Invalidating cache for user_id: {user_id}, feature: {feature}")
 
-    # Create a pattern that will match all user-specific cache entries
+    # Create a pattern that will match user-specific cache entries
     user_pattern = f"user_{user_id}"
 
-    # Find all keys that contain the user pattern
-    keys_to_remove = [k for k in _cache.keys() if user_pattern in k]
+    if feature:
+        # If a feature is specified, only invalidate cache entries for that feature
+        pattern = f"{user_pattern}_{feature}"
+        logger.info(f"Invalidating cache with pattern: {pattern}")
+
+        # Find all keys that match the pattern
+        keys_to_remove = [k for k in _cache.keys() if pattern in k]
+    else:
+        # If no feature is specified, invalidate all user cache entries
+        logger.info(f"Invalidating all cache for user: {user_pattern}")
+
+        # Find all keys that contain the user pattern
+        keys_to_remove = [k for k in _cache.keys() if user_pattern in k]
 
     # Log the keys that will be removed
     logger.info(f"Keys to be removed: {keys_to_remove}")
@@ -97,16 +108,6 @@ def invalidate_user_cache(user_id: int) -> None:
     # Remove each key
     for key in keys_to_remove:
         del _cache[key]
-
-    # Also invalidate any task-related cache that might not have the user_id in the key
-    task_patterns = [
-        "tasks:",
-        "get_filtered_tasks",
-        "get_all_categories",
-        "get_user_categories",
-    ]
-    for pattern in task_patterns:
-        invalidate_cache_pattern(pattern)
 
     # Log the remaining cache keys after invalidation
     logger.info(f"Current cache keys after invalidation: {list(_cache.keys())}")

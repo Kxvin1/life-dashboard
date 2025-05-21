@@ -68,8 +68,8 @@ async def get_task_categories(
             .all()
         )
 
-        # Cache the result
-        set_cache(user_cache_key, categories, ttl_seconds=3600)  # Cache for 1 hour
+        # Cache the result for 24 hours (categories rarely change)
+        set_cache(user_cache_key, categories, ttl_seconds=86400)
 
     # Set cache control headers for client-side caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -101,8 +101,8 @@ async def create_task_category(
     db.commit()
     db.refresh(db_category)
 
-    # Invalidate all cache entries for this user
-    invalidate_user_cache(current_user.id)
+    # Invalidate only task-related cache entries for this user
+    invalidate_user_cache(current_user.id, feature="tasks")
 
     return db_category
 
@@ -176,8 +176,8 @@ async def get_tasks(
 
         result = {"tasks": tasks, "total_count": total_count}
 
-        # Cache the result for 60 seconds
-        set_cache(cache_key, result, ttl_seconds=60)
+        # Cache the result for 5 minutes (300 seconds)
+        set_cache(cache_key, result, ttl_seconds=300)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -266,8 +266,8 @@ async def create_task(
     db.commit()
     db.refresh(db_task)
 
-    # Invalidate all cache entries for this user
-    invalidate_user_cache(current_user.id)
+    # Invalidate only task-related cache entries for this user
+    invalidate_user_cache(current_user.id, feature="tasks")
 
     return db_task
 
@@ -355,8 +355,8 @@ async def update_task(
     db.commit()
     db.refresh(task)
 
-    # Invalidate all cache entries for this user
-    invalidate_user_cache(current_user.id)
+    # Invalidate only task-related cache entries for this user
+    invalidate_user_cache(current_user.id, feature="tasks")
 
     return task
 
@@ -386,8 +386,8 @@ async def delete_task(
     db.delete(task)
     db.commit()
 
-    # Invalidate all cache entries for this user
-    invalidate_user_cache(current_user.id)
+    # Invalidate only task-related cache entries for this user
+    invalidate_user_cache(current_user.id, feature="tasks")
 
     return None
 
@@ -416,8 +416,8 @@ async def reorder_task(
             status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
         )
 
-    # Invalidate all cache entries for this user
-    invalidate_user_cache(current_user.id)
+    # Invalidate only task-related cache entries for this user
+    invalidate_user_cache(current_user.id, feature="tasks")
 
     # For this simplified implementation, we'll just return success
     # In a real implementation, you would update position fields
@@ -479,8 +479,8 @@ async def batch_action(
 
     db.commit()
 
-    # Invalidate all cache entries for this user
-    invalidate_user_cache(current_user.id)
+    # Invalidate only task-related cache entries for this user
+    invalidate_user_cache(current_user.id, feature="tasks")
 
     return {"message": f"Batch {batch_request.action} completed successfully"}
 

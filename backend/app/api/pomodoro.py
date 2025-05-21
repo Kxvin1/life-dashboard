@@ -119,8 +119,8 @@ async def create_pomodoro_session(
         user_id=current_user.id, session_data=session_data
     )
 
-    # Invalidate all cache entries for this user
-    invalidate_user_cache(current_user.id)
+    # Invalidate only pomodoro-related cache entries for this user
+    invalidate_user_cache(current_user.id, feature="pomodoro")
 
     return created_session
 
@@ -154,8 +154,8 @@ async def get_pomodoro_sessions(
             user_id=current_user.id, skip=skip, limit=limit
         )
 
-        # Cache the result for 60 seconds
-        set_cache(cache_key, result, ttl_seconds=60)
+        # Cache the result for 5 minutes (300 seconds)
+        set_cache(cache_key, result, ttl_seconds=300)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -199,8 +199,8 @@ async def analyze_pomodoro_sessions(
                 status_code=status.HTTP_403_FORBIDDEN, detail=result["error"]
             )
 
-        # Invalidate all cache entries for this user
-        invalidate_user_cache(current_user.id)
+        # Invalidate only pomodoro-related cache entries for this user
+        invalidate_user_cache(current_user.id, feature="pomodoro")
 
         return result
     except Exception as e:
@@ -271,8 +271,8 @@ async def get_remaining_pomodoro_ai_uses(
             "reset_time": reset_time.isoformat(),
         }
 
-        # Cache the result for 60 seconds
-        set_cache(cache_key, result, ttl_seconds=60)
+        # Cache the result for 5 minutes (300 seconds)
+        set_cache(cache_key, result, ttl_seconds=300)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -321,8 +321,8 @@ async def get_pomodoro_ai_history(
             user_id=current_user.id, skip=skip, limit=limit
         )
 
-        # Cache the result for 60 seconds
-        set_cache(cache_key, history, ttl_seconds=60)
+        # Cache the result for 1 hour (history rarely changes)
+        set_cache(cache_key, history, ttl_seconds=3600)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -376,8 +376,8 @@ async def get_pomodoro_ai_history_by_id(
                 detail=f"Pomodoro AI history entry with ID {history_id} not found",
             )
 
-        # Cache the result for 60 seconds
-        set_cache(cache_key, history_entry, ttl_seconds=60)
+        # Cache the result for 1 hour (history rarely changes)
+        set_cache(cache_key, history_entry, ttl_seconds=3600)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -433,8 +433,8 @@ async def get_pomodoro_counts(
             "user_id": current_user.id,  # Include user ID for debugging
         }
 
-        # Cache the result for 60 seconds
-        set_cache(cache_key, result, ttl_seconds=60)
+        # Cache the result for 5 minutes (300 seconds)
+        set_cache(cache_key, result, ttl_seconds=300)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
