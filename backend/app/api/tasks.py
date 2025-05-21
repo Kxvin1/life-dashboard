@@ -15,6 +15,7 @@ from app.services.cache_service import (
     cached,
     invalidate_cache_pattern,
     invalidate_user_cache,
+    invalidate_task_cache,
     set_cache,
     get_cache,
 )
@@ -101,8 +102,10 @@ async def create_task_category(
     db.commit()
     db.refresh(db_category)
 
-    # Invalidate only task-related cache entries for this user
-    invalidate_user_cache(current_user.id, feature="tasks")
+    # Invalidate the categories cache for this user
+    # We also need to invalidate task caches since they might include category information
+    invalidate_cache(f"user_{current_user.id}_categories")
+    invalidate_task_cache(current_user.id)
 
     return db_category
 
@@ -176,8 +179,9 @@ async def get_tasks(
 
         result = {"tasks": tasks, "total_count": total_count}
 
-        # Cache the result for 5 minutes (300 seconds)
-        set_cache(cache_key, result, ttl_seconds=300)
+        # Cache the result for 10 minutes (600 seconds) for better performance
+        # This is a good balance between performance and freshness
+        set_cache(cache_key, result, ttl_seconds=600)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -266,8 +270,8 @@ async def create_task(
     db.commit()
     db.refresh(db_task)
 
-    # Invalidate only task-related cache entries for this user
-    invalidate_user_cache(current_user.id, feature="tasks")
+    # Use targeted invalidation for better performance
+    invalidate_task_cache(current_user.id, is_long_term=db_task.is_long_term)
 
     return db_task
 
@@ -355,8 +359,10 @@ async def update_task(
     db.commit()
     db.refresh(task)
 
-    # Invalidate only task-related cache entries for this user
-    invalidate_user_cache(current_user.id, feature="tasks")
+    # Use targeted invalidation for better performance
+    invalidate_task_cache(
+        current_user.id, task_id=task.id, is_long_term=task.is_long_term
+    )
 
     return task
 
@@ -382,12 +388,15 @@ async def delete_task(
             status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
         )
 
+    # Store is_long_term before deleting the task
+    is_long_term = task.is_long_term
+
     # Delete the task
     db.delete(task)
     db.commit()
 
-    # Invalidate only task-related cache entries for this user
-    invalidate_user_cache(current_user.id, feature="tasks")
+    # Use targeted invalidation for better performance
+    invalidate_task_cache(current_user.id, task_id=task_id, is_long_term=is_long_term)
 
     return None
 
@@ -416,8 +425,8 @@ async def reorder_task(
             status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
         )
 
-    # Invalidate only task-related cache entries for this user
-    invalidate_user_cache(current_user.id, feature="tasks")
+    # Use targeted invalidation for better performance
+    invalidate_task_cache(current_user.id, is_long_term=task.is_long_term)
 
     # For this simplified implementation, we'll just return success
     # In a real implementation, you would update position fields
@@ -479,8 +488,10 @@ async def batch_action(
 
     db.commit()
 
-    # Invalidate only task-related cache entries for this user
-    invalidate_user_cache(current_user.id, feature="tasks")
+    # Use targeted invalidation for better performance
+    # For batch operations, we need to invalidate both short-term and long-term task caches
+    # since we might be operating on tasks of both types
+    invalidate_task_cache(current_user.id)
 
     return {"message": f"Batch {batch_request.action} completed successfully"}
 

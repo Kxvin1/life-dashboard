@@ -18,6 +18,7 @@ from app.services.cache_service import (
     invalidate_cache,
     invalidate_cache_pattern,
     invalidate_user_cache,
+    invalidate_subscription_cache,
     get_cache,
     set_cache,
 )
@@ -48,16 +49,12 @@ async def create_subscription(
     db.commit()
     db.refresh(db_subscription)
 
-    # Invalidate all cache entries for this user to ensure everything is fresh
-    invalidate_user_cache(current_user.id)
+    # Use targeted invalidation for better performance
+    invalidate_subscription_cache(current_user.id)
 
-    # Also explicitly invalidate specific cache keys
-    summary_cache_key = f"user_{current_user.id}_subscription_summary"
-    invalidate_cache(summary_cache_key)
-
-    # Invalidate any cache keys that might contain subscription data
-    invalidate_cache_pattern(f"user_{current_user.id}_subscriptions")
-    invalidate_cache_pattern("subscription")
+    # Also invalidate all user cache to ensure UI updates
+    # This is less targeted but ensures the UI always shows the latest data
+    invalidate_user_cache(current_user.id, feature="subscriptions")
 
     return db_subscription
 
@@ -226,16 +223,12 @@ async def update_subscription(
             status_code=500, detail=f"Failed to update subscription: {str(e)}"
         )
 
-    # Invalidate all cache entries for this user to ensure everything is fresh
-    invalidate_user_cache(current_user.id)
+    # Use targeted invalidation for better performance
+    invalidate_subscription_cache(current_user.id, subscription_id=subscription_id)
 
-    # Also explicitly invalidate specific cache keys
-    summary_cache_key = f"user_{current_user.id}_subscription_summary"
-    invalidate_cache(summary_cache_key)
-
-    # Invalidate any cache keys that might contain subscription data
-    invalidate_cache_pattern(f"user_{current_user.id}_subscriptions")
-    invalidate_cache_pattern("subscription")
+    # Also invalidate all user cache to ensure UI updates
+    # This is less targeted but ensures the UI always shows the latest data
+    invalidate_user_cache(current_user.id, feature="subscriptions")
 
     return db_subscription
 
@@ -259,16 +252,12 @@ async def delete_subscription(
     db.delete(db_subscription)
     db.commit()
 
-    # Invalidate all cache entries for this user to ensure everything is fresh
-    invalidate_user_cache(current_user.id)
+    # Use targeted invalidation for better performance
+    invalidate_subscription_cache(current_user.id, subscription_id=subscription_id)
 
-    # Also explicitly invalidate specific cache keys
-    summary_cache_key = f"user_{current_user.id}_subscription_summary"
-    invalidate_cache(summary_cache_key)
-
-    # Invalidate any cache keys that might contain subscription data
-    invalidate_cache_pattern(f"user_{current_user.id}_subscriptions")
-    invalidate_cache_pattern("subscription")
+    # Also invalidate all user cache to ensure UI updates
+    # This is less targeted but ensures the UI always shows the latest data
+    invalidate_user_cache(current_user.id, feature="subscriptions")
 
     return True
 
@@ -347,8 +336,9 @@ async def get_subscriptions_summary(
             "total_subscriptions_count": len(active_subscriptions),
         }
 
-        # Cache the result for 5 minutes (summary data changes frequently)
-        set_cache(cache_key, result, ttl_seconds=300)
+        # Cache the result for 1 hour (3600 seconds) for better performance
+        # This is a good balance between performance and freshness for subscription summary
+        set_cache(cache_key, result, ttl_seconds=3600)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"

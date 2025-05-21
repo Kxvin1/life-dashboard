@@ -27,13 +27,19 @@ const SubscriptionsPage = () => {
   const handleSubscriptionAdded = () => {
     setShowAddForm(false);
     setShowSuccessToast(true);
+    // Force a refresh of both the subscription list and summary
     setRefreshKey((prev) => prev + 1);
+    // Force a tab change to trigger a refresh of the subscription list
+    // This ensures the list is refreshed even if the cache isn't properly invalidated
+    setActiveTab((prev) => prev);
   };
 
   const handleSubscriptionDeleted = () => {
-    // Refresh the subscription summary only
-    // The SubscriptionList component will handle its own refresh
+    // Refresh both the subscription summary and list
     setRefreshKey((prev) => prev + 1);
+    // Force a tab change to trigger a refresh of the subscription list
+    // This ensures the list is refreshed even if the cache isn't properly invalidated
+    setActiveTab((prev) => prev);
   };
 
   const handleSubscriptionToggled = () => {
@@ -41,6 +47,9 @@ const SubscriptionsPage = () => {
     // Use a single timeout to ensure the backend has time to update
     setTimeout(() => {
       setRefreshKey((prev) => prev + 1);
+      // Force a tab change to trigger a refresh of the subscription list
+      // This ensures the list is refreshed even if the cache isn't properly invalidated
+      setActiveTab((prev) => prev);
     }, 500);
   };
 
@@ -150,6 +159,7 @@ const SubscriptionsPage = () => {
               onTabChange={handleTabChange}
               onSubscriptionDeleted={handleSubscriptionDeleted}
               onSubscriptionToggled={handleSubscriptionToggled}
+              refreshKey={refreshKey}
             />
           </div>
         </div>

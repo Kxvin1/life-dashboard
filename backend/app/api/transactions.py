@@ -18,6 +18,7 @@ from app.services.cache_service import (
     cached,
     invalidate_cache_pattern,
     invalidate_user_cache,
+    invalidate_transaction_cache,
     get_cache,
     set_cache,
 )
@@ -51,8 +52,8 @@ async def create_transaction(
     db.commit()
     db.refresh(db_transaction)
 
-    # Invalidate only transaction-related cache entries for this user
-    invalidate_user_cache(current_user.id, feature="transactions")
+    # Use targeted invalidation for better performance
+    invalidate_transaction_cache(current_user.id, transaction_type=db_transaction.type)
 
     return db_transaction
 
@@ -128,8 +129,9 @@ async def get_transactions(
             if transaction.is_recurring is None:
                 transaction.is_recurring = False
 
-        # Cache the result for 5 minutes (300 seconds)
-        set_cache(cache_key, transactions, ttl_seconds=300)
+        # Cache the result for 10 minutes (600 seconds) for better performance
+        # This is a good balance between performance and freshness
+        set_cache(cache_key, transactions, ttl_seconds=600)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -220,8 +222,12 @@ async def update_transaction(
     db.commit()
     db.refresh(db_transaction)
 
-    # Invalidate only transaction-related cache entries for this user
-    invalidate_user_cache(current_user.id, feature="transactions")
+    # Use targeted invalidation for better performance
+    invalidate_transaction_cache(
+        current_user.id,
+        transaction_id=transaction_id,
+        transaction_type=db_transaction.type,
+    )
 
     return db_transaction
 
@@ -245,12 +251,19 @@ async def delete_transaction(
     if db_transaction is None:
         raise HTTPException(status_code=404, detail="Transaction not found")
 
+    # Store transaction type before deleting
+    transaction_type = db_transaction.type
+
     # Delete the transaction
     db.delete(db_transaction)
     db.commit()
 
-    # Invalidate only transaction-related cache entries for this user
-    invalidate_user_cache(current_user.id, feature="transactions")
+    # Use targeted invalidation for better performance
+    invalidate_transaction_cache(
+        current_user.id,
+        transaction_id=transaction_id,
+        transaction_type=transaction_type,
+    )
 
     return {"success": True, "message": "Transaction deleted successfully"}
 
@@ -302,8 +315,9 @@ async def get_transaction_summary(
             "transaction_count": len(transactions),
         }
 
-        # Cache the result for 5 minutes (300 seconds)
-        set_cache(cache_key, result, ttl_seconds=300)
+        # Cache the result for 10 minutes (600 seconds) for better performance
+        # This is a good balance between performance and freshness for transaction summary
+        set_cache(cache_key, result, ttl_seconds=600)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -444,8 +458,9 @@ async def has_income_and_expense_transactions(
             "time_period": time_period,
         }
 
-        # Cache the result for 5 minutes (300 seconds)
-        set_cache(cache_key, result, ttl_seconds=300)
+        # Cache the result for 10 minutes (600 seconds) for better performance
+        # This is a good balance between performance and freshness
+        set_cache(cache_key, result, ttl_seconds=600)
 
     # Set cache control headers to prevent browser caching
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"

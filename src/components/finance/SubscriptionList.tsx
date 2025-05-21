@@ -17,6 +17,7 @@ interface SubscriptionListProps {
   onSubscriptionToggled?: () => void;
   sortField: "name" | "price" | "upcoming";
   sortDirection: "asc" | "desc";
+  refreshKey?: number; // Optional prop to force refresh
 }
 
 const SubscriptionList = ({
@@ -24,6 +25,7 @@ const SubscriptionList = ({
   onSubscriptionToggled,
   sortField,
   sortDirection,
+  refreshKey,
 }: SubscriptionListProps) => {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -188,7 +190,7 @@ const SubscriptionList = ({
     loadSubscriptions();
     loadUpcomingPayments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, sortField, sortDirection]);
+  }, [status, sortField, sortDirection, refreshKey]);
 
   const handleDeleteClick = (id: string) => {
     setSubscriptionToDelete(id);

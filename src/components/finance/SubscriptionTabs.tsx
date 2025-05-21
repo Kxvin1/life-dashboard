@@ -9,6 +9,7 @@ interface SubscriptionTabsProps {
   onSubscriptionToggled?: () => void;
   activeTab: SubscriptionStatus;
   onTabChange: (tab: SubscriptionStatus) => void;
+  refreshKey?: number; // Optional prop to force refresh
 }
 
 type SortField = "name" | "price" | "upcoming";
@@ -19,6 +20,7 @@ const SubscriptionTabs = ({
   onSubscriptionToggled,
   activeTab,
   onTabChange,
+  refreshKey,
 }: SubscriptionTabsProps) => {
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -118,6 +120,7 @@ const SubscriptionTabs = ({
         onSubscriptionToggled={onSubscriptionToggled}
         sortField={sortField}
         sortDirection={sortDirection}
+        refreshKey={refreshKey}
       />
     </div>
   );

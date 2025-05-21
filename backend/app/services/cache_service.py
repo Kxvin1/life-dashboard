@@ -133,6 +133,183 @@ def invalidate_user_cache(user_id: int, feature: str = None) -> None:
         logger.info(f"Current cache keys after invalidation: {list(_cache.keys())}")
 
 
+def invalidate_task_cache(
+    user_id: int, task_id: int = None, is_long_term: bool = None
+) -> None:
+    """
+    Invalidate task-related caches for a specific user and task in a more targeted way.
+
+    This function is more selective than invalidate_user_cache and only invalidates
+    the specific caches that are affected by changes to a task.
+
+    Args:
+        user_id: The user ID
+        task_id: Optional task ID to invalidate specific task cache
+        is_long_term: Optional boolean to invalidate only short-term or long-term task caches
+    """
+    with _cache_lock:
+        # Log the cache invalidation for debugging
+        logger.info(
+            f"Targeted invalidation of task cache for user_id: {user_id}, task_id: {task_id}, is_long_term: {is_long_term}"
+        )
+
+        # Create patterns to match
+        patterns = []
+
+        if task_id:
+            # Invalidate specific task cache
+            patterns.append(f"user_{user_id}_task_{task_id}")
+
+        # Invalidate task list caches
+        if is_long_term is not None:
+            # Only invalidate caches for the specific task type (short-term or long-term)
+            patterns.append(f"user_{user_id}_tasks_{is_long_term}")
+        else:
+            # Invalidate all task list caches
+            patterns.append(f"user_{user_id}_tasks_")
+
+        # Invalidate task hierarchy cache
+        patterns.append(f"user_{user_id}_task_hierarchy")
+
+        # Find and remove matching keys
+        keys_to_remove = []
+        for pattern in patterns:
+            matching_keys = [k for k in _cache.keys() if pattern in k]
+            keys_to_remove.extend(matching_keys)
+            logger.info(f"Pattern '{pattern}' matches {len(matching_keys)} keys")
+
+        # Log the keys that will be removed
+        logger.info(f"Keys to be removed: {keys_to_remove}")
+
+        # Remove each key
+        for key in keys_to_remove:
+            logger.info(f"Invalidating task cache key: {key}")
+            del _cache[key]
+
+        # Log the remaining cache keys after invalidation
+        logger.info(f"Current cache keys after invalidation: {list(_cache.keys())}")
+
+
+def invalidate_subscription_cache(user_id: int, subscription_id: int = None) -> None:
+    """
+    Invalidate subscription-related caches for a specific user and subscription in a more targeted way.
+
+    This function is more selective than invalidate_user_cache and only invalidates
+    the specific caches that are affected by changes to a subscription.
+
+    Args:
+        user_id: The user ID
+        subscription_id: Optional subscription ID to invalidate specific subscription cache
+    """
+    with _cache_lock:
+        # Log the cache invalidation for debugging
+        logger.info(
+            f"Targeted invalidation of subscription cache for user_id: {user_id}, subscription_id: {subscription_id}"
+        )
+
+        # Create patterns to match
+        patterns = []
+
+        if subscription_id:
+            # Invalidate specific subscription cache
+            patterns.append(f"user_{user_id}_subscription_{subscription_id}")
+
+        # Always invalidate all subscription list caches to ensure UI updates
+        # This is less targeted but ensures the UI always shows the latest data
+        patterns.append(f"user_{user_id}_subscriptions")
+
+        # Invalidate subscription summary cache
+        patterns.append(f"user_{user_id}_subscription_summary")
+
+        # Find and remove matching keys
+        keys_to_remove = []
+        for pattern in patterns:
+            matching_keys = [k for k in _cache.keys() if pattern in k]
+            keys_to_remove.extend(matching_keys)
+            logger.info(f"Pattern '{pattern}' matches {len(matching_keys)} keys")
+
+        # If no keys were found with the patterns, invalidate all user subscription caches
+        if not keys_to_remove:
+            logger.info(
+                f"No keys matched patterns, invalidating all user subscription caches"
+            )
+            user_pattern = f"user_{user_id}"
+            subscription_pattern = "subscription"
+            keys_to_remove = [
+                k
+                for k in _cache.keys()
+                if user_pattern in k and subscription_pattern in k
+            ]
+            logger.info(f"Found {len(keys_to_remove)} keys with broader pattern")
+
+        # Log the keys that will be removed
+        logger.info(f"Keys to be removed: {keys_to_remove}")
+
+        # Remove each key
+        for key in keys_to_remove:
+            logger.info(f"Invalidating subscription cache key: {key}")
+            del _cache[key]
+
+        # Log the remaining cache keys after invalidation
+        logger.info(f"Current cache keys after invalidation: {list(_cache.keys())}")
+
+
+def invalidate_transaction_cache(
+    user_id: int, transaction_id: int = None, transaction_type: str = None
+) -> None:
+    """
+    Invalidate transaction-related caches for a specific user and transaction in a more targeted way.
+
+    This function is more selective than invalidate_user_cache and only invalidates
+    the specific caches that are affected by changes to a transaction.
+
+    Args:
+        user_id: The user ID
+        transaction_id: Optional transaction ID to invalidate specific transaction cache
+        transaction_type: Optional transaction type (income/expense) to invalidate only that type
+    """
+    with _cache_lock:
+        # Log the cache invalidation for debugging
+        logger.info(
+            f"Targeted invalidation of transaction cache for user_id: {user_id}, transaction_id: {transaction_id}, type: {transaction_type}"
+        )
+
+        # Create patterns to match
+        patterns = []
+
+        if transaction_id:
+            # Invalidate specific transaction cache
+            patterns.append(f"user_{user_id}_transaction_{transaction_id}")
+
+        # Always invalidate all transaction list caches to ensure UI updates
+        # This is less targeted but ensures the UI always shows the latest data
+        patterns.append(f"user_{user_id}_transactions")
+
+        # Invalidate transaction summary cache
+        patterns.append(f"user_{user_id}_transaction_summary")
+
+        # Also invalidate any cache keys with 'has_transactions' in them
+        patterns.append(f"user_{user_id}_has_transactions")
+
+        # Find and remove matching keys
+        keys_to_remove = []
+        for pattern in patterns:
+            matching_keys = [k for k in _cache.keys() if pattern in k]
+            keys_to_remove.extend(matching_keys)
+            logger.info(f"Pattern '{pattern}' matches {len(matching_keys)} keys")
+
+        # Log the keys that will be removed
+        logger.info(f"Keys to be removed: {keys_to_remove}")
+
+        # Remove each key
+        for key in keys_to_remove:
+            logger.info(f"Invalidating transaction cache key: {key}")
+            del _cache[key]
+
+        # Log the remaining cache keys after invalidation
+        logger.info(f"Current cache keys after invalidation: {list(_cache.keys())}")
+
+
 def cached(ttl_seconds: int = 300):
     """
     Decorator to cache function results.
