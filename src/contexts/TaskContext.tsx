@@ -4,7 +4,6 @@ import {
   createContext,
   useContext,
   useState,
-  useEffect,
   useCallback,
   ReactNode,
 } from "react";
@@ -14,8 +13,6 @@ import {
   TaskCategory,
   TaskStatus,
   TaskPriority,
-  EnergyLevel,
-  RecurringFrequency,
   fetchTasks,
   fetchTaskCategories,
   createTask,
@@ -95,7 +92,7 @@ interface TaskProviderProps {
 }
 
 export const TaskProvider = ({ children }: TaskProviderProps) => {
-  const { isAuthenticated, isDemoUser } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   // Task state
   const [shortTermTasks, setShortTermTasks] = useState<Task[]>([]);
@@ -550,12 +547,9 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
     []
   );
 
-  // Load initial data when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchAllTasks();
-    }
-  }, [isAuthenticated, fetchAllTasks]);
+  // We no longer automatically load tasks when the context is mounted
+  // Instead, pages that need task data should explicitly call fetchAllTasks
+  // This prevents unnecessary API calls on pages that don't need task data
 
   const value = {
     // Task state

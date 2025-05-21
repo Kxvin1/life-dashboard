@@ -5,7 +5,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { DashboardProvider } from "@/contexts/DashboardContext";
 import { PomodoroProvider } from "@/contexts/PomodoroContext";
-import { TaskProvider } from "@/contexts/TaskContext";
 import { useEffect } from "react";
 import { setupFetchInterceptor } from "@/lib/fetchInterceptor";
 
@@ -26,9 +25,7 @@ export default function Providers({ children }: { children: ReactNode }) {
     <AuthProvider>
       <ThemeProvider>
         <DashboardProvider>
-          <PomodoroProvider>
-            <TaskProvider>{children}</TaskProvider>
-          </PomodoroProvider>
+          <PomodoroProvider>{children}</PomodoroProvider>
         </DashboardProvider>
       </ThemeProvider>
     </AuthProvider>

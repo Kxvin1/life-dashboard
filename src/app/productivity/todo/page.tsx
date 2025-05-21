@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { TaskProvider } from "@/contexts/TaskContext";
 import TodoList from "@/components/productivity/todo/TodoList";
 import BackToHome from "@/components/common/BackToHome";
+import TaskLoader from "@/components/productivity/todo/TaskLoader";
 
 const TodoPage = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -34,6 +35,8 @@ const TodoPage = () => {
 
   return (
     <TaskProvider>
+      {/* TaskLoader component will load tasks when mounted */}
+      <TaskLoader />
       <div className="p-6 flex justify-center">
         <div className="w-full max-w-6xl">
           {/* Back to Home button */}
