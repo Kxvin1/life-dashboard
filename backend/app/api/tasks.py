@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session, selectinload
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
+from sqlalchemy.orm import Session, selectinload, joinedload
 from typing import List, Optional
 from datetime import date, datetime, timedelta
 import pytz
@@ -7,6 +7,7 @@ from app.db.database import get_db
 from app.models.user import User
 from app.models.task import Task, TaskCategory, TaskStatus, TaskPriority, EnergyLevel
 from app.services.task_service import TaskService
+from app.services.cache_service import cached, invalidate_cache_pattern
 from app.api.auth import get_current_user
 from app.schemas.task import (
     Task as TaskSchema,
@@ -28,22 +29,60 @@ router = APIRouter()
 # Task Categories Endpoints
 @router.get("/categories", response_model=List[TaskCategorySchema])
 async def get_task_categories(
+    response: Response,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
     Get all task categories (system defaults and user-created)
     """
-    # Use a single query with an OR condition for better performance
-    # This avoids making two separate database queries
-    categories = (
-        db.query(TaskCategory)
-        .filter(
-            (TaskCategory.is_default == True)
-            | (TaskCategory.user_id == current_user.id)
-        )
-        .all()
+    from app.services.cache_service import get_cache
+
+    # First, try to get default categories from application-level cache
+    default_categories = get_cache("default_task_categories")
+
+    # Use a user-specific cache key for user's custom categories
+    user_cache_key = f"user_task_categories:{current_user.id}"
+
+    # Function to get user-specific categories with a long TTL
+    @cached(ttl_seconds=86400)  # Cache for 24 hours
+    def get_user_categories(user_id: int):
+        return db.query(TaskCategory).filter(TaskCategory.user_id == user_id).all()
+
+    # If we have default categories in the application cache
+    if default_categories is not None:
+        # Get user-specific categories from cache or database
+        user_categories = get_user_categories(current_user.id)
+
+        # Combine default and user categories
+        categories = default_categories + user_categories
+    else:
+        # Fallback to the original approach if application cache is not available
+        @cached(ttl_seconds=86400)  # Cache for 24 hours
+        def get_all_categories(user_id: int):
+            return (
+                db.query(TaskCategory)
+                .filter(
+                    (TaskCategory.is_default == True)
+                    | (TaskCategory.user_id == user_id)
+                )
+                .all()
+            )
+
+        # Get all categories in one query
+        categories = get_all_categories(current_user.id)
+
+    # Set aggressive cache control headers for client-side caching
+    # Use a longer max-age since categories rarely change
+    response.headers["Cache-Control"] = (
+        "private, max-age=3600"  # 1 hour client-side cache
     )
+
+    # Add ETag for efficient validation
+    response.headers["ETag"] = f'W/"categories-{len(categories)}"'
+
+    # Add cache validators
+    response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return categories
 
@@ -66,12 +105,17 @@ async def create_task_category(
     db.add(db_category)
     db.commit()
     db.refresh(db_category)
+
+    # Invalidate the categories cache for this user
+    invalidate_cache_pattern(f"get_categories_for_user:{current_user.id}")
+
     return db_category
 
 
 # Task Endpoints
 @router.get("/", response_model=TaskListResponse)
 async def get_tasks(
+    response: Response,
     is_long_term: Optional[bool] = None,
     status: Optional[str] = None,
     category_id: Optional[int] = None,
@@ -86,57 +130,81 @@ async def get_tasks(
     """
     Get tasks with optional filtering
     """
-    # Optimize the query by selecting only necessary columns for the count
-    # This avoids loading entire objects just to count them
-    count_query = db.query(Task.id).filter(Task.user_id == current_user.id)
+    # Use caching for common task queries
+    cache_key = f"tasks:{current_user.id}:{is_long_term}:{skip}:{limit}"
 
-    # Build the main query with eager loading of category relationship
-    # This reduces the number of database queries by loading categories in a single query
-    query = (
-        db.query(Task)
-        .options(
-            # Use selectinload for better performance with collections
-            # This loads the category in a separate query but is more efficient
-            # than using a JOIN for this particular case
-            selectinload(Task.category)
+    @cached(ttl_seconds=60)  # Cache for 1 minute
+    def get_filtered_tasks(
+        user_id,
+        is_long_term,
+        status,
+        category_id,
+        priority,
+        due_date_start,
+        due_date_end,
+        skip,
+        limit,
+    ):
+        # Use a CTE (Common Table Expression) for better query performance
+        # This is more efficient than separate count and data queries
+
+        # Build base query with all filters
+        base_query = db.query(Task).filter(Task.user_id == user_id)
+
+        # Apply filters
+        if is_long_term is not None:
+            base_query = base_query.filter(Task.is_long_term == is_long_term)
+
+        if status:
+            base_query = base_query.filter(Task.status == status)
+
+        if category_id:
+            base_query = base_query.filter(Task.category_id == category_id)
+
+        if priority:
+            base_query = base_query.filter(Task.priority == priority)
+
+        if due_date_start:
+            start_date = datetime.strptime(due_date_start, "%Y-%m-%d").date()
+            base_query = base_query.filter(Task.due_date >= start_date)
+
+        if due_date_end:
+            end_date = datetime.strptime(due_date_end, "%Y-%m-%d").date()
+            base_query = base_query.filter(Task.due_date <= end_date)
+
+        # Get total count using SQL COUNT(*) for better performance
+        total_count = base_query.count()
+
+        # Get paginated results with eager loading of category
+        tasks = (
+            base_query.options(
+                joinedload(Task.category)
+            )  # Use joinedload for small result sets
+            .order_by(Task.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
         )
-        .filter(Task.user_id == current_user.id)
+
+        return {"tasks": tasks, "total_count": total_count}
+
+    # Get tasks from cache or database
+    result = get_filtered_tasks(
+        current_user.id,
+        is_long_term,
+        status,
+        category_id,
+        priority,
+        due_date_start,
+        due_date_end,
+        skip,
+        limit,
     )
 
-    # Apply filters to both queries
-    if is_long_term is not None:
-        count_query = count_query.filter(Task.is_long_term == is_long_term)
-        query = query.filter(Task.is_long_term == is_long_term)
+    # Set cache control headers
+    response.headers["Cache-Control"] = "private, max-age=60"
 
-    if status:
-        count_query = count_query.filter(Task.status == status)
-        query = query.filter(Task.status == status)
-
-    if category_id:
-        count_query = count_query.filter(Task.category_id == category_id)
-        query = query.filter(Task.category_id == category_id)
-
-    if priority:
-        count_query = count_query.filter(Task.priority == priority)
-        query = query.filter(Task.priority == priority)
-
-    if due_date_start:
-        start_date = datetime.strptime(due_date_start, "%Y-%m-%d").date()
-        count_query = count_query.filter(Task.due_date >= start_date)
-        query = query.filter(Task.due_date >= start_date)
-
-    if due_date_end:
-        end_date = datetime.strptime(due_date_end, "%Y-%m-%d").date()
-        count_query = count_query.filter(Task.due_date <= end_date)
-        query = query.filter(Task.due_date <= end_date)
-
-    # Get total count efficiently
-    total_count = count_query.count()
-
-    # Apply pagination and ordering
-    tasks = query.order_by(Task.created_at.desc()).offset(skip).limit(limit).all()
-
-    return {"tasks": tasks, "total_count": total_count}
+    return result
 
 
 @router.get("/hierarchy", response_model=List[TaskWithChildren])
@@ -214,6 +282,10 @@ async def create_task(
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
+
+    # Invalidate task cache for this user
+    invalidate_cache_pattern(f"tasks:{current_user.id}")
+
     return db_task
 
 
@@ -299,6 +371,10 @@ async def update_task(
 
     db.commit()
     db.refresh(task)
+
+    # Invalidate task cache for this user
+    invalidate_cache_pattern(f"tasks:{current_user.id}")
+
     return task
 
 
@@ -326,6 +402,10 @@ async def delete_task(
     # Delete the task
     db.delete(task)
     db.commit()
+
+    # Invalidate task cache for this user
+    invalidate_cache_pattern(f"tasks:{current_user.id}")
+
     return None
 
 
@@ -352,6 +432,9 @@ async def reorder_task(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
         )
+
+    # Invalidate task cache for this user
+    invalidate_cache_pattern(f"tasks:{current_user.id}")
 
     # For this simplified implementation, we'll just return success
     # In a real implementation, you would update position fields
@@ -412,6 +495,10 @@ async def batch_action(
         )
 
     db.commit()
+
+    # Invalidate task cache for this user
+    invalidate_cache_pattern(f"tasks:{current_user.id}")
+
     return {"message": f"Batch {batch_request.action} completed successfully"}
 
 

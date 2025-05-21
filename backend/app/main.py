@@ -5,11 +5,14 @@ from datetime import datetime
 from app.core.config import settings
 from app.db.database import SessionLocal, engine
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 import json
 import time
 import logging
 import threading
 import concurrent.futures
+from app.services.cache_service import set_cache
+from app.models.task import TaskCategory
 from app.api import (
     transactions_router,
     health_router,
@@ -83,12 +86,44 @@ def establish_db_connection(connection_id):
         logger.error(f"Error establishing connection {connection_id}: {str(e)}")
 
 
-# Start connection warmup in a background thread
+# Function to preload task categories into cache
+def preload_task_categories():
+    """
+    Preload task categories into the cache at application startup.
+    This ensures that category data is immediately available without database queries.
+    """
+    try:
+        logger.info("Preloading task categories into cache...")
+        db = SessionLocal()
+        try:
+            # Get all default categories
+            default_categories = (
+                db.query(TaskCategory).filter(TaskCategory.is_default == True).all()
+            )
+
+            # Cache default categories with a very long TTL (1 week)
+            set_cache(
+                "default_task_categories", default_categories, ttl_seconds=604800
+            )  # 7 days
+
+            logger.info(
+                f"Successfully preloaded {len(default_categories)} default task categories into cache"
+            )
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Error preloading task categories: {str(e)}")
+
+
+# Start connection warmup and preload data in background threads
 @app.on_event("startup")
 def startup_event():
     """Run startup tasks in the background."""
     # Start a background thread for database connection warmup
     threading.Thread(target=warmup_db_connection).start()
+
+    # Start a background thread to preload categories
+    threading.Thread(target=preload_task_categories).start()
 
 
 # Add performance monitoring middleware
