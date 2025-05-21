@@ -5,7 +5,6 @@ import { useTask } from "@/contexts/TaskContext";
 import { TaskStatus, TaskPriority, EnergyLevel } from "@/services/taskService";
 import TaskList from "./TaskList";
 import TaskForm from "./TaskForm";
-import TaskAIButton from "./TaskAIButton";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Pagination from "@/components/ui/Pagination";
 
@@ -304,13 +303,6 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
           </button>
         </div>
       </div>
-
-      {/* AI Section for Long-Term Tasks */}
-      {isLongTerm && (
-        <div className="mb-4">
-          <TaskAIButton />
-        </div>
-      )}
 
       {/* Select All checkbox */}
       {filteredTasks.length > 0 && (

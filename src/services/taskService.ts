@@ -65,19 +65,6 @@ export interface TaskListResponse {
   total_count: number;
 }
 
-export interface TaskAIResponse {
-  tasks: Task[];
-  summary: string;
-  remaining_uses: number;
-  total_uses_allowed: number;
-}
-
-export interface TaskAIRemainingResponse {
-  remaining_uses: number;
-  total_uses_allowed: number;
-  reset_time: string;
-}
-
 export const fetchTasks = async (
   isLongTerm?: boolean,
   status?: string,
@@ -371,62 +358,6 @@ export const batchActionTasks = async (
     }
   } catch (error) {
     console.error("Error performing batch action:", error);
-    throw error;
-  }
-};
-
-export const getRemainingAIUses =
-  async (): Promise<TaskAIRemainingResponse> => {
-    try {
-      const token = Cookies.get("token");
-      if (!token) {
-        throw new Error("Authentication token missing");
-      }
-
-      const response = await fetch(`${API_URL}/api/v1/tasks/ai/remaining`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to get remaining AI uses");
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error("Error getting remaining AI uses:", error);
-      throw error;
-    }
-  };
-
-export const breakDownGoal = async (text: string): Promise<TaskAIResponse> => {
-  try {
-    const token = Cookies.get("token");
-    if (!token) {
-      throw new Error("Authentication token missing");
-    }
-
-    const response = await fetch(`${API_URL}/api/v1/tasks/ai/breakdown`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        text,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || "Failed to break down goal");
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("Error breaking down goal:", error);
     throw error;
   }
 };

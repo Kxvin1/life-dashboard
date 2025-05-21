@@ -23,8 +23,6 @@ import {
   deleteTask,
   reorderTask,
   batchActionTasks,
-  getRemainingAIUses,
-  breakDownGoal,
 } from "@/services/taskService";
 
 interface TaskContextType {
@@ -39,12 +37,6 @@ interface TaskContextType {
 
   // Pagination state
   tasksPerPage: number;
-
-  // AI state
-  aiRemainingUses: number;
-  aiTotalAllowed: number;
-  isAILoading: boolean;
-  aiError: string | null;
 
   // Task actions
   fetchAllTasks: () => Promise<void>;
@@ -86,10 +78,6 @@ interface TaskContextType {
     taskIds: number[],
     priority: TaskPriority
   ) => Promise<void>;
-
-  // AI actions
-  checkAIRemainingUses: () => Promise<void>;
-  generateTasksFromGoal: (goalText: string) => Promise<Task[]>;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -120,12 +108,6 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
 
   // Fixed pagination limit of 10 items per page
   const tasksPerPage = 10;
-
-  // AI state
-  const [aiRemainingUses, setAIRemainingUses] = useState(0);
-  const [aiTotalAllowed, setAITotalAllowed] = useState(0);
-  const [isAILoading, setIsAILoading] = useState(false);
-  const [aiError, setAIError] = useState<string | null>(null);
 
   // Fetch task categories
   const fetchCategories = useCallback(async () => {
@@ -568,93 +550,12 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
     []
   );
 
-  // Check remaining AI uses
-  const checkAIRemainingUses = useCallback(async () => {
-    if (!isAuthenticated || isDemoUser) {
-      setAIRemainingUses(0);
-      setAITotalAllowed(0);
-      return;
-    }
-
-    try {
-      const response = await getRemainingAIUses();
-      setAIRemainingUses(response.remaining_uses);
-      setAITotalAllowed(response.total_uses_allowed);
-    } catch (err) {
-      console.error("Error checking AI remaining uses:", err);
-      // Don't set error for this operation as it's not critical
-      // Just set default values
-      setAIRemainingUses(0);
-      setAITotalAllowed(0);
-    }
-  }, [isAuthenticated, isDemoUser]);
-
-  // Generate tasks from a goal using AI
-  const generateTasksFromGoal = useCallback(
-    async (goalText: string) => {
-      if (!isAuthenticated) {
-        throw new Error("You must be logged in to use this feature");
-      }
-
-      if (isDemoUser) {
-        throw new Error("AI features are not available in demo mode");
-      }
-
-      setIsAILoading(true);
-      setAIError(null);
-
-      try {
-        const response = await breakDownGoal(goalText);
-
-        // Update AI usage counts
-        setAIRemainingUses(response.remaining_uses);
-        setAITotalAllowed(response.total_uses_allowed);
-
-        // Add the generated tasks to the appropriate lists
-        const shortTerm = response.tasks.filter((task) => !task.is_long_term);
-        const longTerm = response.tasks.filter((task) => task.is_long_term);
-
-        if (shortTerm.length > 0) {
-          setShortTermTasks((prev) => [...shortTerm, ...prev]);
-          setTotalShortTermTasks((prev) => prev + shortTerm.length);
-        }
-
-        if (longTerm.length > 0) {
-          setLongTermTasks((prev) => [...longTerm, ...prev]);
-          setTotalLongTermTasks((prev) => prev + longTerm.length);
-        }
-
-        return response.tasks;
-      } catch (err) {
-        console.error("Error generating tasks from goal:", err);
-        setAIError(
-          err instanceof Error
-            ? err.message
-            : "Failed to generate tasks from goal"
-        );
-        throw err;
-      } finally {
-        setIsAILoading(false);
-      }
-    },
-    [isAuthenticated, isDemoUser]
-  );
-
   // Load initial data when authenticated
   useEffect(() => {
     if (isAuthenticated) {
       fetchAllTasks();
-      // Only check AI remaining uses if not a demo user
-      if (!isDemoUser) {
-        try {
-          checkAIRemainingUses();
-        } catch (error) {
-          console.error("Error checking AI remaining uses:", error);
-          // Silently fail - this is not critical functionality
-        }
-      }
     }
-  }, [isAuthenticated, isDemoUser, fetchAllTasks, checkAIRemainingUses]);
+  }, [isAuthenticated, fetchAllTasks]);
 
   const value = {
     // Task state
@@ -668,12 +569,6 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
 
     // Pagination state
     tasksPerPage,
-
-    // AI state
-    aiRemainingUses,
-    aiTotalAllowed,
-    isAILoading,
-    aiError,
 
     // Task actions
     fetchAllTasks,
@@ -690,10 +585,6 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
     deleteTasks,
     changeTasksStatus,
     changeTasksPriority,
-
-    // AI actions
-    checkAIRemainingUses,
-    generateTasksFromGoal,
   };
 
   return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;
