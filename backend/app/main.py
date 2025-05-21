@@ -13,6 +13,7 @@ import threading
 import concurrent.futures
 from app.services.cache_service import set_cache
 from app.models.task import TaskCategory
+from app.models.category import Category, TransactionType
 from app.api import (
     transactions_router,
     health_router,
@@ -86,33 +87,62 @@ def establish_db_connection(connection_id):
         logger.error(f"Error establishing connection {connection_id}: {str(e)}")
 
 
-# Function to preload task categories into cache
-def preload_task_categories():
+# Function to preload categories into cache
+def preload_categories():
     """
-    Preload task categories into the cache at application startup.
+    Preload categories into the cache at application startup.
     This ensures that category data is immediately available without database queries.
     """
     try:
-        logger.info("Preloading task categories into cache...")
+        logger.info("Preloading categories into cache...")
         db = SessionLocal()
         try:
-            # Get all default categories
-            default_categories = (
+            # Preload task categories
+            default_task_categories = (
                 db.query(TaskCategory).filter(TaskCategory.is_default == True).all()
             )
 
-            # Cache default categories with a very long TTL (1 week)
+            # Cache default task categories with a very long TTL (1 week)
             set_cache(
-                "default_task_categories", default_categories, ttl_seconds=604800
+                "default_task_categories", default_task_categories, ttl_seconds=604800
             )  # 7 days
 
             logger.info(
-                f"Successfully preloaded {len(default_categories)} default task categories into cache"
+                f"Successfully preloaded {len(default_task_categories)} default task categories into cache"
+            )
+
+            # Preload transaction categories
+            # Cache income categories
+            income_categories = (
+                db.query(Category).filter(Category.type == TransactionType.income).all()
+            )
+            set_cache(
+                "transaction_categories:income", income_categories, ttl_seconds=604800
+            )  # 7 days
+
+            # Cache expense categories
+            expense_categories = (
+                db.query(Category)
+                .filter(Category.type == TransactionType.expense)
+                .all()
+            )
+            set_cache(
+                "transaction_categories:expense", expense_categories, ttl_seconds=604800
+            )  # 7 days
+
+            # Cache all categories
+            all_categories = db.query(Category).all()
+            set_cache(
+                "transaction_categories:None", all_categories, ttl_seconds=604800
+            )  # 7 days
+
+            logger.info(
+                f"Successfully preloaded {len(all_categories)} transaction categories into cache"
             )
         finally:
             db.close()
     except Exception as e:
-        logger.error(f"Error preloading task categories: {str(e)}")
+        logger.error(f"Error preloading categories: {str(e)}")
 
 
 # Start connection warmup and preload data in background threads
@@ -123,7 +153,7 @@ def startup_event():
     threading.Thread(target=warmup_db_connection).start()
 
     # Start a background thread to preload categories
-    threading.Thread(target=preload_task_categories).start()
+    threading.Thread(target=preload_categories).start()
 
 
 # Add performance monitoring middleware
