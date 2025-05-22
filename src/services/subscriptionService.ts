@@ -18,11 +18,9 @@ export const fetchSubscriptions = async (
       url += `?status=${status}`;
     }
 
-    // Add cache-busting parameter if cache has been invalidated
-    const cacheBustParam = cacheManager.getCacheBustParam();
-    if (cacheBustParam) {
-      url += status ? cacheBustParam : cacheManager.getCacheBustParamFirst();
-    }
+    // Always add cache-busting parameter to prevent browser caching
+    const timestamp = Date.now();
+    url += status ? `&_t=${timestamp}` : `?_t=${timestamp}`;
 
     const response = await fetch(url, {
       headers: {
@@ -51,11 +49,9 @@ export const fetchSubscriptionSummary =
 
       let url = `${API_URL}/api/v1/subscriptions-summary/`;
 
-      // Add cache-busting parameter if cache has been invalidated
-      const cacheBustParam = cacheManager.getCacheBustParamFirst();
-      if (cacheBustParam) {
-        url += cacheBustParam;
-      }
+      // Always add cache-busting parameter to prevent browser caching
+      const timestamp = Date.now();
+      url += `?_t=${timestamp}`;
 
       const response = await fetch(url, {
         headers: {
@@ -99,7 +95,8 @@ export const createSubscription = async (
       throw new Error("Failed to create subscription");
     }
 
-    // Invalidate cache after creating subscription
+    // Invalidate cache to force fresh data on next API calls
+    console.log("🔄 Invalidating cache after creating subscription");
     cacheManager.invalidateCache();
 
     const data = await response.json();
@@ -134,7 +131,7 @@ export const updateSubscription = async (
       throw new Error("Failed to update subscription");
     }
 
-    // Invalidate cache after updating subscription
+    // Invalidate cache to force fresh data on next API calls
     cacheManager.invalidateCache();
 
     const data = await response.json();
@@ -206,7 +203,7 @@ export const toggleSubscriptionStatus = async (
     });
 
     if (getResponse.ok) {
-      // Invalidate cache after toggling subscription status
+      // Invalidate cache to force fresh data on next API calls
       cacheManager.invalidateCache();
 
       const data = await getResponse.json();
@@ -269,7 +266,7 @@ export const deleteSubscription = async (id: string): Promise<boolean> => {
       throw new Error("Failed to delete subscription");
     }
 
-    // Invalidate cache after deleting subscription
+    // Invalidate cache to force fresh data on next API calls
     cacheManager.invalidateCache();
 
     return true;

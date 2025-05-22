@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"  # Algorithm for JWT token signing
     OPENAI_API_KEY: Optional[str] = None  # OpenAI API key for AI insights
 
+    # Redis configuration
+    REDIS_URL: str = "redis://localhost:6379"  # Redis connection URL
+    REDIS_ENABLED: bool = True  # Enable/disable Redis caching
+
     class Config:
         # Only load .env file in development to prevent overriding Railway variables in production
         if os.getenv("ENVIRONMENT") != "production":

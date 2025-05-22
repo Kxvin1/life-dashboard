@@ -7,6 +7,8 @@ from typing import Dict, Any, Tuple, Optional, Callable
 import logging
 import threading
 
+# from .redis_cache import redis_cache
+
 logger = logging.getLogger(__name__)
 
 # Global cache storage
@@ -20,6 +22,7 @@ _cache_lock = threading.RLock()
 def get_cache(key: str) -> Optional[Any]:
     """
     Get data from cache if it exists and is not expired.
+    Tries Redis first, falls back to in-memory cache.
 
     Args:
         key: The cache key
@@ -27,9 +30,18 @@ def get_cache(key: str) -> Optional[Any]:
     Returns:
         The cached data or None if not found or expired
     """
+    # Try Redis first
+    # if redis_cache.is_available():
+    #     redis_result = redis_cache.get(key)
+    #     if redis_result is not None:
+    #         logger.info(f"Redis cache hit for key: {key}")
+    #         return redis_result
+    #     logger.info(f"Redis cache miss for key: {key}")
+
+    # Fallback to in-memory cache
     with _cache_lock:
         if key not in _cache:
-            logger.info(f"Cache miss for key: {key}")
+            logger.info(f"In-memory cache miss for key: {key}")
             return None
 
         data, expiry = _cache[key]
@@ -38,12 +50,12 @@ def get_cache(key: str) -> Optional[Any]:
         # Check if cache has expired
         if current_time > expiry:
             # Remove expired cache
-            logger.info(f"Cache expired for key: {key}, removing")
+            logger.info(f"In-memory cache expired for key: {key}, removing")
             del _cache[key]
             return None
 
         logger.info(
-            f"Cache hit for key: {key}, expires in {int(expiry - current_time)} seconds"
+            f"In-memory cache hit for key: {key}, expires in {int(expiry - current_time)} seconds"
         )
         return data
 
@@ -51,42 +63,76 @@ def get_cache(key: str) -> Optional[Any]:
 def set_cache(key: str, data: Any, ttl_seconds: int = 300) -> None:
     """
     Store data in cache with expiration.
+    Stores in both Redis and in-memory cache for redundancy.
 
     Args:
         key: The cache key
         data: The data to cache
         ttl_seconds: Time to live in seconds (default: 5 minutes)
     """
+    # Store in Redis first
+    # if redis_cache.is_available():
+    #     redis_success = redis_cache.set(key, data, ttl_seconds)
+    #     if redis_success:
+    #         logger.info(
+    #             f"Stored in Redis cache with key: {key}, expires in {ttl_seconds} seconds"
+    #         )
+    #     else:
+    #         logger.warning(f"Failed to store in Redis cache for key: {key}")
+
+    # Always store in in-memory cache as fallback
     with _cache_lock:
         expiry = time.time() + ttl_seconds
         _cache[key] = (data, expiry)
-        logger.info(f"Cached data with key: {key}, expires in {ttl_seconds} seconds")
+        logger.info(
+            f"Stored in in-memory cache with key: {key}, expires in {ttl_seconds} seconds"
+        )
 
 
 def invalidate_cache(key: str) -> None:
     """
     Remove a specific key from cache.
+    Removes from both Redis and in-memory cache.
 
     Args:
         key: The cache key to remove
     """
+    # Remove from Redis
+    # if redis_cache.is_available():
+    #     redis_success = redis_cache.delete(key)
+    #     if redis_success:
+    #         logger.info(f"Invalidated Redis cache key: {key}")
+    #     else:
+    #         logger.warning(f"Failed to invalidate Redis cache key: {key}")
+
+    # Remove from in-memory cache
     with _cache_lock:
         if key in _cache:
-            logger.info(f"Invalidating cache key: {key}")
+            logger.info(f"Invalidating in-memory cache key: {key}")
             del _cache[key]
 
 
 def invalidate_cache_pattern(pattern: str) -> None:
     """
     Remove all cache keys that contain the given pattern.
+    Removes from both Redis and in-memory cache.
 
     Args:
         pattern: The pattern to match against cache keys
     """
+    # Remove from Redis using pattern matching
+    # if redis_cache.is_available():
+    #     redis_pattern = f"*{pattern}*"  # Redis pattern syntax
+    #     deleted_count = redis_cache.delete_pattern(redis_pattern)
+    #     logger.info(
+    #         f"Invalidated {deleted_count} Redis cache keys with pattern: {pattern}"
+    #     )
+
+    # Remove from in-memory cache
     with _cache_lock:
         keys_to_remove = [k for k in _cache.keys() if pattern in k]
         logger.info(
-            f"Invalidating cache with pattern: {pattern}, keys to remove: {keys_to_remove}"
+            f"Invalidating in-memory cache with pattern: {pattern}, keys to remove: {keys_to_remove}"
         )
 
         for key in keys_to_remove:

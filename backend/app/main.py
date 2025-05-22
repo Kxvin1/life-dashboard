@@ -31,6 +31,7 @@ from app.db.seed_task_categories import (
     verify_task_categories_async,
 )
 from app.core.demo_middleware import DemoUserMiddleware
+from app.services.redis_cache import redis_cache
 import asyncio
 from alembic import command
 from alembic.config import Config
@@ -253,6 +254,23 @@ async def db_health_check():
     except Exception as e:
         return {
             "status": "unhealthy",
+            "error": str(e),
+            "timestamp": str(datetime.now()),
+        }
+
+
+@app.get("/redis-health")
+async def redis_health_check():
+    """
+    Check Redis connection health and return statistics.
+    This endpoint is useful for diagnosing Redis connection issues.
+    """
+    try:
+        stats = redis_cache.get_stats()
+        return {"timestamp": str(datetime.now()), **stats}
+    except Exception as e:
+        return {
+            "status": "error",
             "error": str(e),
             "timestamp": str(datetime.now()),
         }
