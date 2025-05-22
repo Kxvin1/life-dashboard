@@ -9,6 +9,7 @@ from app.models.user import User
 from app.services.pomodoro_service import PomodoroService
 from app.api.auth import get_current_user
 from app.core.config import settings
+from app.services.redis_service import redis_service
 
 
 logger = logging.getLogger(__name__)
@@ -113,6 +114,9 @@ async def create_pomodoro_session(
         user_id=current_user.id, session_data=session_data
     )
 
+    # Clear user's pomodoro cache
+    redis_service.clear_user_cache(current_user.id)
+
     return created_session
 
 
@@ -127,12 +131,23 @@ async def get_pomodoro_sessions(
     """
     Get paginated Pomodoro sessions for the current user
     """
+    # Create cache key
+    cache_key = f"user_{current_user.id}_pomodoro_sessions_{skip}_{limit}"
+
+    # Try to get from Redis cache first
+    cached_result = redis_service.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
     service = PomodoroService(db)
 
     # Get sessions
     result = service.get_pomodoro_sessions(
         user_id=current_user.id, skip=skip, limit=limit
     )
+
+    # Cache the result for 10 minutes
+    redis_service.set(cache_key, result, ttl_seconds=600)
 
     return result
 
@@ -308,6 +323,14 @@ async def get_pomodoro_counts(
             "total": 42,
         }
 
+    # Create cache key
+    cache_key = f"user_{current_user.id}_pomodoro_counts"
+
+    # Try to get from Redis cache first
+    cached_result = redis_service.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
     service = PomodoroService(db)
 
     # Get counts
@@ -321,5 +344,8 @@ async def get_pomodoro_counts(
         "total": total_count,
         "user_id": current_user.id,  # Include user ID for debugging
     }
+
+    # Cache the result for 30 minutes
+    redis_service.set(cache_key, result, ttl_seconds=1800)
 
     return result

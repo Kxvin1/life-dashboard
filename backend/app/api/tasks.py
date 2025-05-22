@@ -11,6 +11,7 @@ from app.db.database import get_db
 from app.models.user import User
 from app.models.task import Task, TaskCategory, TaskStatus, TaskPriority, EnergyLevel
 from app.services.task_service import TaskService
+from app.services.redis_service import redis_service
 
 
 from app.api.auth import get_current_user
@@ -94,6 +95,14 @@ async def get_tasks(
     """
     Get tasks with optional filtering
     """
+    # Create cache key
+    cache_key = f"user_{current_user.id}_tasks_{is_long_term}_{status}_{category_id}_{priority}_{due_date_start}_{due_date_end}_{skip}_{limit}"
+
+    # Try to get from Redis cache first
+    cached_result = redis_service.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
     # Build base query with all filters
     base_query = db.query(Task).filter(Task.user_id == current_user.id)
 
@@ -133,6 +142,9 @@ async def get_tasks(
     )
 
     result = {"tasks": tasks, "total_count": total_count}
+
+    # Cache the result for 10 minutes
+    redis_service.set(cache_key, result, ttl_seconds=600)
 
     return result
 
@@ -212,6 +224,9 @@ async def create_task(
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
+
+    # Clear user's task cache
+    redis_service.clear_user_cache(current_user.id)
 
     return db_task
 
@@ -299,6 +314,9 @@ async def update_task(
     db.commit()
     db.refresh(task)
 
+    # Clear user's task cache
+    redis_service.clear_user_cache(current_user.id)
+
     return task
 
 
@@ -329,6 +347,9 @@ async def delete_task(
     # Delete the task
     db.delete(task)
     db.commit()
+
+    # Clear user's task cache
+    redis_service.clear_user_cache(current_user.id)
 
     return None
 
@@ -416,6 +437,9 @@ async def batch_action(
         )
 
     db.commit()
+
+    # Clear user's task cache
+    redis_service.clear_user_cache(current_user.id)
 
     return {"message": f"Batch {batch_request.action} completed successfully"}
 
