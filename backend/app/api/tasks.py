@@ -11,14 +11,8 @@ from app.db.database import get_db
 from app.models.user import User
 from app.models.task import Task, TaskCategory, TaskStatus, TaskPriority, EnergyLevel
 from app.services.task_service import TaskService
-from app.services.cache_service import (
-    cached,
-    invalidate_cache_pattern,
-    invalidate_user_cache,
-    invalidate_task_cache,
-    set_cache,
-    get_cache,
-)
+
+
 from app.api.auth import get_current_user
 from app.schemas.task import (
     Task as TaskSchema,
@@ -47,36 +41,15 @@ async def get_task_categories(
     """
     Get all task categories (system defaults and user-created)
     """
-    from app.services.cache_service import get_cache
-
-    # Create a user-specific cache key
-    user_cache_key = f"user_{current_user.id}_task_categories"
-
-    # Try to get categories from cache first
-    cached_categories = get_cache(user_cache_key)
-    if cached_categories is not None:
-        logger.info(f"Cache hit for user task categories: {user_cache_key}")
-        categories = cached_categories
-    else:
-        logger.info(f"Cache miss for user task categories: {user_cache_key}")
-        # Get all categories in one query
-        categories = (
-            db.query(TaskCategory)
-            .filter(
-                (TaskCategory.is_default == True)
-                | (TaskCategory.user_id == current_user.id)
-            )
-            .all()
+    # Get all categories in one query
+    categories = (
+        db.query(TaskCategory)
+        .filter(
+            (TaskCategory.is_default == True)
+            | (TaskCategory.user_id == current_user.id)
         )
-
-        # Cache the result for 7 days (categories rarely change)
-        set_cache(user_cache_key, categories, ttl_seconds=604800)  # 7 days
-
-    # Set cache control headers for client-side caching
-    # Allow browser caching for 1 day
-    response.headers["Cache-Control"] = "private, max-age=86400"  # 24 hours
-    response.headers["ETag"] = f'W/"task-categories-{len(categories)}"'
-    response.headers["Vary"] = "Authorization"  # Cache varies by user
+        .all()
+    )
 
     return categories
 
@@ -100,11 +73,6 @@ async def create_task_category(
     db.commit()
     db.refresh(db_category)
 
-    # Invalidate the categories cache for this user
-    # We also need to invalidate task caches since they might include category information
-    invalidate_cache(f"user_{current_user.id}_task_categories")
-    invalidate_task_cache(current_user.id)
-
     return db_category
 
 
@@ -126,64 +94,45 @@ async def get_tasks(
     """
     Get tasks with optional filtering
     """
-    # Create a cache key that includes all filter parameters
-    cache_key = f"user_{current_user.id}_tasks_{is_long_term}_{status}_{category_id}_{priority}_{due_date_start}_{due_date_end}_{skip}_{limit}"
+    # Build base query with all filters
+    base_query = db.query(Task).filter(Task.user_id == current_user.id)
 
-    # Try to get from cache first
-    cached_result = get_cache(cache_key)
-    if cached_result is not None:
-        logger.info(f"Cache hit for tasks: {cache_key}")
-        result = cached_result
-    else:
-        logger.info(f"Cache miss for tasks: {cache_key}")
+    # Apply filters
+    if is_long_term is not None:
+        base_query = base_query.filter(Task.is_long_term == is_long_term)
 
-        # Build base query with all filters
-        base_query = db.query(Task).filter(Task.user_id == current_user.id)
+    if status:
+        base_query = base_query.filter(Task.status == status)
 
-        # Apply filters
-        if is_long_term is not None:
-            base_query = base_query.filter(Task.is_long_term == is_long_term)
+    if category_id:
+        base_query = base_query.filter(Task.category_id == category_id)
 
-        if status:
-            base_query = base_query.filter(Task.status == status)
+    if priority:
+        base_query = base_query.filter(Task.priority == priority)
 
-        if category_id:
-            base_query = base_query.filter(Task.category_id == category_id)
+    if due_date_start:
+        start_date = datetime.strptime(due_date_start, "%Y-%m-%d").date()
+        base_query = base_query.filter(Task.due_date >= start_date)
 
-        if priority:
-            base_query = base_query.filter(Task.priority == priority)
+    if due_date_end:
+        end_date = datetime.strptime(due_date_end, "%Y-%m-%d").date()
+        base_query = base_query.filter(Task.due_date <= end_date)
 
-        if due_date_start:
-            start_date = datetime.strptime(due_date_start, "%Y-%m-%d").date()
-            base_query = base_query.filter(Task.due_date >= start_date)
+    # Get total count using SQL COUNT(*) for better performance
+    total_count = base_query.count()
 
-        if due_date_end:
-            end_date = datetime.strptime(due_date_end, "%Y-%m-%d").date()
-            base_query = base_query.filter(Task.due_date <= end_date)
+    # Get paginated results with eager loading of category
+    tasks = (
+        base_query.options(
+            joinedload(Task.category)
+        )  # Use joinedload for small result sets
+        .order_by(Task.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
-        # Get total count using SQL COUNT(*) for better performance
-        total_count = base_query.count()
-
-        # Get paginated results with eager loading of category
-        tasks = (
-            base_query.options(
-                joinedload(Task.category)
-            )  # Use joinedload for small result sets
-            .order_by(Task.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
-
-        result = {"tasks": tasks, "total_count": total_count}
-
-        # Cache the result for 10 minutes (600 seconds) for better performance
-        # This is a good balance between performance and freshness
-        set_cache(cache_key, result, ttl_seconds=600)
-
-    # Set cache control headers for reasonable caching
-    response.headers["Cache-Control"] = "private, max-age=300"  # 5 minutes
-    response.headers["Vary"] = "Authorization"  # Cache varies by user
+    result = {"tasks": tasks, "total_count": total_count}
 
     return result
 
@@ -263,9 +212,6 @@ async def create_task(
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
-
-    # Use targeted invalidation for better performance
-    invalidate_task_cache(current_user.id, is_long_term=db_task.is_long_term)
 
     return db_task
 
@@ -353,11 +299,6 @@ async def update_task(
     db.commit()
     db.refresh(task)
 
-    # Use targeted invalidation for better performance
-    invalidate_task_cache(
-        current_user.id, task_id=task.id, is_long_term=task.is_long_term
-    )
-
     return task
 
 
@@ -389,9 +330,6 @@ async def delete_task(
     db.delete(task)
     db.commit()
 
-    # Use targeted invalidation for better performance
-    invalidate_task_cache(current_user.id, task_id=task_id, is_long_term=is_long_term)
-
     return None
 
 
@@ -418,9 +356,6 @@ async def reorder_task(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
         )
-
-    # Use targeted invalidation for better performance
-    invalidate_task_cache(current_user.id, is_long_term=task.is_long_term)
 
     # For this simplified implementation, we'll just return success
     # In a real implementation, you would update position fields
@@ -481,11 +416,6 @@ async def batch_action(
         )
 
     db.commit()
-
-    # Use targeted invalidation for better performance
-    # For batch operations, we need to invalidate both short-term and long-term task caches
-    # since we might be operating on tasks of both types
-    invalidate_task_cache(current_user.id)
 
     return {"message": f"Batch {batch_request.action} completed successfully"}
 

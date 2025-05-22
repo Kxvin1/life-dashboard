@@ -14,14 +14,7 @@ from app.schemas.transaction import (
 from app.core.security import get_current_user
 from app.models.user import User
 from app.models.category import Category
-from app.services.cache_service import (
-    cached,
-    invalidate_cache_pattern,
-    invalidate_user_cache,
-    invalidate_transaction_cache,
-    get_cache,
-    set_cache,
-)
+
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +45,6 @@ async def create_transaction(
     db.commit()
     db.refresh(db_transaction)
 
-    # Use targeted invalidation for better performance
-    invalidate_transaction_cache(current_user.id, transaction_type=db_transaction.type)
-
     return db_transaction
 
 
@@ -74,72 +64,46 @@ async def get_transactions(
 ):
     """
     Get transactions with optional filtering.
-    Uses caching to improve performance.
     """
-    # Create a cache key based on the parameters
-    cache_key = f"user_{current_user.id}_transactions_{type}_{start_date}_{end_date}_{category_id}_{year}_{month}_{skip}_{limit}"
-
-    # Try to get from cache first
-    cached_transactions = get_cache(cache_key)
-    if cached_transactions is not None:
-        logger.info(f"Cache hit for transactions: {cache_key}")
-        transactions = cached_transactions
-    else:
-        logger.info(f"Cache miss for transactions: {cache_key}")
-
-        # Build the query with eager loading of category
-        query = (
-            db.query(Transaction)
-            .options(
-                joinedload(
-                    Transaction.category
-                )  # Eager load category to avoid N+1 queries
-            )
-            .filter(Transaction.user_id == current_user.id)
+    # Build the query with eager loading of category
+    query = (
+        db.query(Transaction)
+        .options(
+            joinedload(Transaction.category)  # Eager load category to avoid N+1 queries
         )
+        .filter(Transaction.user_id == current_user.id)
+    )
 
-        # Apply filters
-        if type:
-            query = query.filter(Transaction.type == type)
-        if start_date:
-            query = query.filter(Transaction.date >= start_date)
-        if end_date:
-            query = query.filter(Transaction.date <= end_date)
-        if category_id:
-            query = query.filter(Transaction.category_id == category_id)
+    # Apply filters
+    if type:
+        query = query.filter(Transaction.type == type)
+    if start_date:
+        query = query.filter(Transaction.date >= start_date)
+    if end_date:
+        query = query.filter(Transaction.date <= end_date)
+    if category_id:
+        query = query.filter(Transaction.category_id == category_id)
 
-        # Add filtering by year and month
-        if year:
-            from sqlalchemy import extract
+    # Add filtering by year and month
+    if year:
+        from sqlalchemy import extract
 
-            query = query.filter(extract("year", Transaction.date) == year)
-        if month:
-            from sqlalchemy import extract
+        query = query.filter(extract("year", Transaction.date) == year)
+    if month:
+        from sqlalchemy import extract
 
-            query = query.filter(extract("month", Transaction.date) == month)
+        query = query.filter(extract("month", Transaction.date) == month)
 
-        # Order by date descending for most recent transactions first
-        query = query.order_by(Transaction.date.desc())
+    # Order by date descending for most recent transactions first
+    query = query.order_by(Transaction.date.desc())
 
-        # Apply pagination
-        transactions = query.offset(skip).limit(limit).all()
+    # Apply pagination
+    transactions = query.offset(skip).limit(limit).all()
 
-        # Ensure all transactions have valid is_recurring values
-        for transaction in transactions:
-            if transaction.is_recurring is None:
-                transaction.is_recurring = False
-
-        # Cache the result for 10 minutes (600 seconds) for better performance
-        # This is a good balance between performance and freshness
-        set_cache(cache_key, transactions, ttl_seconds=600)
-
-    # Set cache control headers to prevent browser caching
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-
-    # Add cache validators
-    response.headers["Vary"] = "Authorization"  # Cache varies by user
+    # Ensure all transactions have valid is_recurring values
+    for transaction in transactions:
+        if transaction.is_recurring is None:
+            transaction.is_recurring = False
 
     return transactions
 
@@ -222,13 +186,6 @@ async def update_transaction(
     db.commit()
     db.refresh(db_transaction)
 
-    # Use targeted invalidation for better performance
-    invalidate_transaction_cache(
-        current_user.id,
-        transaction_id=transaction_id,
-        transaction_type=db_transaction.type,
-    )
-
     return db_transaction
 
 
@@ -258,13 +215,6 @@ async def delete_transaction(
     db.delete(db_transaction)
     db.commit()
 
-    # Use targeted invalidation for better performance
-    invalidate_transaction_cache(
-        current_user.id,
-        transaction_id=transaction_id,
-        transaction_type=transaction_type,
-    )
-
     return {"success": True, "message": "Transaction deleted successfully"}
 
 
@@ -281,47 +231,26 @@ async def get_transaction_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # Create a cache key based on the parameters
-    cache_key = f"user_{current_user.id}_transaction_summary_{start_date}_{end_date}_{category_id}"
+    query = db.query(Transaction).filter(Transaction.user_id == current_user.id)
 
-    # Try to get from cache first
-    cached_result = get_cache(cache_key)
-    if cached_result is not None:
-        logger.info(f"Cache hit for transaction summary: {cache_key}")
-        result = cached_result
-    else:
-        logger.info(f"Cache miss for transaction summary: {cache_key}")
+    if start_date:
+        query = query.filter(Transaction.date >= start_date)
+    if end_date:
+        query = query.filter(Transaction.date <= end_date)
+    if category_id:
+        query = query.filter(Transaction.category_id == category_id)
 
-        query = db.query(Transaction).filter(Transaction.user_id == current_user.id)
+    transactions = query.all()
 
-        if start_date:
-            query = query.filter(Transaction.date >= start_date)
-        if end_date:
-            query = query.filter(Transaction.date <= end_date)
-        if category_id:
-            query = query.filter(Transaction.category_id == category_id)
+    income = sum(t.amount for t in transactions if t.type == TransactionType.income)
+    expenses = sum(t.amount for t in transactions if t.type == TransactionType.expense)
 
-        transactions = query.all()
-
-        income = sum(t.amount for t in transactions if t.type == TransactionType.income)
-        expenses = sum(
-            t.amount for t in transactions if t.type == TransactionType.expense
-        )
-
-        result = {
-            "total_income": income,
-            "total_expenses": expenses,
-            "net_income": income - expenses,
-            "transaction_count": len(transactions),
-        }
-
-        # Cache the result for 10 minutes (600 seconds) for better performance
-        # This is a good balance between performance and freshness for transaction summary
-        set_cache(cache_key, result, ttl_seconds=600)
-
-    # Set cache control headers for reasonable caching
-    response.headers["Cache-Control"] = "private, max-age=300"  # 5 minutes
-    response.headers["Vary"] = "Authorization"  # Cache varies by user
+    result = {
+        "total_income": income,
+        "total_expenses": expenses,
+        "net_income": income - expenses,
+        "transaction_count": len(transactions),
+    }
 
     return result
 
@@ -363,103 +292,84 @@ async def has_income_and_expense_transactions(
     Returns:
         Dict with has_income, has_expense, can_generate_insights flags, and time_period
     """
-    # Create a cache key based on the parameters
-    cache_key = f"user_{current_user.id}_has_transactions_{time_period}"
+    # Base query for transactions from this user
+    income_query = db.query(Transaction).filter(
+        Transaction.user_id == current_user.id,
+        Transaction.type == TransactionType.income,
+    )
 
-    # Try to get from cache first
-    cached_result = get_cache(cache_key)
-    if cached_result is not None:
-        logger.info(f"Cache hit for has_transactions: {cache_key}")
-        result = cached_result
-    else:
-        logger.info(f"Cache miss for has_transactions: {cache_key}")
+    expense_query = db.query(Transaction).filter(
+        Transaction.user_id == current_user.id,
+        Transaction.type == TransactionType.expense,
+    )
 
-        # Base query for transactions from this user
-        income_query = db.query(Transaction).filter(
-            Transaction.user_id == current_user.id,
-            Transaction.type == TransactionType.income,
-        )
+    # Apply time period filter
+    today = datetime.now().date()
+    current_year = today.year
+    current_month = today.month
 
-        expense_query = db.query(Transaction).filter(
-            Transaction.user_id == current_user.id,
-            Transaction.type == TransactionType.expense,
-        )
+    if time_period == "month":
+        # Current month
+        start_date = date(current_year, current_month, 1)
+        income_query = income_query.filter(Transaction.date >= start_date)
+        expense_query = expense_query.filter(Transaction.date >= start_date)
 
-        # Apply time period filter
-        today = datetime.now().date()
-        current_year = today.year
-        current_month = today.month
-
-        if time_period == "month":
-            # Current month
-            start_date = date(current_year, current_month, 1)
-            income_query = income_query.filter(Transaction.date >= start_date)
-            expense_query = expense_query.filter(Transaction.date >= start_date)
-
-        elif time_period == "prev_month":
-            # Previous month
-            if current_month == 1:
-                # If January, previous month is December of previous year
-                prev_month = 12
-                prev_year = current_year - 1
-            else:
-                prev_month = current_month - 1
-                prev_year = current_year
-
-            start_date = date(prev_year, prev_month, 1)
-
-            # Calculate end date (last day of previous month)
-            if prev_month == 12:
-                end_date = date(prev_year, 12, 31)
-            else:
-                end_date = date(prev_year, prev_month + 1, 1) - timedelta(days=1)
-
-            income_query = income_query.filter(
-                Transaction.date >= start_date, Transaction.date <= end_date
-            )
-            expense_query = expense_query.filter(
-                Transaction.date >= start_date, Transaction.date <= end_date
-            )
-
-        elif time_period == "year":
-            # Current year
-            start_date = date(current_year, 1, 1)
-            income_query = income_query.filter(Transaction.date >= start_date)
-            expense_query = expense_query.filter(Transaction.date >= start_date)
-
-        elif time_period == "prev_year":
-            # Previous year
+    elif time_period == "prev_month":
+        # Previous month
+        if current_month == 1:
+            # If January, previous month is December of previous year
+            prev_month = 12
             prev_year = current_year - 1
-            start_date = date(prev_year, 1, 1)
+        else:
+            prev_month = current_month - 1
+            prev_year = current_year
+
+        start_date = date(prev_year, prev_month, 1)
+
+        # Calculate end date (last day of previous month)
+        if prev_month == 12:
             end_date = date(prev_year, 12, 31)
-            income_query = income_query.filter(
-                Transaction.date >= start_date, Transaction.date <= end_date
-            )
-            expense_query = expense_query.filter(
-                Transaction.date >= start_date, Transaction.date <= end_date
-            )
+        else:
+            end_date = date(prev_year, prev_month + 1, 1) - timedelta(days=1)
 
-        # Check for income and expense transactions with the applied filters
-        # Use exists() for better performance than count()
-        has_income = db.query(income_query.exists()).scalar()
-        has_expense = db.query(expense_query.exists()).scalar()
+        income_query = income_query.filter(
+            Transaction.date >= start_date, Transaction.date <= end_date
+        )
+        expense_query = expense_query.filter(
+            Transaction.date >= start_date, Transaction.date <= end_date
+        )
 
-        # User can generate insights if they have at least one income and one expense transaction
-        can_generate_insights = has_income and has_expense
+    elif time_period == "year":
+        # Current year
+        start_date = date(current_year, 1, 1)
+        income_query = income_query.filter(Transaction.date >= start_date)
+        expense_query = expense_query.filter(Transaction.date >= start_date)
 
-        result = {
-            "has_income": has_income,
-            "has_expense": has_expense,
-            "can_generate_insights": can_generate_insights,
-            "time_period": time_period,
-        }
+    elif time_period == "prev_year":
+        # Previous year
+        prev_year = current_year - 1
+        start_date = date(prev_year, 1, 1)
+        end_date = date(prev_year, 12, 31)
+        income_query = income_query.filter(
+            Transaction.date >= start_date, Transaction.date <= end_date
+        )
+        expense_query = expense_query.filter(
+            Transaction.date >= start_date, Transaction.date <= end_date
+        )
 
-        # Cache the result for 10 minutes (600 seconds) for better performance
-        # This is a good balance between performance and freshness
-        set_cache(cache_key, result, ttl_seconds=600)
+    # Check for income and expense transactions with the applied filters
+    # Use exists() for better performance than count()
+    has_income = db.query(income_query.exists()).scalar()
+    has_expense = db.query(expense_query.exists()).scalar()
 
-    # Set cache control headers for reasonable caching
-    response.headers["Cache-Control"] = "private, max-age=300"  # 5 minutes
-    response.headers["Vary"] = "Authorization"  # Cache varies by user
+    # User can generate insights if they have at least one income and one expense transaction
+    can_generate_insights = has_income and has_expense
+
+    result = {
+        "has_income": has_income,
+        "has_expense": has_expense,
+        "can_generate_insights": can_generate_insights,
+        "time_period": time_period,
+    }
 
     return result

@@ -11,17 +11,10 @@ from app.schemas.subscription import (
     SubscriptionUpdate,
     Subscription as SubscriptionSchema,
 )
+from app.services.redis_service import redis_service
 from app.core.security import get_current_user
 from app.models.user import User
-from app.services.cache_service import (
-    cached,
-    invalidate_cache,
-    invalidate_cache_pattern,
-    invalidate_user_cache,
-    invalidate_subscription_cache,
-    get_cache,
-    set_cache,
-)
+
 
 logger = logging.getLogger(__name__)
 
@@ -49,12 +42,10 @@ async def create_subscription(
     db.commit()
     db.refresh(db_subscription)
 
-    # Use targeted invalidation for better performance
-    invalidate_subscription_cache(current_user.id)
-
-    # Also invalidate all user cache to ensure UI updates
-    # This is less targeted but ensures the UI always shows the latest data
-    invalidate_user_cache(current_user.id, feature="subscriptions")
+    # Clear user's subscription cache
+    print(f"🗑️ CLEARING CACHE for user {current_user.id} after creating subscription")
+    cleared_count = redis_service.clear_user_cache(current_user.id)
+    print(f"🗑️ CLEARED {cleared_count} cache entries")
 
     return db_subscription
 
@@ -70,42 +61,42 @@ async def get_subscriptions(
 ):
     """
     Get subscriptions with optional filtering by status.
-    Uses caching to improve performance.
     """
-    # Create a cache key based on the parameters
+    print(
+        f"🚀 SUBSCRIPTIONS ENDPOINT CALLED! Status: {status}, User: {current_user.id}"
+    )
+
+    # Create cache key
     cache_key = f"user_{current_user.id}_subscriptions_{status}_{skip}_{limit}"
 
-    # Try to get from cache first
-    cached_subscriptions = get_cache(cache_key)
-    if cached_subscriptions is not None:
-        logger.info(f"Cache hit for subscriptions: {cache_key}")
-        subscriptions = cached_subscriptions
-    else:
-        logger.info(f"Cache miss for subscriptions: {cache_key}")
+    # Try to get from Redis cache first
+    print(f"🔍 Checking Redis cache for key: {cache_key}")
+    cached_result = redis_service.get(cache_key)
+    if cached_result is not None:
+        print(f"✅ Redis cache HIT for subscriptions: {cache_key}")
+        return cached_result
 
-        query = db.query(Subscription).filter(Subscription.user_id == current_user.id)
+    print(f"❌ Redis cache MISS for subscriptions: {cache_key}")
 
-        if status:
-            query = query.filter(Subscription.status == status)
+    query = db.query(Subscription).filter(Subscription.user_id == current_user.id)
 
-        # Order by status (active first) and then by name
-        # Create a case statement to order active status first
-        status_order = case(
-            (Subscription.status == SubscriptionStatus.active, 1), else_=2
-        )
+    if status:
+        query = query.filter(Subscription.status == status)
 
-        query = query.order_by(
-            status_order, Subscription.name  # Active first (1 comes before 2)
-        )
+    # Order by status (active first) and then by name
+    # Create a case statement to order active status first
+    status_order = case((Subscription.status == SubscriptionStatus.active, 1), else_=2)
 
-        subscriptions = query.offset(skip).limit(limit).all()
+    query = query.order_by(
+        status_order, Subscription.name  # Active first (1 comes before 2)
+    )
 
-        # Cache the result for 24 hours (subscriptions rarely change)
-        set_cache(cache_key, subscriptions, ttl_seconds=86400)
+    subscriptions = query.offset(skip).limit(limit).all()
 
-    # Set cache control headers for reasonable caching
-    response.headers["Cache-Control"] = "private, max-age=1800"  # 30 minutes
-    response.headers["Vary"] = "Authorization"  # Cache varies by user
+    # Cache the result for 1 hour
+    print(f"💾 Storing {len(subscriptions)} subscriptions in Redis cache: {cache_key}")
+    cache_success = redis_service.set(cache_key, subscriptions, ttl_seconds=3600)
+    print(f"📝 Redis cache store result: {cache_success}")
 
     return subscriptions
 
@@ -119,37 +110,18 @@ async def get_subscription(
 ):
     """
     Get a specific subscription by ID.
-    Uses caching to improve performance.
     """
-    # Create a cache key based on the parameters
-    cache_key = f"user_{current_user.id}_subscription_{subscription_id}"
-
-    # Try to get from cache first
-    cached_subscription = get_cache(cache_key)
-    if cached_subscription is not None:
-        logger.info(f"Cache hit for subscription: {cache_key}")
-        subscription = cached_subscription
-    else:
-        logger.info(f"Cache miss for subscription: {cache_key}")
-
-        subscription = (
-            db.query(Subscription)
-            .filter(
-                Subscription.id == subscription_id,
-                Subscription.user_id == current_user.id,
-            )
-            .first()
+    subscription = (
+        db.query(Subscription)
+        .filter(
+            Subscription.id == subscription_id,
+            Subscription.user_id == current_user.id,
         )
+        .first()
+    )
 
-        if subscription is None:
-            raise HTTPException(status_code=404, detail="Subscription not found")
-
-        # Cache the result for 24 hours (subscriptions rarely change)
-        set_cache(cache_key, subscription, ttl_seconds=86400)
-
-    # Set cache control headers for reasonable caching
-    response.headers["Cache-Control"] = "private, max-age=1800"  # 30 minutes
-    response.headers["Vary"] = "Authorization"  # Cache varies by user
+    if subscription is None:
+        raise HTTPException(status_code=404, detail="Subscription not found")
 
     return subscription
 
@@ -205,6 +177,9 @@ async def update_subscription(
 
         db.commit()
         db.refresh(db_subscription)
+
+        # Clear user's subscription cache
+        redis_service.clear_user_cache(current_user.id)
     except Exception as e:
         # Log the error and rollback the transaction
         logger.error(f"Error updating subscription {subscription_id}: {str(e)}")
@@ -214,13 +189,6 @@ async def update_subscription(
         raise HTTPException(
             status_code=500, detail=f"Failed to update subscription: {str(e)}"
         )
-
-    # Use targeted invalidation for better performance
-    invalidate_subscription_cache(current_user.id, subscription_id=subscription_id)
-
-    # Also invalidate all user cache to ensure UI updates
-    # This is less targeted but ensures the UI always shows the latest data
-    invalidate_user_cache(current_user.id, feature="subscriptions")
 
     return db_subscription
 
@@ -244,12 +212,8 @@ async def delete_subscription(
     db.delete(db_subscription)
     db.commit()
 
-    # Use targeted invalidation for better performance
-    invalidate_subscription_cache(current_user.id, subscription_id=subscription_id)
-
-    # Also invalidate all user cache to ensure UI updates
-    # This is less targeted but ensures the UI always shows the latest data
-    invalidate_user_cache(current_user.id, feature="subscriptions")
+    # Clear user's subscription cache
+    redis_service.clear_user_cache(current_user.id)
 
     return True
 
@@ -262,79 +226,76 @@ async def get_subscriptions_summary(
 ):
     """
     Get summary of user's subscriptions including total costs and counts.
-    Uses caching to improve performance.
     """
-    # Create a cache key based on the user
+    print(f"🚀 SUMMARY ENDPOINT CALLED! User: {current_user.id}")
+
+    # Create cache key
     cache_key = f"user_{current_user.id}_subscription_summary"
 
-    # Try to get from cache first
-    cached_summary = get_cache(cache_key)
-    if cached_summary is not None:
-        logger.info(f"Cache hit for subscription summary: {cache_key}")
-        result = cached_summary
-    else:
-        logger.info(f"Cache miss for subscription summary: {cache_key}")
+    # Try to get from Redis cache first
+    print(f"🔍 SUMMARY: Checking Redis cache for key: {cache_key}")
+    cached_result = redis_service.get(cache_key)
+    if cached_result is not None:
+        print(f"✅ SUMMARY: Redis cache HIT for subscription summary: {cache_key}")
+        return cached_result
 
-        # Get total monthly cost of active subscriptions
-        monthly_cost = 0
-        future_monthly_cost = 0
-        today = date.today()
+    print(f"❌ SUMMARY: Redis cache MISS for subscription summary: {cache_key}")
 
-        # Get all active subscriptions - use a more efficient query
-        active_subscriptions = (
-            db.query(Subscription)
-            .filter(
-                Subscription.user_id == current_user.id,
-                Subscription.status == SubscriptionStatus.active,
-            )
-            .all()
+    # Get total monthly cost of active subscriptions
+    monthly_cost = 0
+    future_monthly_cost = 0
+    today = date.today()
+
+    # Get all active subscriptions - use a more efficient query
+    active_subscriptions = (
+        db.query(Subscription)
+        .filter(
+            Subscription.user_id == current_user.id,
+            Subscription.status == SubscriptionStatus.active,
         )
+        .all()
+    )
 
-        # Count current and future subscriptions separately
-        current_active_count = 0
-        future_active_count = 0
+    # Count current and future subscriptions separately
+    current_active_count = 0
+    future_active_count = 0
 
-        for subscription in active_subscriptions:
-            # Determine if this is a future subscription
-            is_future = subscription.start_date > today
+    for subscription in active_subscriptions:
+        # Determine if this is a future subscription
+        is_future = subscription.start_date > today
 
-            # Calculate the monthly cost based on billing frequency
-            subscription_monthly_cost = 0
-            if subscription.billing_frequency == BillingFrequency.monthly:
-                subscription_monthly_cost = subscription.amount
-            elif subscription.billing_frequency == BillingFrequency.yearly:
-                subscription_monthly_cost = subscription.amount / 12
-            elif subscription.billing_frequency == BillingFrequency.quarterly:
-                subscription_monthly_cost = subscription.amount / 3
-            elif subscription.billing_frequency == BillingFrequency.weekly:
-                subscription_monthly_cost = (
-                    subscription.amount * 4.33
-                )  # Average weeks in a month
+        # Calculate the monthly cost based on billing frequency
+        subscription_monthly_cost = 0
+        if subscription.billing_frequency == BillingFrequency.monthly:
+            subscription_monthly_cost = subscription.amount
+        elif subscription.billing_frequency == BillingFrequency.yearly:
+            subscription_monthly_cost = subscription.amount / 12
+        elif subscription.billing_frequency == BillingFrequency.quarterly:
+            subscription_monthly_cost = subscription.amount / 3
+        elif subscription.billing_frequency == BillingFrequency.weekly:
+            subscription_monthly_cost = (
+                subscription.amount * 4.33
+            )  # Average weeks in a month
 
-            # Add to the appropriate total
-            if is_future:
-                future_monthly_cost += subscription_monthly_cost
-                future_active_count += 1
-            else:
-                monthly_cost += subscription_monthly_cost
-                current_active_count += 1
+        # Add to the appropriate total
+        if is_future:
+            future_monthly_cost += subscription_monthly_cost
+            future_active_count += 1
+        else:
+            monthly_cost += subscription_monthly_cost
+            current_active_count += 1
 
-        result = {
-            "total_monthly_cost": round(monthly_cost, 2),
-            "future_monthly_cost": round(future_monthly_cost, 2),
-            "total_combined_monthly_cost": round(monthly_cost + future_monthly_cost, 2),
-            "active_subscriptions_count": current_active_count,
-            "future_subscriptions_count": future_active_count,
-            "total_subscriptions_count": len(active_subscriptions),
-        }
+    result = {
+        "total_monthly_cost": round(monthly_cost, 2),
+        "future_monthly_cost": round(future_monthly_cost, 2),
+        "total_combined_monthly_cost": round(monthly_cost + future_monthly_cost, 2),
+        "active_subscriptions_count": current_active_count,
+        "future_subscriptions_count": future_active_count,
+        "total_subscriptions_count": len(active_subscriptions),
+    }
 
-        # Cache the result for 1 hour (3600 seconds) for better performance
-        # This is a good balance between performance and freshness for subscription summary
-        set_cache(cache_key, result, ttl_seconds=3600)
-
-    # Set cache control headers for reasonable caching
-    response.headers["Cache-Control"] = "private, max-age=600"  # 10 minutes
-    response.headers["Vary"] = "Authorization"  # Cache varies by user
+    # Cache the result for 30 minutes
+    redis_service.set(cache_key, result, ttl_seconds=1800)
 
     return result
 

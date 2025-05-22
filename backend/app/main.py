@@ -11,7 +11,7 @@ import time
 import logging
 import threading
 import concurrent.futures
-from app.services.cache_service import set_cache
+
 from app.models.task import TaskCategory
 from app.models.category import Category, TransactionType
 from app.api import (
@@ -31,7 +31,6 @@ from app.db.seed_task_categories import (
     verify_task_categories_async,
 )
 from app.core.demo_middleware import DemoUserMiddleware
-from app.services.redis_cache import redis_cache
 import asyncio
 from alembic import command
 from alembic.config import Config
@@ -93,62 +92,13 @@ def establish_db_connection(connection_id):
         logger.error(f"Error establishing connection {connection_id}: {str(e)}")
 
 
-# Function to preload categories into cache
+# Function to preload categories into cache (disabled for now)
 def preload_categories():
     """
     Preload categories into the cache at application startup.
-    This ensures that category data is immediately available without database queries.
+    Currently disabled to avoid conflicts with Redis service.
     """
-    try:
-        logger.info("Preloading categories into cache...")
-        db = SessionLocal()
-        try:
-            # Preload task categories
-            default_task_categories = (
-                db.query(TaskCategory).filter(TaskCategory.is_default == True).all()
-            )
-
-            # Cache default task categories with a very long TTL (1 week)
-            set_cache(
-                "default_task_categories", default_task_categories, ttl_seconds=604800
-            )  # 7 days
-
-            logger.info(
-                f"Successfully preloaded {len(default_task_categories)} default task categories into cache"
-            )
-
-            # Preload transaction categories
-            # Cache income categories
-            income_categories = (
-                db.query(Category).filter(Category.type == TransactionType.income).all()
-            )
-            set_cache(
-                "transaction_categories:income", income_categories, ttl_seconds=604800
-            )  # 7 days
-
-            # Cache expense categories
-            expense_categories = (
-                db.query(Category)
-                .filter(Category.type == TransactionType.expense)
-                .all()
-            )
-            set_cache(
-                "transaction_categories:expense", expense_categories, ttl_seconds=604800
-            )  # 7 days
-
-            # Cache all categories
-            all_categories = db.query(Category).all()
-            set_cache(
-                "transaction_categories:None", all_categories, ttl_seconds=604800
-            )  # 7 days
-
-            logger.info(
-                f"Successfully preloaded {len(all_categories)} transaction categories into cache"
-            )
-        finally:
-            db.close()
-    except Exception as e:
-        logger.error(f"Error preloading categories: {str(e)}")
+    logger.info("Category preloading is currently disabled")
 
 
 # Start connection warmup and preload data in background threads
@@ -217,6 +167,8 @@ app.include_router(health_router, tags=["health"])
 
 @app.get("/")
 async def root():
+    print("🏠 ROOT ENDPOINT CALLED - PRINT IS WORKING!")
+    logger.info("🏠 Root endpoint called - logging is working!")
     return {"message": "Welcome to Finance Tracker API", "status": "healthy"}
 
 
@@ -265,9 +217,21 @@ async def redis_health_check():
     Check Redis connection health and return statistics.
     This endpoint is useful for diagnosing Redis connection issues.
     """
+    from app.services.redis_service import redis_service
+
     try:
-        stats = redis_cache.get_stats()
-        return {"timestamp": str(datetime.now()), **stats}
+        if redis_service.is_available:
+            return {
+                "status": "connected",
+                "redis_enabled": True,
+                "timestamp": str(datetime.now()),
+            }
+        else:
+            return {
+                "status": "unavailable",
+                "redis_enabled": False,
+                "timestamp": str(datetime.now()),
+            }
     except Exception as e:
         return {
             "status": "error",
