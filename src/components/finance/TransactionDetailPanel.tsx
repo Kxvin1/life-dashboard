@@ -10,6 +10,7 @@ import {
 } from "@/components/finance/TransactionForm";
 import CategorySelect from "./CategorySelect";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { cacheManager } from "@/lib/cacheManager";
 
 interface TransactionDetailPanelProps {
   transaction: Transaction | null;
@@ -228,11 +229,8 @@ const TransactionDetailPanel = ({
 
       const token = Cookies.get("token");
 
-      // Add a timestamp to prevent browser caching
-      const timestamp = new Date().getTime();
-
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/${transactionId}?_=${timestamp}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/${transactionId}`,
         {
           method: "PUT",
           headers: {
@@ -240,8 +238,6 @@ const TransactionDetailPanel = ({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(updateData),
-          // Use cache: 'no-store' which is safer for CORS
-          cache: "no-store",
         }
       );
 
@@ -249,6 +245,9 @@ const TransactionDetailPanel = ({
         const errorText = await response.text();
         throw new Error(`Failed to update transaction: ${errorText}`);
       }
+
+      // Invalidate cache to force fresh data on next API calls
+      cacheManager.invalidateCache();
 
       // Notify parent component
       onTransactionUpdated();
@@ -285,17 +284,13 @@ const TransactionDetailPanel = ({
       const baseUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-      // Add a timestamp to prevent browser caching
-      const timestamp = new Date().getTime();
-      const url = `${baseUrl}/api/v1/transactions/${transactionId}?_=${timestamp}`;
+      const url = `${baseUrl}/api/v1/transactions/${transactionId}`;
 
       const response = await fetch(url, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        // Use cache: 'no-store' which is safer for CORS
-        cache: "no-store",
       });
 
       if (!response.ok) {
@@ -304,6 +299,9 @@ const TransactionDetailPanel = ({
           `Failed to delete transaction: ${response.status} ${response.statusText} - ${errorText}`
         );
       }
+
+      // Invalidate cache to force fresh data on next API calls
+      cacheManager.invalidateCache();
 
       // Refresh the data in the parent component
       onTransactionUpdated();

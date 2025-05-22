@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Cookies from "js-cookie";
 import CategorySelect from "./CategorySelect";
+import { cacheManager } from "@/lib/cacheManager";
 
 interface TransactionFormProps {
   onTransactionAdded: (type: TransactionType) => void;
@@ -71,9 +72,7 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
     const xhr = new XMLHttpRequest();
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-    // Add a timestamp to prevent browser caching
-    const timestamp = new Date().getTime();
-    const url = `${baseUrl}/api/v1/transactions/?_=${timestamp}`;
+    const url = `${baseUrl}/api/v1/transactions/`;
 
     xhr.open("POST", url, true);
     xhr.setRequestHeader("Content-Type", "application/json");
@@ -95,6 +94,9 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
           setTimeout(() => {
             setSuccess(null);
           }, 5000);
+
+          // Invalidate cache to force fresh data on next API calls
+          cacheManager.invalidateCache();
 
           // Notify parent component with the transaction type
           onTransactionAdded(type);

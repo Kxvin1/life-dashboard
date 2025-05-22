@@ -10,6 +10,7 @@ import {
 import { Transaction } from "@/types/finance";
 import TransactionDetailPanel from "./TransactionDetailPanel";
 import AIInsightsButton from "./AIInsightsButton";
+import { cacheManager } from "@/lib/cacheManager";
 
 interface MonthlySummary {
   income: number;
@@ -66,22 +67,18 @@ export default function OverviewSummary({
         setError(null);
         const token = Cookies.get("token");
 
-        // Add a timestamp to prevent browser caching
-        const timestamp = new Date().getTime();
-
-        // Fetch transactions
+        // Fetch transactions with cache-busting if needed
+        const cacheBustParam = cacheManager.getCacheBustParam();
         const transactionsResponse = await fetch(
           `${
             process.env.NEXT_PUBLIC_API_URL
           }/api/v1/transactions/?year=${year}${month ? `&month=${month}` : ""}${
             categoryId ? `&category_id=${categoryId}` : ""
-          }&_=${timestamp}`,
+          }${cacheBustParam}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
             },
-            // Use cache: 'no-store' which is safer for CORS
-            cache: "no-store",
           }
         );
 

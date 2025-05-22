@@ -128,22 +128,14 @@ export const createPomodoroSession = async (sessionData: {
   try {
     const token = Cookies.get("token");
 
-    // Add a timestamp to prevent browser caching
-    const timestamp = new Date().getTime();
-
-    const response = await fetch(
-      `${API_URL}/api/v1/pomodoro/sessions?_=${timestamp}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(sessionData),
-        // Use cache: 'no-store' which is safer for CORS
-        cache: "no-store",
-      }
-    );
+    const response = await fetch(`${API_URL}/api/v1/pomodoro/sessions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(sessionData),
+    });
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -196,21 +188,13 @@ export const analyzePomodoroSessions =
     try {
       const token = Cookies.get("token");
 
-      // Add a timestamp to prevent browser caching
-      const timestamp = new Date().getTime();
-
-      const response = await fetch(
-        `${API_URL}/api/v1/pomodoro/analyze?_=${timestamp}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          // Use cache: 'no-store' which is safer for CORS
-          cache: "no-store",
-        }
-      );
+      const response = await fetch(`${API_URL}/api/v1/pomodoro/analyze`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -231,19 +215,11 @@ export const getRemainingPomodoroAIUses =
     try {
       const token = Cookies.get("token");
 
-      // Add a timestamp to prevent browser caching
-      const timestamp = new Date().getTime();
-
-      const response = await fetch(
-        `${API_URL}/api/v1/pomodoro/remaining?_=${timestamp}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          // Use cache: 'no-store' which is safer for CORS
-          cache: "no-store",
-        }
-      );
+      const response = await fetch(`${API_URL}/api/v1/pomodoro/remaining`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -266,17 +242,12 @@ export const getPomodoroAIHistory = async (
   try {
     const token = Cookies.get("token");
 
-    // Add a timestamp to prevent browser caching
-    const timestamp = new Date().getTime();
-
     const response = await fetch(
-      `${API_URL}/api/v1/pomodoro/history?skip=${skip}&limit=${limit}&_=${timestamp}`,
+      `${API_URL}/api/v1/pomodoro/history?skip=${skip}&limit=${limit}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        // Use cache: 'no-store' which is safer for CORS
-        cache: "no-store",
       }
     );
 
@@ -298,19 +269,11 @@ export const getPomodoroAIHistoryById = async (
   try {
     const token = Cookies.get("token");
 
-    // Add a timestamp to prevent browser caching
-    const timestamp = new Date().getTime();
-
-    const response = await fetch(
-      `${API_URL}/api/v1/pomodoro/history/${id}?_=${timestamp}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        // Use cache: 'no-store' which is safer for CORS
-        cache: "no-store",
-      }
-    );
+    const response = await fetch(`${API_URL}/api/v1/pomodoro/history/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     if (!response.ok) {
       const errorData = await response.json();

@@ -103,10 +103,8 @@ async def get_subscriptions(
         # Cache the result for 24 hours (subscriptions rarely change)
         set_cache(cache_key, subscriptions, ttl_seconds=86400)
 
-    # Set cache control headers to prevent browser caching
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
+    # Set cache control headers for reasonable caching
+    response.headers["Cache-Control"] = "private, max-age=1800"  # 30 minutes
     response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return subscriptions
@@ -149,10 +147,8 @@ async def get_subscription(
         # Cache the result for 24 hours (subscriptions rarely change)
         set_cache(cache_key, subscription, ttl_seconds=86400)
 
-    # Set cache control headers to prevent browser caching
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
+    # Set cache control headers for reasonable caching
+    response.headers["Cache-Control"] = "private, max-age=1800"  # 30 minutes
     response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return subscription
@@ -336,10 +332,8 @@ async def get_subscriptions_summary(
         # This is a good balance between performance and freshness for subscription summary
         set_cache(cache_key, result, ttl_seconds=3600)
 
-    # Set cache control headers to prevent browser caching
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
+    # Set cache control headers for reasonable caching
+    response.headers["Cache-Control"] = "private, max-age=600"  # 10 minutes
     response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return result

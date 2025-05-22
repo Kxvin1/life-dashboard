@@ -7,12 +7,11 @@ import {
 } from "@/services/subscriptionService";
 import { formatCurrency } from "@/lib/utils";
 import { Subscription } from "@/types/finance";
+import { cacheManager } from "@/lib/cacheManager";
 
-interface SubscriptionSummaryProps {
-  refreshKey?: number;
-}
+interface SubscriptionSummaryProps {}
 
-const SubscriptionSummary = ({ refreshKey }: SubscriptionSummaryProps) => {
+const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
   const [totalMonthlyCost, setTotalMonthlyCost] = useState<number>(0);
   const [futureMonthlyCost, setFutureMonthlyCost] = useState<number>(0);
   const [totalCombinedMonthlyCost, setTotalCombinedMonthlyCost] =
@@ -73,9 +72,6 @@ const SubscriptionSummary = ({ refreshKey }: SubscriptionSummaryProps) => {
     try {
       setIsLoading(true);
 
-      // Force a small delay to ensure backend cache is invalidated
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
       // Fetch summary data
       const summaryData = await fetchSubscriptionSummary();
 
@@ -125,16 +121,17 @@ const SubscriptionSummary = ({ refreshKey }: SubscriptionSummaryProps) => {
     }
   };
 
-  // Load data when component mounts or when refreshKey changes
+  // Load data when component mounts and when cache is invalidated
   useEffect(() => {
-    // Load data with a small delay to ensure backend has updated
-    const timer = setTimeout(() => {
-      loadData();
-    }, 300);
+    loadData();
 
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey]);
+    // Subscribe to cache invalidation events
+    const unsubscribe = cacheManager.subscribe(() => {
+      loadData();
+    });
+
+    return unsubscribe;
+  }, []);
 
   if (isLoading) {
     return (

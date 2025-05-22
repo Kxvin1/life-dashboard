@@ -181,12 +181,8 @@ async def get_tasks(
         # This is a good balance between performance and freshness
         set_cache(cache_key, result, ttl_seconds=600)
 
-    # Set cache control headers to prevent browser caching
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-
-    # Add cache validators
+    # Set cache control headers for reasonable caching
+    response.headers["Cache-Control"] = "private, max-age=300"  # 5 minutes
     response.headers["Vary"] = "Authorization"  # Cache varies by user
 
     return result

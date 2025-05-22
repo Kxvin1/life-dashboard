@@ -15,7 +15,6 @@ const SubscriptionsPage = () => {
   const router = useRouter();
   const [showAddForm, setShowAddForm] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState<SubscriptionStatus>("active");
 
   useEffect(() => {
@@ -27,30 +26,15 @@ const SubscriptionsPage = () => {
   const handleSubscriptionAdded = () => {
     setShowAddForm(false);
     setShowSuccessToast(true);
-    // Force a refresh of both the subscription list and summary
-    setRefreshKey((prev) => prev + 1);
-    // Force a tab change to trigger a refresh of the subscription list
-    // This ensures the list is refreshed even if the cache isn't properly invalidated
-    setActiveTab((prev) => prev);
+    // Cache invalidation is handled by the service
   };
 
   const handleSubscriptionDeleted = () => {
-    // Refresh both the subscription summary and list
-    setRefreshKey((prev) => prev + 1);
-    // Force a tab change to trigger a refresh of the subscription list
-    // This ensures the list is refreshed even if the cache isn't properly invalidated
-    setActiveTab((prev) => prev);
+    // Cache invalidation is handled by the service
   };
 
   const handleSubscriptionToggled = () => {
-    // Refresh the subscription summary when a subscription is toggled
-    // Use a single timeout to ensure the backend has time to update
-    setTimeout(() => {
-      setRefreshKey((prev) => prev + 1);
-      // Force a tab change to trigger a refresh of the subscription list
-      // This ensures the list is refreshed even if the cache isn't properly invalidated
-      setActiveTab((prev) => prev);
-    }, 500);
+    // Cache invalidation is handled by the service
   };
 
   const handleTabChange = (tab: SubscriptionStatus) => {
@@ -101,7 +85,7 @@ const SubscriptionsPage = () => {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Subscription Summary - Shown first on mobile, right side on desktop */}
         <div className="order-first lg:order-last lg:col-span-1">
-          <SubscriptionSummary refreshKey={refreshKey} />
+          <SubscriptionSummary />
         </div>
 
         {/* Mobile Add Subscription Form - Only visible on mobile, shown BEFORE the header */}
@@ -159,7 +143,6 @@ const SubscriptionsPage = () => {
               onTabChange={handleTabChange}
               onSubscriptionDeleted={handleSubscriptionDeleted}
               onSubscriptionToggled={handleSubscriptionToggled}
-              refreshKey={refreshKey}
             />
           </div>
         </div>

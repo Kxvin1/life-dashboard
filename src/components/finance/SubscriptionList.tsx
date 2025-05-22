@@ -10,6 +10,7 @@ import {
 import { formatCurrency, formatSubscriptionDuration } from "@/lib/utils";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Toast from "@/components/ui/Toast";
+import { cacheManager } from "@/lib/cacheManager";
 
 interface SubscriptionListProps {
   status: SubscriptionStatus;
@@ -17,7 +18,6 @@ interface SubscriptionListProps {
   onSubscriptionToggled?: () => void;
   sortField: "name" | "price" | "upcoming";
   sortDirection: "asc" | "desc";
-  refreshKey?: number; // Optional prop to force refresh
 }
 
 const SubscriptionList = ({
@@ -25,7 +25,6 @@ const SubscriptionList = ({
   onSubscriptionToggled,
   sortField,
   sortDirection,
-  refreshKey,
 }: SubscriptionListProps) => {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,9 +98,6 @@ const SubscriptionList = ({
   const loadSubscriptions = async () => {
     try {
       setIsLoading(true);
-
-      // Force a small delay to ensure backend cache is invalidated
-      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const data = await fetchSubscriptions(status);
 
@@ -193,8 +189,15 @@ const SubscriptionList = ({
   useEffect(() => {
     loadSubscriptions();
     loadUpcomingPayments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, sortField, sortDirection, refreshKey]);
+
+    // Subscribe to cache invalidation events
+    const unsubscribe = cacheManager.subscribe(() => {
+      loadSubscriptions();
+      loadUpcomingPayments();
+    });
+
+    return unsubscribe;
+  }, [status, sortField, sortDirection]);
 
   const handleDeleteClick = (id: string) => {
     setSubscriptionToDelete(id);

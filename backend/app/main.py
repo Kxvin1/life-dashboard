@@ -181,93 +181,25 @@ async def add_process_time_header(request: Request, call_next):
 # Add demo user middleware
 app.add_middleware(DemoUserMiddleware)
 
-# Configure CORS - Allow specific origins (add this AFTER other middleware)
+# Configure CORS - Use only FastAPI's CORSMiddleware for simplicity
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "https://life-dashboard-eta.vercel.app",
-        # Add any other origins that need access
     ],
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods
-    allow_headers=["*"],  # Allow all headers
-    expose_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+    ],
+    expose_headers=["X-Process-Time"],
     max_age=600,
 )
-
-
-# Add CORS headers to all responses as a fallback
-@app.middleware("http")
-async def add_cors_headers(request: Request, call_next):
-    # Get the origin from the request
-    origin = request.headers.get("Origin")
-
-    # List of allowed origins
-    allowed_origins = [
-        "http://localhost:3000",
-        "https://life-dashboard-eta.vercel.app",
-    ]
-
-    # For preflight OPTIONS requests
-    if request.method == "OPTIONS":
-        response = Response(status_code=200)
-
-        # Set CORS headers based on origin
-        if origin in allowed_origins:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-        else:
-            # For other origins, still allow but without credentials
-            response.headers["Access-Control-Allow-Origin"] = "*"
-
-        response.headers["Access-Control-Allow-Methods"] = (
-            "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-        )
-        response.headers["Access-Control-Allow-Headers"] = (
-            "Authorization, Content-Type, Accept, Origin, X-Requested-With"
-        )
-        response.headers["Access-Control-Max-Age"] = "600"
-        return response
-
-    # For all other requests
-    try:
-        response = await call_next(request)
-
-        # Always add CORS headers to the response
-        if origin in allowed_origins:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-        else:
-            # For other origins, still allow but without credentials
-            response.headers["Access-Control-Allow-Origin"] = "*"
-
-        return response
-    except Exception as e:
-        # If there's an error, still return a response with CORS headers
-        print(f"Error in middleware: {str(e)}")
-
-        # Create a proper JSON response
-        error_response = JSONResponse(
-            status_code=500, content={"detail": "Internal Server Error"}
-        )
-
-        # Add CORS headers
-        if origin in allowed_origins:
-            error_response.headers["Access-Control-Allow-Origin"] = origin
-            error_response.headers["Access-Control-Allow-Credentials"] = "true"
-        else:
-            error_response.headers["Access-Control-Allow-Origin"] = "*"
-
-        # Add other CORS headers
-        error_response.headers["Access-Control-Allow-Methods"] = (
-            "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-        )
-        error_response.headers["Access-Control-Allow-Headers"] = (
-            "Authorization, Content-Type, Accept, Origin, X-Requested-With"
-        )
-
-        return error_response
 
 
 # Include routers

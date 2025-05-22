@@ -1,5 +1,6 @@
 import Cookies from "js-cookie";
 import { Subscription, SubscriptionSummary } from "@/types/finance";
+import { cacheManager } from "@/lib/cacheManager";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -12,22 +13,21 @@ export const fetchSubscriptions = async (
       throw new Error("Authentication token missing");
     }
 
-    // Add a timestamp to force a fresh request after CRUD operations
-    const timestamp = new Date().getTime();
-
     let url = `${API_URL}/api/v1/subscriptions/`;
     if (status) {
-      url += `?status=${status}&_=${timestamp}`;
-    } else {
-      url += `?_=${timestamp}`;
+      url += `?status=${status}`;
+    }
+
+    // Add cache-busting parameter if cache has been invalidated
+    const cacheBustParam = cacheManager.getCacheBustParam();
+    if (cacheBustParam) {
+      url += status ? cacheBustParam : cacheManager.getCacheBustParamFirst();
     }
 
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
-      // Disable caching to ensure fresh data
-      cache: "no-store",
     });
 
     if (!response.ok) {
@@ -49,16 +49,18 @@ export const fetchSubscriptionSummary =
         throw new Error("Authentication token missing");
       }
 
-      // Add a timestamp to force a fresh request after CRUD operations
-      const timestamp = new Date().getTime();
-      const url = `${API_URL}/api/v1/subscriptions-summary/?_=${timestamp}`;
+      let url = `${API_URL}/api/v1/subscriptions-summary/`;
+
+      // Add cache-busting parameter if cache has been invalidated
+      const cacheBustParam = cacheManager.getCacheBustParamFirst();
+      if (cacheBustParam) {
+        url += cacheBustParam;
+      }
 
       const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        // Disable caching to ensure fresh data
-        cache: "no-store",
       });
 
       if (!response.ok) {
@@ -84,25 +86,21 @@ export const createSubscription = async (
       throw new Error("Authentication token missing");
     }
 
-    // Add a timestamp to prevent browser caching
-    const timestamp = new Date().getTime();
-    const response = await fetch(
-      `${API_URL}/api/v1/subscriptions/?_=${timestamp}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(subscription),
-        // Use cache: 'no-store' which is safer for CORS
-        cache: "no-store",
-      }
-    );
+    const response = await fetch(`${API_URL}/api/v1/subscriptions/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(subscription),
+    });
 
     if (!response.ok) {
       throw new Error("Failed to create subscription");
     }
+
+    // Invalidate cache after creating subscription
+    cacheManager.invalidateCache();
 
     const data = await response.json();
     return data;
@@ -121,27 +119,23 @@ export const updateSubscription = async (
       throw new Error("Authentication token missing");
     }
 
-    // Add a timestamp to prevent browser caching
-    const timestamp = new Date().getTime();
-    const response = await fetch(
-      `${API_URL}/api/v1/subscriptions/${id}?_=${timestamp}`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(subscription),
-        // Use cache: 'no-store' which is safer for CORS
-        cache: "no-store",
-      }
-    );
+    const response = await fetch(`${API_URL}/api/v1/subscriptions/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(subscription),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Error response:", errorText);
       throw new Error("Failed to update subscription");
     }
+
+    // Invalidate cache after updating subscription
+    cacheManager.invalidateCache();
 
     const data = await response.json();
     return data;
@@ -173,23 +167,16 @@ export const toggleSubscriptionStatus = async (
     updateData.last_active_date = new Date().toISOString().split("T")[0];
   }
 
-  // Add timestamp to prevent caching
-  const timestamp = new Date().getTime();
-
   try {
     // Make direct API call instead of using updateSubscription
-    const response = await fetch(
-      `${API_URL}/api/v1/subscriptions/${id}?_=${timestamp}`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(updateData),
-        cache: "no-store",
-      }
-    );
+    const response = await fetch(`${API_URL}/api/v1/subscriptions/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(updateData),
+    });
 
     if (!response.ok) {
       try {
@@ -209,21 +196,19 @@ export const toggleSubscriptionStatus = async (
     // We'll let the UI handle refreshing the subscription summary
     // No need to make a separate call here
 
-    // Force a delay to ensure the backend has time to process the update
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // No delay needed with proper cache invalidation
 
     // Even if we got an error, try to fetch the subscription to see if it was updated
-    const getResponse = await fetch(
-      `${API_URL}/api/v1/subscriptions/${id}?_=${new Date().getTime()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
-      }
-    );
+    const getResponse = await fetch(`${API_URL}/api/v1/subscriptions/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     if (getResponse.ok) {
+      // Invalidate cache after toggling subscription status
+      cacheManager.invalidateCache();
+
       const data = await getResponse.json();
       return data;
     } else {
@@ -273,26 +258,19 @@ export const deleteSubscription = async (id: string): Promise<boolean> => {
       throw new Error("Authentication token missing");
     }
 
-    // Add timestamp to prevent caching
-    const timestamp = new Date().getTime();
-
-    const response = await fetch(
-      `${API_URL}/api/v1/subscriptions/${id}?_=${timestamp}`,
-      {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
-      }
-    );
+    const response = await fetch(`${API_URL}/api/v1/subscriptions/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     if (!response.ok) {
       throw new Error("Failed to delete subscription");
     }
 
-    // Force a delay to ensure the backend has time to process the deletion
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // Invalidate cache after deleting subscription
+    cacheManager.invalidateCache();
 
     return true;
   } catch (error) {

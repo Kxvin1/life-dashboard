@@ -194,8 +194,7 @@ def invalidate_subscription_cache(user_id: int, subscription_id: int = None) -> 
     """
     Invalidate subscription-related caches for a specific user and subscription.
 
-    This function aggressively invalidates all subscription-related caches to ensure
-    that the UI always shows the latest data after any subscription changes.
+    This function targets only subscription-related caches to avoid unnecessary cache misses.
 
     Args:
         user_id: The user ID
@@ -204,21 +203,35 @@ def invalidate_subscription_cache(user_id: int, subscription_id: int = None) -> 
     with _cache_lock:
         # Log the cache invalidation for debugging
         logger.info(
-            f"Aggressive invalidation of subscription cache for user_id: {user_id}, subscription_id: {subscription_id}"
+            f"Targeted invalidation of subscription cache for user_id: {user_id}, subscription_id: {subscription_id}"
         )
 
-        # Invalidate all user-related caches to ensure fresh data
-        user_pattern = f"user_{user_id}"
+        # Create patterns to match subscription-related caches only
+        patterns = []
 
-        # Find all keys that contain the user pattern
-        keys_to_remove = [k for k in _cache.keys() if user_pattern in k]
+        if subscription_id:
+            # Invalidate specific subscription cache
+            patterns.append(f"user_{user_id}_subscription_{subscription_id}")
+
+        # Always invalidate subscription list caches
+        patterns.append(f"user_{user_id}_subscriptions")
+
+        # Invalidate subscription summary cache
+        patterns.append(f"user_{user_id}_subscription_summary")
+
+        # Find and remove matching keys
+        keys_to_remove = []
+        for pattern in patterns:
+            matching_keys = [k for k in _cache.keys() if pattern in k]
+            keys_to_remove.extend(matching_keys)
+            logger.info(f"Pattern '{pattern}' matches {len(matching_keys)} keys")
 
         # Log the keys that will be removed
         logger.info(f"Keys to be removed: {keys_to_remove}")
 
         # Remove each key
         for key in keys_to_remove:
-            logger.info(f"Invalidating cache key: {key}")
+            logger.info(f"Invalidating subscription cache key: {key}")
             del _cache[key]
 
         # Log the remaining cache keys after invalidation
@@ -253,21 +266,40 @@ def invalidate_transaction_cache(
             patterns.append(f"user_{user_id}_transaction_{transaction_id}")
 
         # Always invalidate all transaction list caches to ensure UI updates
-        # This is less targeted but ensures the UI always shows the latest data
-        patterns.append(f"user_{user_id}_transactions")
+        # Use broader patterns to catch all variations of transaction cache keys
+        patterns.extend(
+            [
+                f"user_{user_id}_transactions",  # Base pattern
+                f"user_{user_id}_transaction_summary",  # Summary cache
+                f"user_{user_id}_has_transactions",  # Requirements check cache
+            ]
+        )
 
-        # Invalidate transaction summary cache
-        patterns.append(f"user_{user_id}_transaction_summary")
-
-        # Also invalidate any cache keys with 'has_transactions' in them
-        patterns.append(f"user_{user_id}_has_transactions")
-
-        # Find and remove matching keys
+        # Find and remove matching keys using more aggressive pattern matching
         keys_to_remove = []
+
+        # For transaction cache invalidation, we need to be more aggressive
+        # and remove ALL transaction-related cache keys for this user
+        all_cache_keys = list(_cache.keys())
+
+        for key in all_cache_keys:
+            # Check if this key is transaction-related for this user
+            if (
+                f"user_{user_id}_transactions" in key
+                or f"user_{user_id}_transaction_summary" in key
+                or f"user_{user_id}_has_transactions" in key
+            ):
+                keys_to_remove.append(key)
+
+        # Also check the original patterns for any other matches
         for pattern in patterns:
-            matching_keys = [k for k in _cache.keys() if pattern in k]
+            matching_keys = [
+                k for k in _cache.keys() if pattern in k and k not in keys_to_remove
+            ]
             keys_to_remove.extend(matching_keys)
-            logger.info(f"Pattern '{pattern}' matches {len(matching_keys)} keys")
+            logger.info(
+                f"Pattern '{pattern}' matches {len(matching_keys)} additional keys: {matching_keys}"
+            )
 
         # Log the keys that will be removed
         logger.info(f"Keys to be removed: {keys_to_remove}")
