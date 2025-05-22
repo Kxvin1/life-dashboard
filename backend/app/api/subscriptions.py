@@ -43,9 +43,7 @@ async def create_subscription(
     db.refresh(db_subscription)
 
     # Clear user's subscription cache
-    print(f"🗑️ CLEARING CACHE for user {current_user.id} after creating subscription")
-    cleared_count = redis_service.clear_user_cache(current_user.id)
-    print(f"🗑️ CLEARED {cleared_count} cache entries")
+    redis_service.clear_user_cache(current_user.id)
 
     return db_subscription
 
@@ -62,21 +60,13 @@ async def get_subscriptions(
     """
     Get subscriptions with optional filtering by status.
     """
-    print(
-        f"🚀 SUBSCRIPTIONS ENDPOINT CALLED! Status: {status}, User: {current_user.id}"
-    )
-
     # Create cache key
     cache_key = f"user_{current_user.id}_subscriptions_{status}_{skip}_{limit}"
 
     # Try to get from Redis cache first
-    print(f"🔍 Checking Redis cache for key: {cache_key}")
     cached_result = redis_service.get(cache_key)
     if cached_result is not None:
-        print(f"✅ Redis cache HIT for subscriptions: {cache_key}")
         return cached_result
-
-    print(f"❌ Redis cache MISS for subscriptions: {cache_key}")
 
     query = db.query(Subscription).filter(Subscription.user_id == current_user.id)
 
@@ -94,9 +84,7 @@ async def get_subscriptions(
     subscriptions = query.offset(skip).limit(limit).all()
 
     # Cache the result for 1 hour
-    print(f"💾 Storing {len(subscriptions)} subscriptions in Redis cache: {cache_key}")
-    cache_success = redis_service.set(cache_key, subscriptions, ttl_seconds=3600)
-    print(f"📝 Redis cache store result: {cache_success}")
+    redis_service.set(cache_key, subscriptions, ttl_seconds=3600)
 
     return subscriptions
 
@@ -227,19 +215,13 @@ async def get_subscriptions_summary(
     """
     Get summary of user's subscriptions including total costs and counts.
     """
-    print(f"🚀 SUMMARY ENDPOINT CALLED! User: {current_user.id}")
-
     # Create cache key
     cache_key = f"user_{current_user.id}_subscription_summary"
 
     # Try to get from Redis cache first
-    print(f"🔍 SUMMARY: Checking Redis cache for key: {cache_key}")
     cached_result = redis_service.get(cache_key)
     if cached_result is not None:
-        print(f"✅ SUMMARY: Redis cache HIT for subscription summary: {cache_key}")
         return cached_result
-
-    print(f"❌ SUMMARY: Redis cache MISS for subscription summary: {cache_key}")
 
     # Get total monthly cost of active subscriptions
     monthly_cost = 0

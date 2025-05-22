@@ -167,8 +167,6 @@ app.include_router(health_router, tags=["health"])
 
 @app.get("/")
 async def root():
-    print("🏠 ROOT ENDPOINT CALLED - PRINT IS WORKING!")
-    logger.info("🏠 Root endpoint called - logging is working!")
     return {"message": "Welcome to Finance Tracker API", "status": "healthy"}
 
 

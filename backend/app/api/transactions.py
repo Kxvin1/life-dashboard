@@ -14,6 +14,7 @@ from app.schemas.transaction import (
 from app.core.security import get_current_user
 from app.models.user import User
 from app.models.category import Category
+from app.services.redis_service import redis_service
 
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,9 @@ async def create_transaction(
     db.commit()
     db.refresh(db_transaction)
 
+    # Clear user's transaction cache
+    redis_service.clear_user_cache(current_user.id)
+
     return db_transaction
 
 
@@ -65,6 +69,14 @@ async def get_transactions(
     """
     Get transactions with optional filtering.
     """
+    # Create cache key
+    cache_key = f"user_{current_user.id}_transactions_{type}_{start_date}_{end_date}_{category_id}_{year}_{month}_{skip}_{limit}"
+
+    # Try to get from Redis cache first
+    cached_result = redis_service.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
     # Build the query with eager loading of category
     query = (
         db.query(Transaction)
@@ -104,6 +116,9 @@ async def get_transactions(
     for transaction in transactions:
         if transaction.is_recurring is None:
             transaction.is_recurring = False
+
+    # Cache the result for 10 minutes
+    redis_service.set(cache_key, transactions, ttl_seconds=600)
 
     return transactions
 
@@ -186,6 +201,9 @@ async def update_transaction(
     db.commit()
     db.refresh(db_transaction)
 
+    # Clear user's transaction cache
+    redis_service.clear_user_cache(current_user.id)
+
     return db_transaction
 
 
@@ -214,6 +232,9 @@ async def delete_transaction(
     # Delete the transaction
     db.delete(db_transaction)
     db.commit()
+
+    # Clear user's transaction cache
+    redis_service.clear_user_cache(current_user.id)
 
     return {"success": True, "message": "Transaction deleted successfully"}
 
