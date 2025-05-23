@@ -78,6 +78,9 @@ async def get_subscriptions(
         print(
             f"⚡ CACHE HIT - Redis: {cache_time*1000:.1f}ms, Total: {total_time*1000:.1f}ms"
         )
+        print(
+            f"🔍 Cached result type: {type(cached_result)}, length: {len(cached_result) if isinstance(cached_result, list) else 'N/A'}"
+        )
         return cached_result
 
     print(f"💾 CACHE MISS - Redis: {cache_time*1000:.1f}ms, querying database...")
