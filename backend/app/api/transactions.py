@@ -313,6 +313,14 @@ async def has_income_and_expense_transactions(
     Returns:
         Dict with has_income, has_expense, can_generate_insights flags, and time_period
     """
+    # Create cache key
+    cache_key = f"user_{current_user.id}_has_income_expense_{time_period}"
+
+    # Try to get from Redis cache first
+    cached_result = redis_service.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
     # Base query for transactions from this user
     income_query = db.query(Transaction).filter(
         Transaction.user_id == current_user.id,
@@ -392,5 +400,8 @@ async def has_income_and_expense_transactions(
         "can_generate_insights": can_generate_insights,
         "time_period": time_period,
     }
+
+    # Cache the result for 1 hour
+    redis_service.set(cache_key, result, ttl_seconds=3600)
 
     return result

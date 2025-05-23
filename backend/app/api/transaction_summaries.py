@@ -8,13 +8,7 @@ from app.models.transaction import Transaction
 from app.models.category import Category
 from app.core.security import get_current_user
 from app.models.user import User
-from app.services.cache_service import (
-    cached,
-    invalidate_cache_pattern,
-    invalidate_user_cache,
-    get_cache,
-    set_cache,
-)
+from app.services.redis_service import redis_service
 
 router = APIRouter()
 
@@ -34,20 +28,16 @@ async def get_monthly_summary(
     """
     try:
         # Create a cache key based on the parameters
-        cache_key = f"monthly_summary:{current_user.id}:{year}:{month}:{category_id}"
+        cache_key = (
+            f"user_{current_user.id}_monthly_summary_{year}_{month}_{category_id}"
+        )
 
-        # Try to get from cache first
-        cached_summary = get_cache(cache_key)
-        if cached_summary is not None:
-            # Set cache control headers
-            response.headers["Cache-Control"] = (
-                "private, max-age=300"  # 5 minutes client-side cache
-            )
-            response.headers["ETag"] = f'W/"summary-{hash(str(cached_summary))}"'
-            return cached_summary
+        # Try to get from Redis cache first
+        cached_result = redis_service.get(cache_key)
+        if cached_result is not None:
+            return cached_result
 
-        # If not in cache, fetch from database with caching
-        @cached(ttl_seconds=300)  # Cache for 5 minutes
+        # If not in cache, fetch from database
         def get_monthly_summary_from_db(user_id, year_val, month_val, category_id_val):
             # Base query for transactions
             query = db.query(
@@ -93,11 +83,8 @@ async def get_monthly_summary(
         # Get summary from database and cache it
         result = get_monthly_summary_from_db(current_user.id, year, month, category_id)
 
-        # Set cache control headers
-        response.headers["Cache-Control"] = (
-            "private, max-age=300"  # 5 minutes client-side cache
-        )
-        response.headers["ETag"] = f'W/"summary-{hash(str(result))}"'
+        # Cache the result for 30 minutes
+        redis_service.set(cache_key, result, ttl_seconds=1800)
 
         return result
 

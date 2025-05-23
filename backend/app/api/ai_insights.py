@@ -14,6 +14,7 @@ from app.schemas.ai_insight import (
     AIInsightHistoryResponse,
 )
 from app.services.ai_insight_service import AIInsightService
+from app.services.redis_service import redis_service
 
 router = APIRouter()
 
@@ -130,6 +131,14 @@ async def get_remaining_insights(
             "reset_time": reset_time.isoformat(),
         }
 
+    # Create cache key
+    cache_key = f"user_{current_user.id}_insights_remaining"
+
+    # Try to get from Redis cache first
+    cached_result = redis_service.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
     service = AIInsightService(db)
 
     # Get remaining uses
@@ -139,11 +148,16 @@ async def get_remaining_insights(
     pst = pytz.timezone("America/Los_Angeles")
     reset_time = service._get_midnight_pst()
 
-    return {
+    result = {
         "remaining_uses": remaining_uses,
         "total_uses_allowed": total_uses,
         "reset_time": reset_time.isoformat(),
     }
+
+    # Cache the result for 10 minutes
+    redis_service.set(cache_key, result, ttl_seconds=600)
+
+    return result
 
 
 @router.get("/insights/test", response_model=dict)

@@ -227,6 +227,14 @@ async def get_remaining_pomodoro_ai_uses(
             "reset_time": reset_time.isoformat(),
         }
 
+    # Create cache key
+    cache_key = f"user_{current_user.id}_pomodoro_remaining"
+
+    # Try to get from Redis cache first
+    cached_result = redis_service.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
     service = PomodoroService(db)
 
     # Get remaining uses
@@ -240,6 +248,9 @@ async def get_remaining_pomodoro_ai_uses(
         "total_uses_allowed": total_uses,
         "reset_time": reset_time.isoformat(),
     }
+
+    # Cache the result for 10 minutes
+    redis_service.set(cache_key, result, ttl_seconds=600)
 
     return result
 
