@@ -270,54 +270,93 @@ async def create_task(
     """
     Create a new task
     """
-    # Check if parent task exists and belongs to user
-    if task.parent_task_id:
-        parent_task = (
-            db.query(Task)
-            .filter(Task.id == task.parent_task_id, Task.user_id == current_user.id)
-            .first()
-        )
+    try:
+        print(f"📝 CREATE TASK - Starting creation for user_id: {current_user.id}")
+        print(f"📝 CREATE TASK - Task data: {task.title}")
 
-        if not parent_task:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Parent task not found or does not belong to user",
+        # Check if parent task exists and belongs to user
+        if task.parent_task_id:
+            print(f"📝 CREATE TASK - Checking parent task: {task.parent_task_id}")
+            parent_task = (
+                db.query(Task)
+                .filter(Task.id == task.parent_task_id, Task.user_id == current_user.id)
+                .first()
             )
 
-    # Check if category exists
-    if task.category_id:
-        category = (
-            db.query(TaskCategory).filter(TaskCategory.id == task.category_id).first()
-        )
-        if not category:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Category not found"
+            if not parent_task:
+                print(f"❌ CREATE TASK - Parent task {task.parent_task_id} not found")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Parent task not found or does not belong to user",
+                )
+            print(f"✅ CREATE TASK - Parent task found: {parent_task.title}")
+
+        # Check if category exists
+        if task.category_id:
+            print(f"📝 CREATE TASK - Checking category: {task.category_id}")
+            category = (
+                db.query(TaskCategory)
+                .filter(TaskCategory.id == task.category_id)
+                .first()
             )
+            if not category:
+                print(f"❌ CREATE TASK - Category {task.category_id} not found")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, detail="Category not found"
+                )
+            print(f"✅ CREATE TASK - Category found: {category.name}")
 
-    # Create task
-    db_task = Task(
-        user_id=current_user.id,
-        title=task.title,
-        description=task.description,
-        due_date=task.due_date,
-        status=task.status,
-        priority=task.priority,
-        energy_level=task.energy_level,
-        category_id=task.category_id,
-        estimated_time_minutes=task.estimated_time_minutes,
-        is_recurring=task.is_recurring,
-        recurring_frequency=task.recurring_frequency,
-        parent_task_id=task.parent_task_id,
-        is_long_term=task.is_long_term,
-    )
-    db.add(db_task)
-    db.commit()
-    db.refresh(db_task)
+        # Create task
+        print(f"📝 CREATE TASK - Creating database record...")
+        db_task = Task(
+            user_id=current_user.id,
+            title=task.title,
+            description=task.description,
+            due_date=task.due_date,
+            status=task.status,
+            priority=task.priority,
+            energy_level=task.energy_level,
+            category_id=task.category_id,
+            estimated_time_minutes=task.estimated_time_minutes,
+            is_recurring=task.is_recurring,
+            recurring_frequency=task.recurring_frequency,
+            parent_task_id=task.parent_task_id,
+            is_long_term=task.is_long_term,
+        )
+        db.add(db_task)
+        db.commit()
+        db.refresh(db_task)
+        print(f"✅ CREATE TASK - Database creation successful, task_id: {db_task.id}")
 
-    # Clear user's task cache
-    redis_service.clear_user_cache(current_user.id)
+        # Clear user's task cache (with error handling)
+        try:
+            print(f"🧹 CREATE TASK - Clearing cache for user {current_user.id}")
+            redis_service.clear_user_cache(current_user.id)
+            print(f"✅ CREATE TASK - Cache cleared successfully")
+        except Exception as cache_error:
+            print(f"⚠️ CREATE TASK - Cache clear failed (non-critical): {cache_error}")
+            # Don't fail the request if cache clearing fails
 
-    return db_task
+        print(f"🎉 CREATE TASK - Task created successfully: {db_task.id}")
+        return db_task
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404)
+        raise
+    except Exception as e:
+        print(f"❌ CREATE TASK - Unexpected error: {str(e)}")
+        print(f"❌ CREATE TASK - Error type: {type(e).__name__}")
+
+        # Rollback transaction if it's still active
+        try:
+            db.rollback()
+        except:
+            pass
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create task: {str(e)}",
+        )
 
 
 @router.get("/{task_id}", response_model=TaskSchema)
@@ -418,29 +457,66 @@ async def delete_task(
     """
     Delete a task
     """
-    # Get the task
-    task = (
-        db.query(Task)
-        .filter(Task.id == task_id, Task.user_id == current_user.id)
-        .first()
-    )
-
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
+    try:
+        print(
+            f"🗑️ DELETE TASK - Starting deletion for task_id: {task_id}, user_id: {current_user.id}"
         )
 
-    # Store is_long_term before deleting the task
-    is_long_term = task.is_long_term
+        # Get the task
+        task = (
+            db.query(Task)
+            .filter(Task.id == task_id, Task.user_id == current_user.id)
+            .first()
+        )
 
-    # Delete the task
-    db.delete(task)
-    db.commit()
+        if not task:
+            print(
+                f"❌ DELETE TASK - Task {task_id} not found for user {current_user.id}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
+            )
 
-    # Clear user's task cache
-    redis_service.clear_user_cache(current_user.id)
+        print(f"✅ DELETE TASK - Found task: {task.title}")
 
-    return None
+        # Store is_long_term before deleting the task
+        is_long_term = task.is_long_term
+
+        # Delete the task
+        print(f"🗑️ DELETE TASK - Deleting from database...")
+        db.delete(task)
+        db.commit()
+        print(f"✅ DELETE TASK - Database deletion successful")
+
+        # Clear user's task cache (with error handling)
+        try:
+            print(f"🧹 DELETE TASK - Clearing cache for user {current_user.id}")
+            redis_service.clear_user_cache(current_user.id)
+            print(f"✅ DELETE TASK - Cache cleared successfully")
+        except Exception as cache_error:
+            print(f"⚠️ DELETE TASK - Cache clear failed (non-critical): {cache_error}")
+            # Don't fail the request if cache clearing fails
+
+        print(f"🎉 DELETE TASK - Task {task_id} deleted successfully")
+        return None
+
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404)
+        raise
+    except Exception as e:
+        print(f"❌ DELETE TASK - Unexpected error: {str(e)}")
+        print(f"❌ DELETE TASK - Error type: {type(e).__name__}")
+
+        # Rollback transaction if it's still active
+        try:
+            db.rollback()
+        except:
+            pass
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete task: {str(e)}",
+        )
 
 
 @router.post("/reorder", status_code=status.HTTP_200_OK)
