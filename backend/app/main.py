@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import Response, JSONResponse
 from datetime import datetime
 from app.core.config import settings
@@ -131,6 +132,9 @@ async def add_process_time_header(request: Request, call_next):
 
 # Add demo user middleware
 app.add_middleware(DemoUserMiddleware)
+
+# Add GZip compression middleware for faster responses
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Configure CORS - Use only FastAPI's CORSMiddleware for simplicity
 app.add_middleware(
