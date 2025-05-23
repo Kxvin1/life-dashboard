@@ -117,6 +117,20 @@ export const fetchSubscriptions = async (
 export const fetchSubscriptionSummary =
   async (): Promise<SubscriptionSummary> => {
     try {
+      // Create cache key
+      const cacheKey = `subscription_summary`;
+
+      // Check frontend cache first
+      const cachedData = frontendCache.get(cacheKey);
+      if (cachedData) {
+        return cachedData;
+      }
+
+      // Check if there's already a pending request for this key
+      if (pendingRequests.has(cacheKey)) {
+        return await pendingRequests.get(cacheKey)!;
+      }
+
       const token = Cookies.get("token");
       if (!token) {
         throw new Error("Authentication token missing");
@@ -124,20 +138,35 @@ export const fetchSubscriptionSummary =
 
       const url = `${API_URL}/api/v1/subscriptions-summary/`;
 
-      const response = await fetch(url, {
+      // Create the request promise and store it
+      const requestPromise = fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      });
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Error fetching subscription summary:", errorText);
+            throw new Error("Failed to fetch subscription summary");
+          }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Error fetching subscription summary:", errorText);
-        throw new Error("Failed to fetch subscription summary");
-      }
+          const data = await response.json();
 
-      const data = await response.json();
-      return data;
+          // Cache the result for 30 minutes (same as backend)
+          frontendCache.set(cacheKey, data, 1800000); // 30 minutes in ms
+
+          return data;
+        })
+        .finally(() => {
+          // Remove from pending requests when done
+          pendingRequests.delete(cacheKey);
+        });
+
+      // Store the pending request
+      pendingRequests.set(cacheKey, requestPromise);
+
+      return await requestPromise;
     } catch (error) {
       console.error("Subscription summary error:", error);
       throw error;
@@ -168,6 +197,7 @@ export const createSubscription = async (
 
     // Clear frontend cache
     frontendCache.clearPattern("subscriptions");
+    frontendCache.clearPattern("subscription_summary");
 
     // Invalidate cache to force fresh data on next API calls
     cacheManager.invalidateCache();
@@ -206,6 +236,7 @@ export const updateSubscription = async (
 
     // Clear frontend cache
     frontendCache.clearPattern("subscriptions");
+    frontendCache.clearPattern("subscription_summary");
 
     // Invalidate cache to force fresh data on next API calls
     cacheManager.invalidateCache();
@@ -281,6 +312,7 @@ export const toggleSubscriptionStatus = async (
     if (getResponse.ok) {
       // Clear frontend cache
       frontendCache.clearPattern("subscriptions");
+      frontendCache.clearPattern("subscription_summary");
 
       // Invalidate cache to force fresh data on next API calls
       cacheManager.invalidateCache();
@@ -347,6 +379,7 @@ export const deleteSubscription = async (id: string): Promise<boolean> => {
 
     // Clear frontend cache
     frontendCache.clearPattern("subscriptions");
+    frontendCache.clearPattern("subscription_summary");
 
     // Invalidate cache to force fresh data on next API calls
     cacheManager.invalidateCache();
