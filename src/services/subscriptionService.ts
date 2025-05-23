@@ -18,10 +18,6 @@ export const fetchSubscriptions = async (
       url += `?status=${status}`;
     }
 
-    // Always add cache-busting parameter to prevent browser caching
-    const timestamp = Date.now();
-    url += status ? `&_t=${timestamp}` : `?_t=${timestamp}`;
-
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -47,11 +43,7 @@ export const fetchSubscriptionSummary =
         throw new Error("Authentication token missing");
       }
 
-      let url = `${API_URL}/api/v1/subscriptions-summary/`;
-
-      // Always add cache-busting parameter to prevent browser caching
-      const timestamp = Date.now();
-      url += `?_t=${timestamp}`;
+      const url = `${API_URL}/api/v1/subscriptions-summary/`;
 
       const response = await fetch(url, {
         headers: {

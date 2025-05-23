@@ -67,14 +67,13 @@ export default function OverviewSummary({
         setError(null);
         const token = Cookies.get("token");
 
-        // Fetch transactions with cache-busting if needed
-        const cacheBustParam = cacheManager.getCacheBustParam();
+        // Fetch transactions
         const transactionsResponse = await fetch(
           `${
             process.env.NEXT_PUBLIC_API_URL
           }/api/v1/transactions/?year=${year}${month ? `&month=${month}` : ""}${
             categoryId ? `&category_id=${categoryId}` : ""
-          }${cacheBustParam}`,
+          }`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

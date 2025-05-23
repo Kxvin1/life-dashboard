@@ -157,17 +157,12 @@ export const getPomodoroSessions = async (
     const token = Cookies.get("token");
     const skip = (page - 1) * limit;
 
-    // Add a timestamp to prevent browser caching
-    const timestamp = new Date().getTime();
-
     const response = await fetch(
-      `${API_URL}/api/v1/pomodoro/sessions?skip=${skip}&limit=${limit}&_=${timestamp}`,
+      `${API_URL}/api/v1/pomodoro/sessions?skip=${skip}&limit=${limit}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        // Use cache: 'no-store' which is safer for CORS
-        cache: "no-store",
       }
     );
 
