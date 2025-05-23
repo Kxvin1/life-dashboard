@@ -60,13 +60,27 @@ async def get_subscriptions(
     """
     Get subscriptions with optional filtering by status.
     """
+    import time
+
+    start_time = time.time()
+
     # Create cache key
     cache_key = f"user_{current_user.id}_subscriptions_{status}_{skip}_{limit}"
+    print(f"⏱️ Cache key: {cache_key}")
 
     # Try to get from Redis cache first
+    cache_start = time.time()
     cached_result = redis_service.get(cache_key)
+    cache_time = time.time() - cache_start
+
     if cached_result is not None:
+        total_time = time.time() - start_time
+        print(
+            f"⚡ CACHE HIT - Redis: {cache_time*1000:.1f}ms, Total: {total_time*1000:.1f}ms"
+        )
         return cached_result
+
+    print(f"💾 CACHE MISS - Redis: {cache_time*1000:.1f}ms, querying database...")
 
     query = db.query(Subscription).filter(Subscription.user_id == current_user.id)
 
@@ -85,6 +99,9 @@ async def get_subscriptions(
 
     # Cache the result for 1 hour
     redis_service.set(cache_key, subscriptions, ttl_seconds=3600)
+
+    total_time = time.time() - start_time
+    print(f"💾 DATABASE QUERY - Total: {total_time*1000:.1f}ms")
 
     return subscriptions
 
