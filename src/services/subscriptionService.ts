@@ -13,7 +13,7 @@ interface CacheEntry {
 
 class FrontendCache {
   private cache = new Map<string, CacheEntry>();
-  private readonly DEFAULT_TTL = 30000; // 30 seconds
+  private readonly DEFAULT_TTL = 3600000; // 1 hour (3600 seconds)
 
   set(key: string, data: any, ttl: number = this.DEFAULT_TTL) {
     this.cache.set(key, {
@@ -99,8 +99,8 @@ export const fetchSubscriptions = async (
 
         const data = await response.json();
 
-        // Cache the result for 30 seconds
-        frontendCache.set(cacheKey, data, 30000);
+        // Cache the result for 1 hour
+        frontendCache.set(cacheKey, data);
         console.log(`💾 Frontend cache set: ${cacheKey}`);
 
         return data;
