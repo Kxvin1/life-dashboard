@@ -306,27 +306,54 @@ async def create_task(
                 )
             print(f"✅ CREATE TASK - Category found: {category.name}")
 
-        # Create task
+        # Create task with retry logic
         print(f"📝 CREATE TASK - Creating database record...")
-        db_task = Task(
-            user_id=current_user.id,
-            title=task.title,
-            description=task.description,
-            due_date=task.due_date,
-            status=task.status,
-            priority=task.priority,
-            energy_level=task.energy_level,
-            category_id=task.category_id,
-            estimated_time_minutes=task.estimated_time_minutes,
-            is_recurring=task.is_recurring,
-            recurring_frequency=task.recurring_frequency,
-            parent_task_id=task.parent_task_id,
-            is_long_term=task.is_long_term,
-        )
-        db.add(db_task)
-        db.commit()
-        db.refresh(db_task)
-        print(f"✅ CREATE TASK - Database creation successful, task_id: {db_task.id}")
+
+        max_retries = 3
+        db_task = None
+
+        for attempt in range(max_retries):
+            try:
+                if attempt > 0:
+                    print(f"🔄 CREATE TASK - Retry attempt {attempt + 1}/{max_retries}")
+                    # Refresh the database session
+                    db.rollback()
+
+                db_task = Task(
+                    user_id=current_user.id,
+                    title=task.title,
+                    description=task.description,
+                    due_date=task.due_date,
+                    status=task.status,
+                    priority=task.priority,
+                    energy_level=task.energy_level,
+                    category_id=task.category_id,
+                    estimated_time_minutes=task.estimated_time_minutes,
+                    is_recurring=task.is_recurring,
+                    recurring_frequency=task.recurring_frequency,
+                    parent_task_id=task.parent_task_id,
+                    is_long_term=task.is_long_term,
+                )
+                db.add(db_task)
+                db.commit()
+                db.refresh(db_task)
+                print(
+                    f"✅ CREATE TASK - Database creation successful, task_id: {db_task.id} (attempt {attempt + 1})"
+                )
+                break
+
+            except Exception as db_error:
+                print(
+                    f"❌ CREATE TASK - Database error on attempt {attempt + 1}: {str(db_error)}"
+                )
+                if attempt == max_retries - 1:
+                    # Last attempt failed, re-raise the error
+                    raise db_error
+                else:
+                    # Wait a bit before retrying
+                    import time
+
+                    time.sleep(0.5 * (attempt + 1))  # Exponential backoff
 
         # Clear user's task cache (with error handling)
         try:
@@ -462,6 +489,15 @@ async def delete_task(
             f"🗑️ DELETE TASK - Starting deletion for task_id: {task_id}, user_id: {current_user.id}"
         )
 
+        # Test database connection health
+        try:
+            db.execute("SELECT 1")
+            print(f"✅ DELETE TASK - Database connection healthy")
+        except Exception as conn_error:
+            print(f"⚠️ DELETE TASK - Database connection issue: {conn_error}")
+            # Try to refresh the connection
+            db.rollback()
+
         # Get the task
         task = (
             db.query(Task)
@@ -482,11 +518,47 @@ async def delete_task(
         # Store is_long_term before deleting the task
         is_long_term = task.is_long_term
 
-        # Delete the task
+        # Delete the task with retry logic
         print(f"🗑️ DELETE TASK - Deleting from database...")
-        db.delete(task)
-        db.commit()
-        print(f"✅ DELETE TASK - Database deletion successful")
+
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                if attempt > 0:
+                    print(f"🔄 DELETE TASK - Retry attempt {attempt + 1}/{max_retries}")
+                    # Refresh the database session
+                    db.rollback()
+                    # Re-fetch the task to ensure it still exists
+                    task = (
+                        db.query(Task)
+                        .filter(Task.id == task_id, Task.user_id == current_user.id)
+                        .first()
+                    )
+                    if not task:
+                        print(
+                            f"✅ DELETE TASK - Task {task_id} already deleted in previous attempt"
+                        )
+                        break
+
+                db.delete(task)
+                db.commit()
+                print(
+                    f"✅ DELETE TASK - Database deletion successful (attempt {attempt + 1})"
+                )
+                break
+
+            except Exception as db_error:
+                print(
+                    f"❌ DELETE TASK - Database error on attempt {attempt + 1}: {str(db_error)}"
+                )
+                if attempt == max_retries - 1:
+                    # Last attempt failed, re-raise the error
+                    raise db_error
+                else:
+                    # Wait a bit before retrying
+                    import time
+
+                    time.sleep(0.5 * (attempt + 1))  # Exponential backoff
 
         # Clear user's task cache (with error handling)
         try:
