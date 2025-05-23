@@ -472,45 +472,6 @@ export const deleteTask = async (taskId: number): Promise<void> => {
   }
 };
 
-export const reorderTask = async (
-  taskId: number,
-  newPosition: number
-): Promise<void> => {
-  try {
-    const token = Cookies.get("token");
-    if (!token) {
-      throw new Error("Authentication token missing");
-    }
-
-    const response = await fetch(`${API_URL}/api/v1/tasks/reorder`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        task_id: taskId,
-        new_position: newPosition,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || "Failed to reorder task");
-    }
-
-    // Clear frontend cache
-    frontendCache.clearPattern("tasks");
-    frontendCache.clearPattern("task_hierarchy");
-
-    // Invalidate cache to force fresh data on next API calls
-    cacheManager.invalidateCache();
-  } catch (error) {
-    console.error("Error reordering task:", error);
-    throw error;
-  }
-};
-
 export const batchActionTasks = async (
   taskIds: number[],
   action: string,

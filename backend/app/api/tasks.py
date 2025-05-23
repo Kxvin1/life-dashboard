@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from sqlalchemy.orm import Session, selectinload, joinedload
+from sqlalchemy import case
 from typing import List, Optional
 from datetime import date, datetime, timedelta
 import pytz
@@ -173,11 +174,22 @@ async def get_tasks(
     total_count = base_query.count()
 
     # Get paginated results with eager loading of category
+    # Sort by due date (closest first), then by priority within same date, then by creation date
     tasks = (
         base_query.options(
             joinedload(Task.category)
         )  # Use joinedload for small result sets
-        .order_by(Task.created_at.desc())
+        .order_by(
+            Task.due_date.asc().nullslast(),  # Due date ascending (closest first), nulls last
+            # For same due date: priority desc (high to low)
+            case(
+                (Task.priority == "high", 3),
+                (Task.priority == "medium", 2),
+                (Task.priority == "low", 1),
+                else_=0,
+            ).desc(),
+            Task.created_at.desc(),  # Newest first for same due date/priority
+        )
         .offset(skip)
         .limit(limit)
         .all()
@@ -457,6 +469,10 @@ async def reorder_task(
 
     # For this simplified implementation, we'll just return success
     # In a real implementation, you would update position fields
+
+    # Clear user's task cache
+    redis_service.clear_user_cache(current_user.id)
+
     return {"message": "Task reordered successfully"}
 
 

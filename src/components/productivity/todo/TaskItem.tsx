@@ -20,7 +20,6 @@ import {
   DueDateBadge,
 
   // Action components
-  MoveActions,
   EditDeleteActions,
   StatusToggleButton,
 
@@ -34,8 +33,7 @@ interface TaskItemProps {
   index: number;
   isSelected: boolean;
   onSelect: (taskId: number) => void;
-  onMoveUp?: (taskId: number, currentIndex: number) => Promise<void>;
-  onMoveDown?: (taskId: number, currentIndex: number) => Promise<void>;
+
   updateTaskStatus?: (taskId: number, newStatus: TaskStatus) => void;
 }
 
@@ -44,8 +42,6 @@ const TaskItem = ({
   index,
   isSelected,
   onSelect,
-  onMoveUp,
-  onMoveDown,
   updateTaskStatus,
 }: TaskItemProps) => {
   const { removeTask, changeTaskStatus } = useTask();
@@ -217,19 +213,6 @@ const TaskItem = ({
     }
   };
 
-  // Direct handlers for move buttons
-  const handleMoveUp = () => {
-    if (index > 0 && onMoveUp) {
-      onMoveUp(task.id, index);
-    }
-  };
-
-  const handleMoveDown = () => {
-    if (onMoveDown) {
-      onMoveDown(task.id, index);
-    }
-  };
-
   // Render form or card
   const taskContent = showEditForm ? (
     <TaskForm
@@ -338,16 +321,8 @@ const TaskItem = ({
                   View details
                 </button>
 
-                {/* Mobile actions (up/down/edit/delete) */}
+                {/* Mobile actions (edit/delete) */}
                 <div className="flex ml-auto space-x-2 sm:hidden">
-                  {/* Move */}
-                  <MoveActions
-                    index={index}
-                    onMoveUp={handleMoveUp}
-                    onMoveDown={handleMoveDown}
-                    isMobile={true}
-                  />
-
                   {/* Edit/Delete */}
                   <EditDeleteActions
                     onEdit={() => setShowEditForm(true)}
@@ -361,15 +336,8 @@ const TaskItem = ({
               {showDetails && <TaskItemDetails task={task} />}
             </div>
 
-            {/* Desktop actions (up/down/edit/delete) */}
+            {/* Desktop actions (edit/delete) */}
             <div className="items-center hidden ml-4 space-x-2 sm:flex">
-              {/* Move */}
-              <MoveActions
-                index={index}
-                onMoveUp={handleMoveUp}
-                onMoveDown={handleMoveDown}
-              />
-
               {/* Edit/Delete */}
               <EditDeleteActions
                 onEdit={() => setShowEditForm(true)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTask } from "@/contexts/TaskContext";
 import { TaskStatus, TaskPriority, EnergyLevel } from "@/services/taskService";
 import TaskList from "./TaskList";
@@ -39,80 +39,116 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
     | "energy"
     | "dueDate"
     | "timeEstimate";
-  const [sortBy, setSortBy] = useState<SortOption>("dateAdded");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState<SortOption>("dueDate");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   const totalTasks = isLongTerm ? totalLongTermTasks : totalShortTermTasks;
 
   // Get the appropriate tasks based on the tab
   const tasks = isLongTerm ? longTermTasks : shortTermTasks;
 
-  // Filter tasks by status if a filter is selected
-  let filteredTasks = filterStatus
-    ? tasks.filter((task) => task.status === filterStatus)
-    : tasks;
+  // Filter and sort tasks using useMemo for better performance and dynamic updates
+  const filteredAndSortedTasks = useMemo(() => {
+    // Filter tasks by status if a filter is selected
+    let filteredTasks = filterStatus
+      ? tasks.filter((task) => task.status === filterStatus)
+      : tasks;
 
-  // Sort tasks based on selected criteria
-  filteredTasks = [...filteredTasks].sort((a, b) => {
-    let comparison = 0;
+    // Sort tasks based on selected criteria
+    return [...filteredTasks].sort((a, b) => {
+      let comparison = 0;
 
-    switch (sortBy) {
-      case "priority":
-        // Convert priority enum to numeric value for comparison
-        const priorityValues = {
-          [TaskPriority.LOW]: 1,
-          [TaskPriority.MEDIUM]: 2,
-          [TaskPriority.HIGH]: 3,
-        };
-        comparison = priorityValues[b.priority] - priorityValues[a.priority];
-        break;
-
-      case "energy":
-        // Convert energy level enum to numeric value for comparison
-        // Handle undefined energy levels (sort them last)
-        if (!a.energy_level && !b.energy_level) comparison = 0;
-        else if (!a.energy_level) comparison = 1;
-        else if (!b.energy_level) comparison = -1;
-        else {
-          const energyValues = {
-            [EnergyLevel.LOW]: 1,
-            [EnergyLevel.MEDIUM]: 2,
-            [EnergyLevel.HIGH]: 3,
+      switch (sortBy) {
+        case "priority":
+          // Convert priority enum to numeric value for comparison
+          const priorityValues = {
+            [TaskPriority.LOW]: 1,
+            [TaskPriority.MEDIUM]: 2,
+            [TaskPriority.HIGH]: 3,
           };
-          comparison =
-            energyValues[a.energy_level] - energyValues[b.energy_level];
-        }
-        break;
+          comparison = priorityValues[b.priority] - priorityValues[a.priority];
+          break;
 
-      case "dueDate":
-        // Sort by due date (tasks without due dates come last)
-        if (!a.due_date && !b.due_date) comparison = 0;
-        else if (!a.due_date) comparison = 1;
-        else if (!b.due_date) comparison = -1;
-        else
-          comparison =
-            new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-        break;
+        case "energy":
+          // Convert energy level enum to numeric value for comparison
+          // Handle undefined energy levels (sort them last)
+          if (!a.energy_level && !b.energy_level) comparison = 0;
+          else if (!a.energy_level) comparison = 1;
+          else if (!b.energy_level) comparison = -1;
+          else {
+            const energyValues = {
+              [EnergyLevel.LOW]: 1,
+              [EnergyLevel.MEDIUM]: 2,
+              [EnergyLevel.HIGH]: 3,
+            };
+            comparison =
+              energyValues[a.energy_level] - energyValues[b.energy_level];
+          }
+          break;
 
-      case "timeEstimate":
-        // Sort by time estimate (tasks without estimates come last)
-        if (!a.estimated_time_minutes && !b.estimated_time_minutes)
-          comparison = 0;
-        else if (!a.estimated_time_minutes) comparison = 1;
-        else if (!b.estimated_time_minutes) comparison = -1;
-        else comparison = a.estimated_time_minutes - b.estimated_time_minutes;
-        break;
+        case "dueDate":
+          // Sort by due date (tasks without due dates come last)
+          if (!a.due_date && !b.due_date) {
+            // Both have no due date: Sort by priority, then creation date
+            const priorityOrder = { high: 3, medium: 2, low: 1 };
+            const priorityComparison =
+              (priorityOrder[b.priority] || 0) -
+              (priorityOrder[a.priority] || 0);
+            if (priorityComparison !== 0) {
+              comparison = priorityComparison;
+            } else {
+              comparison =
+                new Date(b.created_at).getTime() -
+                new Date(a.created_at).getTime();
+            }
+          } else if (!a.due_date) {
+            comparison = 1; // Tasks without due dates come last
+          } else if (!b.due_date) {
+            comparison = -1; // Tasks with due dates come first
+          } else {
+            // Both have due dates: Sort by date first, then priority for same dates
+            const dateComparison =
+              new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+            if (dateComparison !== 0) {
+              comparison = dateComparison;
+            } else {
+              // Same due date: Sort by priority (high to low)
+              const priorityOrder = { high: 3, medium: 2, low: 1 };
+              const priorityComparison =
+                (priorityOrder[b.priority] || 0) -
+                (priorityOrder[a.priority] || 0);
+              if (priorityComparison !== 0) {
+                comparison = priorityComparison;
+              } else {
+                // Same due date and priority: Sort by creation date (newest first)
+                comparison =
+                  new Date(b.created_at).getTime() -
+                  new Date(a.created_at).getTime();
+              }
+            }
+          }
+          break;
 
-      case "dateAdded":
-      default:
-        // Sort by ID (newer tasks have higher IDs)
-        comparison = b.id - a.id;
-        break;
-    }
+        case "timeEstimate":
+          // Sort by time estimate (tasks without estimates come last)
+          if (!a.estimated_time_minutes && !b.estimated_time_minutes)
+            comparison = 0;
+          else if (!a.estimated_time_minutes) comparison = 1;
+          else if (!b.estimated_time_minutes) comparison = -1;
+          else comparison = a.estimated_time_minutes - b.estimated_time_minutes;
+          break;
 
-    // Reverse the comparison if sort order is ascending
-    return sortOrder === "asc" ? comparison : -comparison;
-  });
+        case "dateAdded":
+        default:
+          // Sort by ID (newer tasks have higher IDs)
+          comparison = b.id - a.id;
+          break;
+      }
+
+      // Reverse the comparison if sort order is ascending
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+  }, [tasks, filterStatus, sortBy, sortOrder]);
 
   // Fetch tasks when the tab changes or pagination changes
   useEffect(() => {
@@ -136,7 +172,7 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
 
   // Select all tasks on the current page
   const selectAllTasks = () => {
-    const currentPageTaskIds = filteredTasks.map((task) => task.id);
+    const currentPageTaskIds = filteredAndSortedTasks.map((task) => task.id);
 
     // If all tasks on the current page are already selected, deselect them
     const allSelected = currentPageTaskIds.every((id) =>
@@ -162,8 +198,10 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
 
   // Check if all tasks on the current page are selected
   const areAllTasksSelected = () => {
-    if (filteredTasks.length === 0) return false;
-    return filteredTasks.every((task) => selectedTasks.includes(task.id));
+    if (filteredAndSortedTasks.length === 0) return false;
+    return filteredAndSortedTasks.every((task) =>
+      selectedTasks.includes(task.id)
+    );
   };
 
   // Clear all selections
@@ -305,7 +343,7 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
       </div>
 
       {/* Select All checkbox */}
-      {filteredTasks.length > 0 && (
+      {filteredAndSortedTasks.length > 0 && (
         <div className="flex items-center mb-3 gap-2">
           <div className="relative">
             <input
@@ -382,7 +420,7 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
         <div className="flex justify-center p-8">
           <div className="w-6 h-6 border-2 rounded-full border-primary animate-spin border-t-transparent"></div>
         </div>
-      ) : filteredTasks.length === 0 ? (
+      ) : filteredAndSortedTasks.length === 0 ? (
         // Empty state
         <div className="p-8 text-center rounded-md bg-secondary/30">
           <p className="text-muted-foreground">
@@ -439,7 +477,7 @@ const TodoList = ({ isLongTerm }: TodoListProps) => {
           )}
 
           <TaskList
-            tasks={filteredTasks}
+            tasks={filteredAndSortedTasks}
             isSelected={isTaskSelected}
             onSelect={toggleTaskSelection}
           />

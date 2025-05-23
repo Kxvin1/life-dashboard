@@ -18,7 +18,6 @@ import {
   createTask,
   updateTask,
   deleteTask,
-  reorderTask,
   batchActionTasks,
 } from "@/services/taskService";
 
@@ -56,16 +55,6 @@ interface TaskContextType {
   ) => Promise<Task>;
   removeTask: (taskId: number) => Promise<void>;
   changeTaskStatus: (taskId: number, status: TaskStatus) => Promise<Task>;
-  moveTaskUp: (
-    taskId: number,
-    currentIndex: number,
-    isLongTerm: boolean
-  ) => Promise<void>;
-  moveTaskDown: (
-    taskId: number,
-    currentIndex: number,
-    isLongTerm: boolean
-  ) => Promise<void>;
 
   // Batch actions
   completeTasks: (taskIds: number[]) => Promise<void>;
@@ -105,6 +94,44 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
 
   // Fixed pagination limit of 10 items per page
   const tasksPerPage = 10;
+
+  // Helper function to sort tasks by default order (due date first, then priority within same date)
+  const sortTasksByDefault = useCallback((tasks: Task[]) => {
+    return tasks.sort((a, b) => {
+      // First: Sort by due date (closest first)
+      if (a.due_date && b.due_date) {
+        const dateComparison =
+          new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+        if (dateComparison !== 0) return dateComparison;
+
+        // Same due date: Sort by priority (high to low)
+        const priorityOrder = { high: 3, medium: 2, low: 1 };
+        const priorityComparison =
+          (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+        if (priorityComparison !== 0) return priorityComparison;
+
+        // Same due date and priority: Sort by creation date (newest first)
+        return (
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      } else if (a.due_date && !b.due_date) {
+        return -1; // Tasks with due dates come first
+      } else if (!a.due_date && b.due_date) {
+        return 1; // Tasks without due dates come last
+      }
+
+      // Both have no due date: Sort by priority, then creation date
+      const priorityOrder = { high: 3, medium: 2, low: 1 };
+      const priorityComparison =
+        (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+      if (priorityComparison !== 0) return priorityComparison;
+
+      // Finally by creation date (newest first)
+      return (
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    });
+  }, []);
 
   // Fetch task categories
   const fetchCategories = useCallback(async () => {
@@ -193,7 +220,7 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
     }
   }, [isAuthenticated, fetchCategories, fetchTasksByType]);
 
-  // Add a new task
+  // Add a new task with optimistic update
   const addTask = useCallback(
     async (
       task: Omit<
@@ -207,8 +234,18 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
       try {
         const newTask = await createTask(task);
 
-        // Refresh the task list completely to ensure we have the latest data
-        await fetchTasksByType(task.is_long_term);
+        // Optimistic update: Add the new task to the appropriate list with smart sorting
+        if (task.is_long_term) {
+          setLongTermTasks((prev) => {
+            const updated = [newTask, ...prev];
+            return sortTasksByDefault(updated);
+          });
+        } else {
+          setShortTermTasks((prev) => {
+            const updated = [newTask, ...prev];
+            return sortTasksByDefault(updated);
+          });
+        }
 
         return newTask;
       } catch (err) {
@@ -219,10 +256,10 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
         setIsLoading(false);
       }
     },
-    [fetchTasksByType]
+    [sortTasksByDefault]
   );
 
-  // Edit an existing task
+  // Edit an existing task with optimistic update
   const editTask = useCallback(
     async (
       taskId: number,
@@ -240,25 +277,40 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
         const isInShortTerm = shortTermTasks.some((task) => task.id === taskId);
         const isInLongTerm = longTermTasks.some((task) => task.id === taskId);
 
-        // Refresh the appropriate task list to ensure we have the latest data
+        // Handle task type changes (short-term <-> long-term)
         if (isInShortTerm && taskUpdate.is_long_term === true) {
-          // If task moved from short-term to long-term, refresh both lists
-          await Promise.all([
-            fetchTasksByType(false), // Refresh short-term tasks
-            fetchTasksByType(true), // Refresh long-term tasks
-          ]);
+          // Move from short-term to long-term
+          setShortTermTasks((prev) =>
+            prev.filter((task) => task.id !== taskId)
+          );
+          setLongTermTasks((prev) => {
+            const updated = [updatedTask, ...prev];
+            return sortTasksByDefault(updated);
+          });
         } else if (isInLongTerm && taskUpdate.is_long_term === false) {
-          // If task moved from long-term to short-term, refresh both lists
-          await Promise.all([
-            fetchTasksByType(false), // Refresh short-term tasks
-            fetchTasksByType(true), // Refresh long-term tasks
-          ]);
-        } else if (isInShortTerm) {
-          // Just refresh short-term list
-          await fetchTasksByType(false);
-        } else if (isInLongTerm) {
-          // Just refresh long-term list
-          await fetchTasksByType(true);
+          // Move from long-term to short-term
+          setLongTermTasks((prev) => prev.filter((task) => task.id !== taskId));
+          setShortTermTasks((prev) => {
+            const updated = [updatedTask, ...prev];
+            return sortTasksByDefault(updated);
+          });
+        } else {
+          // Update in the same list
+          if (isInShortTerm) {
+            setShortTermTasks((prev) => {
+              const updated = prev.map((task) =>
+                task.id === taskId ? updatedTask : task
+              );
+              return sortTasksByDefault(updated);
+            });
+          } else if (isInLongTerm) {
+            setLongTermTasks((prev) => {
+              const updated = prev.map((task) =>
+                task.id === taskId ? updatedTask : task
+              );
+              return sortTasksByDefault(updated);
+            });
+          }
         }
 
         return updatedTask;
@@ -270,37 +322,28 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
         setIsLoading(false);
       }
     },
-    [shortTermTasks, longTermTasks, fetchTasksByType]
+    [shortTermTasks, longTermTasks, sortTasksByDefault]
   );
 
-  // Remove a task
-  const removeTask = useCallback(
-    async (taskId: number) => {
-      setIsLoading(true);
-      setError(null);
+  // Remove a task with optimistic update
+  const removeTask = useCallback(async (taskId: number) => {
+    setIsLoading(true);
+    setError(null);
 
-      try {
-        await deleteTask(taskId);
+    try {
+      await deleteTask(taskId);
 
-        // Find which list the task is in
-        const isInShortTerm = shortTermTasks.some((task) => task.id === taskId);
-
-        // Refresh the appropriate task list
-        if (isInShortTerm) {
-          await fetchTasksByType(false); // Refresh short-term tasks
-        } else {
-          await fetchTasksByType(true); // Refresh long-term tasks
-        }
-      } catch (err) {
-        console.error("Error removing task:", err);
-        setError(err instanceof Error ? err.message : "Failed to remove task");
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [shortTermTasks, longTermTasks, fetchTasksByType]
-  );
+      // Optimistic update: Remove the task from the appropriate list
+      setShortTermTasks((prev) => prev.filter((task) => task.id !== taskId));
+      setLongTermTasks((prev) => prev.filter((task) => task.id !== taskId));
+    } catch (err) {
+      console.error("Error removing task:", err);
+      setError(err instanceof Error ? err.message : "Failed to remove task");
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   // Change task status with optimistic update
   const changeTaskStatus = useCallback(
@@ -328,88 +371,6 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
       }
     },
     [editTask]
-  );
-
-  // Move task up in the list
-  const moveTaskUp = useCallback(
-    async (taskId: number, currentIndex: number, isLongTerm: boolean) => {
-      if (currentIndex <= 0) {
-        return; // Already at the top
-      }
-
-      try {
-        await reorderTask(taskId, currentIndex - 1);
-
-        // Update the task list order
-        if (isLongTerm) {
-          setLongTermTasks((prev) => {
-            const newList = [...prev];
-            const task = newList[currentIndex];
-            newList.splice(currentIndex, 1);
-            newList.splice(currentIndex - 1, 0, task);
-            return newList;
-          });
-        } else {
-          setShortTermTasks((prev) => {
-            const newList = [...prev];
-            const task = newList[currentIndex];
-            newList.splice(currentIndex, 1);
-            newList.splice(currentIndex - 1, 0, task);
-            return newList;
-          });
-        }
-      } catch (err) {
-        console.error("Error moving task up:", err);
-        setError(err instanceof Error ? err.message : "Failed to move task up");
-      }
-    },
-    [reorderTask, setError, setLongTermTasks, setShortTermTasks]
-  );
-
-  // Move task down in the list
-  const moveTaskDown = useCallback(
-    async (taskId: number, currentIndex: number, isLongTerm: boolean) => {
-      const taskList = isLongTerm ? longTermTasks : shortTermTasks;
-      if (currentIndex >= taskList.length - 1) {
-        return; // Already at the bottom
-      }
-
-      try {
-        await reorderTask(taskId, currentIndex + 1);
-
-        // Update the task list order
-        if (isLongTerm) {
-          setLongTermTasks((prev) => {
-            const newList = [...prev];
-            const task = newList[currentIndex];
-            newList.splice(currentIndex, 1);
-            newList.splice(currentIndex + 1, 0, task);
-            return newList;
-          });
-        } else {
-          setShortTermTasks((prev) => {
-            const newList = [...prev];
-            const task = newList[currentIndex];
-            newList.splice(currentIndex, 1);
-            newList.splice(currentIndex + 1, 0, task);
-            return newList;
-          });
-        }
-      } catch (err) {
-        console.error("Error moving task down:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to move task down"
-        );
-      }
-    },
-    [
-      longTermTasks,
-      shortTermTasks,
-      reorderTask,
-      setError,
-      setLongTermTasks,
-      setShortTermTasks,
-    ]
   );
 
   // Batch action: Complete multiple tasks
@@ -518,8 +479,6 @@ export const TaskProvider = ({ children }: TaskProviderProps) => {
     editTask,
     removeTask,
     changeTaskStatus,
-    moveTaskUp,
-    moveTaskDown,
 
     // Batch actions
     completeTasks,
