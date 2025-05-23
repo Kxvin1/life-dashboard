@@ -27,25 +27,64 @@ async def create_subscription(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # Create a new subscription
-    db_subscription = Subscription(
-        **subscription.model_dump(),
-        user_id=current_user.id,
-    )
+    print(f"🔵 CREATE subscription called for user {current_user.id}")
+    try:
+        # Create a new subscription
+        db_subscription = Subscription(
+            **subscription.model_dump(),
+            user_id=current_user.id,
+        )
 
-    # Calculate next payment date based on billing frequency and start date
-    db_subscription.next_payment_date = calculate_next_payment_date(
-        subscription.start_date, subscription.billing_frequency
-    )
+        # Calculate next payment date based on billing frequency and start date
+        db_subscription.next_payment_date = calculate_next_payment_date(
+            subscription.start_date, subscription.billing_frequency
+        )
 
-    db.add(db_subscription)
-    db.commit()
-    db.refresh(db_subscription)
+        db.add(db_subscription)
+        db.commit()
+        db.refresh(db_subscription)
 
-    # Clear user's subscription cache
-    redis_service.clear_user_cache(current_user.id)
+        # Clear user's subscription cache
+        redis_service.clear_user_cache(current_user.id)
 
-    return db_subscription
+        print(f"✅ CREATE subscription success for user {current_user.id}")
+
+        # Return as dictionary to match GET endpoint format
+        return {
+            "id": db_subscription.id,
+            "user_id": db_subscription.user_id,
+            "name": db_subscription.name,
+            "amount": float(db_subscription.amount) if db_subscription.amount else None,
+            "billing_frequency": (
+                db_subscription.billing_frequency.value
+                if db_subscription.billing_frequency
+                else None
+            ),
+            "start_date": (
+                db_subscription.start_date.isoformat()
+                if db_subscription.start_date
+                else None
+            ),
+            "next_payment_date": (
+                db_subscription.next_payment_date.isoformat()
+                if db_subscription.next_payment_date
+                else None
+            ),
+            "status": db_subscription.status.value if db_subscription.status else None,
+            "last_active_date": (
+                db_subscription.last_active_date.isoformat()
+                if db_subscription.last_active_date
+                else None
+            ),
+            "notes": db_subscription.notes,
+        }
+
+    except Exception as e:
+        print(f"❌ CREATE subscription error: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create subscription: {str(e)}"
+        )
 
 
 @router.get("/subscriptions/", response_model=List[SubscriptionSchema])
@@ -64,8 +103,9 @@ async def get_subscriptions(
 
     start_time = time.time()
 
-    # Create cache key
-    cache_key = f"user_{current_user.id}_subscriptions_{status}_{skip}_{limit}"
+    # Create cache key using string value of status to avoid enum serialization issues
+    status_str = status.value if status else "all"
+    cache_key = f"user_{current_user.id}_subscriptions_{status_str}_{skip}_{limit}"
     print(f"⏱️ Cache key: {cache_key}")
 
     # Try to get from Redis cache first
@@ -82,8 +122,7 @@ async def get_subscriptions(
             f"🔍 Cached result type: {type(cached_result)}, length: {len(cached_result) if isinstance(cached_result, list) else 'N/A'}"
         )
 
-        # Return the cached SQLAlchemy objects
-        print(f"🚀 Returning cached SQLAlchemy objects")
+        # Return cached data directly (already serialized as dictionaries)
         return cached_result
 
     print(f"💾 CACHE MISS - Redis: {cache_time*1000:.1f}ms, querying database...")
@@ -103,13 +142,42 @@ async def get_subscriptions(
 
     subscriptions = query.offset(skip).limit(limit).all()
 
-    # Cache the SQLAlchemy objects directly (revert to original approach)
-    redis_service.set(cache_key, subscriptions, ttl_seconds=3600)
+    # Convert to clean dictionaries for caching and response
+    print(f"🔄 Converting to dictionaries for caching")
+    serialize_start = time.time()
 
+    subscription_dicts = []
+    for sub in subscriptions:
+        sub_dict = {
+            "id": sub.id,
+            "user_id": sub.user_id,
+            "name": sub.name,
+            "amount": float(sub.amount) if sub.amount else None,
+            "billing_frequency": (
+                sub.billing_frequency.value if sub.billing_frequency else None
+            ),
+            "start_date": sub.start_date.isoformat() if sub.start_date else None,
+            "next_payment_date": (
+                sub.next_payment_date.isoformat() if sub.next_payment_date else None
+            ),
+            "status": sub.status.value if sub.status else None,
+            "last_active_date": (
+                sub.last_active_date.isoformat() if sub.last_active_date else None
+            ),
+            "notes": sub.notes,
+        }
+        subscription_dicts.append(sub_dict)
+
+    # Cache the clean dictionaries (not SQLAlchemy objects)
+    redis_service.set(cache_key, subscription_dicts, ttl_seconds=3600)
+
+    serialize_time = time.time() - serialize_start
     total_time = time.time() - start_time
-    print(f"💾 DATABASE QUERY - Total: {total_time*1000:.1f}ms")
+    print(
+        f"💾 DATABASE QUERY - Serialization: {serialize_time*1000:.1f}ms, Total: {total_time*1000:.1f}ms"
+    )
 
-    return subscriptions
+    return subscription_dicts
 
 
 @router.get("/subscriptions/{subscription_id}", response_model=SubscriptionSchema)
@@ -134,7 +202,33 @@ async def get_subscription(
     if subscription is None:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
-    return subscription
+    # Return as dictionary to match other endpoints
+    return {
+        "id": subscription.id,
+        "user_id": subscription.user_id,
+        "name": subscription.name,
+        "amount": float(subscription.amount) if subscription.amount else None,
+        "billing_frequency": (
+            subscription.billing_frequency.value
+            if subscription.billing_frequency
+            else None
+        ),
+        "start_date": (
+            subscription.start_date.isoformat() if subscription.start_date else None
+        ),
+        "next_payment_date": (
+            subscription.next_payment_date.isoformat()
+            if subscription.next_payment_date
+            else None
+        ),
+        "status": subscription.status.value if subscription.status else None,
+        "last_active_date": (
+            subscription.last_active_date.isoformat()
+            if subscription.last_active_date
+            else None
+        ),
+        "notes": subscription.notes,
+    }
 
 
 @router.put("/subscriptions/{subscription_id}", response_model=SubscriptionSchema)
@@ -201,7 +295,35 @@ async def update_subscription(
             status_code=500, detail=f"Failed to update subscription: {str(e)}"
         )
 
-    return db_subscription
+    # Return as dictionary to match other endpoints
+    return {
+        "id": db_subscription.id,
+        "user_id": db_subscription.user_id,
+        "name": db_subscription.name,
+        "amount": float(db_subscription.amount) if db_subscription.amount else None,
+        "billing_frequency": (
+            db_subscription.billing_frequency.value
+            if db_subscription.billing_frequency
+            else None
+        ),
+        "start_date": (
+            db_subscription.start_date.isoformat()
+            if db_subscription.start_date
+            else None
+        ),
+        "next_payment_date": (
+            db_subscription.next_payment_date.isoformat()
+            if db_subscription.next_payment_date
+            else None
+        ),
+        "status": db_subscription.status.value if db_subscription.status else None,
+        "last_active_date": (
+            db_subscription.last_active_date.isoformat()
+            if db_subscription.last_active_date
+            else None
+        ),
+        "notes": db_subscription.notes,
+    }
 
 
 @router.delete("/subscriptions/{subscription_id}", response_model=bool)
