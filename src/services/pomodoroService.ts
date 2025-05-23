@@ -1,6 +1,85 @@
 import Cookies from "js-cookie";
+import { cacheManager } from "@/lib/cacheManager";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+// Frontend cache for Pomodoro data
+interface CacheEntry {
+  data: any;
+  timestamp: number;
+  expiresIn: number;
+}
+
+class FrontendCache {
+  private cache = new Map<string, CacheEntry>();
+  private readonly DEFAULT_TTL = 3600000; // 1 hour
+
+  set(key: string, data: any, ttl: number = this.DEFAULT_TTL) {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      expiresIn: ttl,
+    });
+  }
+
+  get(key: string): any | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+
+    const now = Date.now();
+    if (now - entry.timestamp > entry.expiresIn) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return entry.data;
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+
+  clearPattern(pattern: string) {
+    for (const key of this.cache.keys()) {
+      if (key.includes(pattern)) {
+        this.cache.delete(key);
+      }
+    }
+  }
+}
+
+const frontendCache = new FrontendCache();
+
+// Request deduplication for Pomodoro API calls
+const pendingRequests = new Map<string, Promise<any>>();
+
+const dedupedFetch = async (
+  url: string,
+  options: RequestInit = {}
+): Promise<any> => {
+  const key = `${url}_${JSON.stringify(options)}`;
+
+  if (pendingRequests.has(key)) {
+    return pendingRequests.get(key)!;
+  }
+
+  const request = fetch(url, options).then(async (response) => {
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || `HTTP ${response.status}`);
+    }
+    return response.json();
+  });
+
+  pendingRequests.set(key, request);
+
+  try {
+    const data = await request;
+    return data;
+  } finally {
+    pendingRequests.delete(key);
+  }
+};
 
 export interface PomodoroSession {
   id: number;
@@ -142,7 +221,15 @@ export const createPomodoroSession = async (sessionData: {
       throw new Error(errorData.detail || "Failed to create Pomodoro session");
     }
 
-    return await response.json();
+    const data = await response.json();
+
+    // Clear frontend cache after creating session
+    frontendCache.clearPattern("pomodoro");
+
+    // Invalidate cache to force fresh data on next API calls
+    cacheManager.invalidateCache();
+
+    return data;
   } catch (error) {
     console.error("Error creating Pomodoro session:", error);
     throw error;
@@ -156,22 +243,30 @@ export const getPomodoroSessions = async (
   try {
     const token = Cookies.get("token");
     const skip = (page - 1) * limit;
+    const cacheBust = cacheManager.getCacheBustParam();
 
-    const response = await fetch(
-      `${API_URL}/api/v1/pomodoro/sessions?skip=${skip}&limit=${limit}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    // Create cache key
+    const cacheKey = `pomodoro_sessions_${page}_${limit}`;
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || "Failed to fetch Pomodoro sessions");
+    // Check frontend cache first
+    const cachedData = frontendCache.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
     }
 
-    return await response.json();
+    const url = `${API_URL}/api/v1/pomodoro/sessions?skip=${skip}&limit=${limit}${cacheBust}`;
+
+    const data = await dedupedFetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Accept-Encoding": "gzip, deflate, br",
+      },
+    });
+
+    // Cache for 1 hour
+    frontendCache.set(cacheKey, data, 3600000);
+
+    return data;
   } catch (error) {
     console.error("Error fetching Pomodoro sessions:", error);
     throw error;
@@ -198,7 +293,15 @@ export const analyzePomodoroSessions =
         );
       }
 
-      return await response.json();
+      const data = await response.json();
+
+      // Clear AI-related cache after analysis (affects remaining uses)
+      frontendCache.clearPattern("pomodoro_ai");
+
+      // Invalidate cache to force fresh data on next API calls
+      cacheManager.invalidateCache();
+
+      return data;
     } catch (error) {
       console.error("Error analyzing Pomodoro sessions:", error);
       throw error;
@@ -209,21 +312,30 @@ export const getRemainingPomodoroAIUses =
   async (): Promise<PomodoroAIRemainingResponse> => {
     try {
       const token = Cookies.get("token");
+      const cacheBust = cacheManager.getCacheBustParam();
 
-      const response = await fetch(`${API_URL}/api/v1/pomodoro/remaining`, {
+      // Create cache key
+      const cacheKey = "pomodoro_ai_remaining";
+
+      // Check frontend cache first
+      const cachedData = frontendCache.get(cacheKey);
+      if (cachedData) {
+        return cachedData;
+      }
+
+      const url = `${API_URL}/api/v1/pomodoro/remaining${cacheManager.getCacheBustParamFirst()}${cacheBust}`;
+
+      const data = await dedupedFetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
+          "Accept-Encoding": "gzip, deflate, br",
         },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.detail || "Failed to fetch remaining AI uses"
-        );
-      }
+      // Cache for 10 minutes (AI usage changes frequently)
+      frontendCache.set(cacheKey, data, 600000);
 
-      return await response.json();
+      return data;
     } catch (error) {
       console.error("Error fetching remaining AI uses:", error);
       throw error;
@@ -236,22 +348,30 @@ export const getPomodoroAIHistory = async (
 ): Promise<PomodoroAIHistoryItem[]> => {
   try {
     const token = Cookies.get("token");
+    const cacheBust = cacheManager.getCacheBustParam();
 
-    const response = await fetch(
-      `${API_URL}/api/v1/pomodoro/history?skip=${skip}&limit=${limit}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    // Create cache key
+    const cacheKey = `pomodoro_ai_history_${skip}_${limit}`;
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || "Failed to get Pomodoro AI history");
+    // Check frontend cache first
+    const cachedData = frontendCache.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
     }
 
-    return await response.json();
+    const url = `${API_URL}/api/v1/pomodoro/history?skip=${skip}&limit=${limit}${cacheBust}`;
+
+    const data = await dedupedFetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Accept-Encoding": "gzip, deflate, br",
+      },
+    });
+
+    // Cache for 1 hour (AI history doesn't change often)
+    frontendCache.set(cacheKey, data, 3600000);
+
+    return data;
   } catch (error) {
     console.error("Error getting Pomodoro AI history:", error);
     throw error;
@@ -263,21 +383,30 @@ export const getPomodoroAIHistoryById = async (
 ): Promise<PomodoroAIHistoryItem> => {
   try {
     const token = Cookies.get("token");
+    const cacheBust = cacheManager.getCacheBustParam();
 
-    const response = await fetch(`${API_URL}/api/v1/pomodoro/history/${id}`, {
+    // Create cache key
+    const cacheKey = `pomodoro_ai_history_item_${id}`;
+
+    // Check frontend cache first
+    const cachedData = frontendCache.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
+    const url = `${API_URL}/api/v1/pomodoro/history/${id}${cacheManager.getCacheBustParamFirst()}${cacheBust}`;
+
+    const data = await dedupedFetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
+        "Accept-Encoding": "gzip, deflate, br",
       },
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        errorData.detail || "Failed to get Pomodoro AI history item"
-      );
-    }
+    // Cache for 1 hour (individual AI history items don't change)
+    frontendCache.set(cacheKey, data, 3600000);
 
-    return await response.json();
+    return data;
   } catch (error) {
     console.error("Error getting Pomodoro AI history item:", error);
     throw error;
@@ -287,22 +416,30 @@ export const getPomodoroAIHistoryById = async (
 export const getPomodoroCounts = async (): Promise<PomodoroCountsResponse> => {
   try {
     const token = Cookies.get("token");
+    const cacheBust = cacheManager.getCacheBustParam();
 
-    const response = await fetch(`${API_URL}/api/v1/pomodoro/counts`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      // Allow browser caching with revalidation
-      cache: "default",
-      next: { revalidate: 1800 }, // Revalidate after 30 minutes
-    });
+    // Create cache key
+    const cacheKey = "pomodoro_counts";
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || "Failed to get Pomodoro counts");
+    // Check frontend cache first
+    const cachedData = frontendCache.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
     }
 
-    return await response.json();
+    const url = `${API_URL}/api/v1/pomodoro/counts${cacheManager.getCacheBustParamFirst()}${cacheBust}`;
+
+    const data = await dedupedFetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Accept-Encoding": "gzip, deflate, br",
+      },
+    });
+
+    // Cache for 30 minutes (counts change frequently)
+    frontendCache.set(cacheKey, data, 1800000);
+
+    return data;
   } catch (error) {
     console.error("Error getting Pomodoro counts:", error);
     // Return default values if there's an error
