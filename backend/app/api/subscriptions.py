@@ -82,8 +82,8 @@ async def get_subscriptions(
             f"🔍 Cached result type: {type(cached_result)}, length: {len(cached_result) if isinstance(cached_result, list) else 'N/A'}"
         )
 
-        # Return the cached serialized data directly (already in dict format)
-        print(f"🚀 Returning pre-serialized cache data")
+        # Return the cached SQLAlchemy objects
+        print(f"🚀 Returning cached SQLAlchemy objects")
         return cached_result
 
     print(f"💾 CACHE MISS - Redis: {cache_time*1000:.1f}ms, querying database...")
@@ -103,34 +103,8 @@ async def get_subscriptions(
 
     subscriptions = query.offset(skip).limit(limit).all()
 
-    # Convert SQLAlchemy objects to dictionaries for caching
-    serialized_subscriptions = []
-    for sub in subscriptions:
-        sub_dict = {
-            "id": sub.id,
-            "user_id": sub.user_id,
-            "name": sub.name,
-            "amount": sub.amount,
-            "billing_frequency": (
-                sub.billing_frequency.value if sub.billing_frequency else None
-            ),
-            "billing_cycle": sub.billing_cycle,
-            "start_date": sub.start_date.isoformat() if sub.start_date else None,
-            "next_payment_date": (
-                sub.next_payment_date.isoformat() if sub.next_payment_date else None
-            ),
-            "status": sub.status.value if sub.status else None,
-            "last_active_date": (
-                sub.last_active_date.isoformat() if sub.last_active_date else None
-            ),
-            "notes": sub.notes,
-            "created_at": sub.created_at.isoformat() if sub.created_at else None,
-            "updated_at": sub.updated_at.isoformat() if sub.updated_at else None,
-        }
-        serialized_subscriptions.append(sub_dict)
-
-    # Cache the serialized result for 1 hour
-    redis_service.set(cache_key, serialized_subscriptions, ttl_seconds=3600)
+    # Cache the SQLAlchemy objects directly (revert to original approach)
+    redis_service.set(cache_key, subscriptions, ttl_seconds=3600)
 
     total_time = time.time() - start_time
     print(f"💾 DATABASE QUERY - Total: {total_time*1000:.1f}ms")
