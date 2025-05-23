@@ -106,7 +106,6 @@ async def get_transactions(
 
     try:
         # Build the query with eager loading of category
-        print(f"🔍 Building query for user {current_user.id}")
         query = (
             db.query(Transaction)
             .options(
@@ -116,10 +115,8 @@ async def get_transactions(
             )
             .filter(Transaction.user_id == current_user.id)
         )
-        print(f"✅ Query built successfully")
 
         # Apply filters
-        print(f"🔍 Applying filters: type={type}, year={year}, month={month}")
         if type:
             query = query.filter(Transaction.type == type)
         if start_date:
@@ -141,12 +138,9 @@ async def get_transactions(
 
         # Order by date descending for most recent transactions first
         query = query.order_by(Transaction.date.desc())
-        print(f"✅ Filters applied successfully")
 
         # Apply pagination
-        print(f"🔍 Executing query with skip={skip}, limit={limit}")
         transactions = query.offset(skip).limit(limit).all()
-        print(f"✅ Query executed successfully, found {len(transactions)} transactions")
 
     except Exception as e:
         print(f"❌ Database query error: {e}")
@@ -164,9 +158,7 @@ async def get_transactions(
 
     transaction_dicts = []
     try:
-        for i, txn in enumerate(transactions):
-            print(f"🔄 Processing transaction {i+1}/{len(transactions)}: ID {txn.id}")
-
+        for txn in transactions:
             # Safely convert amount
             try:
                 amount_value = float(txn.amount) if txn.amount is not None else None
@@ -202,19 +194,11 @@ async def get_transactions(
                 ),
             }
             transaction_dicts.append(txn_dict)
-            print(f"✅ Successfully processed transaction {txn.id}")
-
-        print(f"🔄 Attempting to cache {len(transaction_dicts)} transactions")
 
         # Cache the clean dictionaries (not SQLAlchemy objects)
-        cache_success = redis_service.set(
+        redis_service.set(
             cache_key, transaction_dicts, ttl_seconds=3600
         )  # Increased to 1 hour
-
-        if cache_success:
-            print(f"✅ Successfully cached transactions")
-        else:
-            print(f"❌ Failed to cache transactions")
 
     except Exception as e:
         print(f"❌ Error during serialization: {e}")
