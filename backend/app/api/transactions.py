@@ -104,40 +104,54 @@ async def get_transactions(
 
     print(f"💾 CACHE MISS - Redis: {cache_time*1000:.1f}ms, querying database...")
 
-    # Build the query with eager loading of category
-    query = (
-        db.query(Transaction)
-        .options(
-            joinedload(Transaction.category)  # Eager load category to avoid N+1 queries
+    try:
+        # Build the query with eager loading of category
+        print(f"🔍 Building query for user {current_user.id}")
+        query = (
+            db.query(Transaction)
+            .options(
+                joinedload(
+                    Transaction.category
+                )  # Eager load category to avoid N+1 queries
+            )
+            .filter(Transaction.user_id == current_user.id)
         )
-        .filter(Transaction.user_id == current_user.id)
-    )
+        print(f"✅ Query built successfully")
 
-    # Apply filters
-    if type:
-        query = query.filter(Transaction.type == type)
-    if start_date:
-        query = query.filter(Transaction.date >= start_date)
-    if end_date:
-        query = query.filter(Transaction.date <= end_date)
-    if category_id:
-        query = query.filter(Transaction.category_id == category_id)
+        # Apply filters
+        print(f"🔍 Applying filters: type={type}, year={year}, month={month}")
+        if type:
+            query = query.filter(Transaction.type == type)
+        if start_date:
+            query = query.filter(Transaction.date >= start_date)
+        if end_date:
+            query = query.filter(Transaction.date <= end_date)
+        if category_id:
+            query = query.filter(Transaction.category_id == category_id)
 
-    # Add filtering by year and month
-    if year:
-        from sqlalchemy import extract
+        # Add filtering by year and month
+        if year:
+            from sqlalchemy import extract
 
-        query = query.filter(extract("year", Transaction.date) == year)
-    if month:
-        from sqlalchemy import extract
+            query = query.filter(extract("year", Transaction.date) == year)
+        if month:
+            from sqlalchemy import extract
 
-        query = query.filter(extract("month", Transaction.date) == month)
+            query = query.filter(extract("month", Transaction.date) == month)
 
-    # Order by date descending for most recent transactions first
-    query = query.order_by(Transaction.date.desc())
+        # Order by date descending for most recent transactions first
+        query = query.order_by(Transaction.date.desc())
+        print(f"✅ Filters applied successfully")
 
-    # Apply pagination
-    transactions = query.offset(skip).limit(limit).all()
+        # Apply pagination
+        print(f"🔍 Executing query with skip={skip}, limit={limit}")
+        transactions = query.offset(skip).limit(limit).all()
+        print(f"✅ Query executed successfully, found {len(transactions)} transactions")
+
+    except Exception as e:
+        print(f"❌ Database query error: {e}")
+        print(f"❌ Error type: {type(e)}")
+        raise HTTPException(status_code=500, detail=f"Database query failed: {str(e)}")
 
     # Ensure all transactions have valid is_recurring values
     for transaction in transactions:
@@ -149,36 +163,82 @@ async def get_transactions(
     serialize_start = time.time()
 
     transaction_dicts = []
-    for txn in transactions:
-        txn_dict = {
-            "id": txn.id,
-            "user_id": txn.user_id,
-            "amount": float(txn.amount) if txn.amount else None,
-            "description": txn.description,
-            "date": txn.date.isoformat() if txn.date else None,
-            "type": txn.type.value if txn.type else None,
-            "payment_method": txn.payment_method.value if txn.payment_method else None,
-            "is_recurring": txn.is_recurring,
-            "recurring_frequency": txn.recurring_frequency,
-            "notes": txn.notes,
-            "category_id": txn.category_id,
-            "category": (
-                {
-                    "id": txn.category.id,
-                    "name": txn.category.name,
-                    "type": txn.category.type.value,
-                    "color": txn.category.color,
-                }
-                if txn.category
-                else None
-            ),
-        }
-        transaction_dicts.append(txn_dict)
+    try:
+        for i, txn in enumerate(transactions):
+            print(f"🔄 Processing transaction {i+1}/{len(transactions)}: ID {txn.id}")
 
-    # Cache the clean dictionaries (not SQLAlchemy objects)
-    redis_service.set(
-        cache_key, transaction_dicts, ttl_seconds=3600
-    )  # Increased to 1 hour
+            # Safely convert amount
+            try:
+                amount_value = float(txn.amount) if txn.amount is not None else None
+            except (ValueError, TypeError) as e:
+                print(f"❌ Amount conversion error for transaction {txn.id}: {e}")
+                amount_value = None
+
+            txn_dict = {
+                "id": txn.id,
+                "user_id": txn.user_id,
+                "amount": amount_value,
+                "description": txn.description,
+                "date": txn.date.isoformat() if txn.date else None,
+                "type": txn.type.value if txn.type else None,
+                "payment_method": (
+                    txn.payment_method.value if txn.payment_method else None
+                ),
+                "is_recurring": txn.is_recurring,
+                "recurring_frequency": txn.recurring_frequency,
+                "notes": txn.notes,
+                "category_id": txn.category_id,
+                "category": (
+                    {
+                        "id": txn.category.id,
+                        "name": txn.category.name,
+                        "type": txn.category.type.value,
+                        "color": txn.category.color,
+                    }
+                    if txn.category
+                    else None
+                ),
+            }
+            transaction_dicts.append(txn_dict)
+            print(f"✅ Successfully processed transaction {txn.id}")
+
+        print(f"🔄 Attempting to cache {len(transaction_dicts)} transactions")
+
+        # Cache the clean dictionaries (not SQLAlchemy objects)
+        cache_success = redis_service.set(
+            cache_key, transaction_dicts, ttl_seconds=3600
+        )  # Increased to 1 hour
+
+        if cache_success:
+            print(f"✅ Successfully cached transactions")
+        else:
+            print(f"❌ Failed to cache transactions")
+
+    except Exception as e:
+        print(f"❌ Error during serialization: {e}")
+        print(f"❌ Error type: {type(e)}")
+        # Continue without caching - return the data anyway
+        if not transaction_dicts:
+            # If serialization completely failed, create basic dicts
+            transaction_dicts = []
+            for txn in transactions:
+                basic_dict = {
+                    "id": txn.id,
+                    "user_id": txn.user_id,
+                    "amount": float(txn.amount) if txn.amount else 0.0,
+                    "description": str(txn.description) if txn.description else "",
+                    "date": txn.date.isoformat() if txn.date else None,
+                    "type": txn.type.value if txn.type else "income",
+                    "payment_method": (
+                        txn.payment_method.value if txn.payment_method else "cash"
+                    ),
+                    "is_recurring": bool(txn.is_recurring),
+                    "recurring_frequency": txn.recurring_frequency,
+                    "notes": txn.notes,
+                    "category_id": txn.category_id,
+                    "category": None,  # Skip category to avoid further errors
+                }
+                transaction_dicts.append(basic_dict)
 
     serialize_time = time.time() - serialize_start
     print(f"💾 DATABASE QUERY - Serialization: {serialize_time*1000:.1f}ms")
