@@ -193,7 +193,9 @@ async def get_transactions(
                         "id": txn.category.id,
                         "name": txn.category.name,
                         "type": txn.category.type.value,
-                        "color": txn.category.color,
+                        "color": getattr(
+                            txn.category, "color", "#6B7280"
+                        ),  # Default color if missing
                     }
                     if txn.category
                     else None
