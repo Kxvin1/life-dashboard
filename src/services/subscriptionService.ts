@@ -4,10 +4,78 @@ import { cacheManager } from "@/lib/cacheManager";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+// Frontend cache to prevent duplicate API calls
+interface CacheEntry {
+  data: any;
+  timestamp: number;
+  expiresIn: number;
+}
+
+class FrontendCache {
+  private cache = new Map<string, CacheEntry>();
+  private readonly DEFAULT_TTL = 30000; // 30 seconds
+
+  set(key: string, data: any, ttl: number = this.DEFAULT_TTL) {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      expiresIn: ttl,
+    });
+  }
+
+  get(key: string): any | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+
+    const now = Date.now();
+    if (now - entry.timestamp > entry.expiresIn) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return entry.data;
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+
+  clearPattern(pattern: string) {
+    for (const key of this.cache.keys()) {
+      if (key.includes(pattern)) {
+        this.cache.delete(key);
+      }
+    }
+  }
+}
+
+const frontendCache = new FrontendCache();
+
+// Request deduplication to prevent multiple simultaneous requests
+const pendingRequests = new Map<string, Promise<any>>();
+
 export const fetchSubscriptions = async (
   status?: string
 ): Promise<Subscription[]> => {
   try {
+    // Create cache key
+    const cacheKey = `subscriptions_${status || "all"}`;
+
+    // Check frontend cache first
+    const cachedData = frontendCache.get(cacheKey);
+    if (cachedData) {
+      console.log(`🟢 Frontend cache hit: ${cacheKey}`);
+      return cachedData;
+    }
+
+    // Check if there's already a pending request for this key
+    if (pendingRequests.has(cacheKey)) {
+      console.log(`⏳ Request already pending: ${cacheKey}`);
+      return await pendingRequests.get(cacheKey)!;
+    }
+
+    console.log(`🔴 Frontend cache miss: ${cacheKey}`);
+
     const token = Cookies.get("token");
     if (!token) {
       throw new Error("Authentication token missing");
@@ -18,18 +86,34 @@ export const fetchSubscriptions = async (
       url += `?status=${status}`;
     }
 
-    const response = await fetch(url, {
+    // Create the request promise and store it
+    const requestPromise = fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
-    });
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch subscriptions");
+        }
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch subscriptions");
-    }
+        const data = await response.json();
 
-    const data = await response.json();
-    return data;
+        // Cache the result for 30 seconds
+        frontendCache.set(cacheKey, data, 30000);
+        console.log(`💾 Frontend cache set: ${cacheKey}`);
+
+        return data;
+      })
+      .finally(() => {
+        // Remove from pending requests when done
+        pendingRequests.delete(cacheKey);
+      });
+
+    // Store the pending request
+    pendingRequests.set(cacheKey, requestPromise);
+
+    return await requestPromise;
   } catch (error) {
     throw error;
   }
@@ -87,6 +171,10 @@ export const createSubscription = async (
       throw new Error("Failed to create subscription");
     }
 
+    // Clear frontend cache
+    frontendCache.clearPattern("subscriptions");
+    console.log("🧹 Frontend cache cleared after create");
+
     // Invalidate cache to force fresh data on next API calls
     console.log("🔄 Invalidating cache after creating subscription");
     cacheManager.invalidateCache();
@@ -122,6 +210,10 @@ export const updateSubscription = async (
       console.error("Error response:", errorText);
       throw new Error("Failed to update subscription");
     }
+
+    // Clear frontend cache
+    frontendCache.clearPattern("subscriptions");
+    console.log("🧹 Frontend cache cleared after update");
 
     // Invalidate cache to force fresh data on next API calls
     cacheManager.invalidateCache();
@@ -195,6 +287,10 @@ export const toggleSubscriptionStatus = async (
     });
 
     if (getResponse.ok) {
+      // Clear frontend cache
+      frontendCache.clearPattern("subscriptions");
+      console.log("🧹 Frontend cache cleared after toggle");
+
       // Invalidate cache to force fresh data on next API calls
       cacheManager.invalidateCache();
 
@@ -257,6 +353,10 @@ export const deleteSubscription = async (id: string): Promise<boolean> => {
     if (!response.ok) {
       throw new Error("Failed to delete subscription");
     }
+
+    // Clear frontend cache
+    frontendCache.clearPattern("subscriptions");
+    console.log("🧹 Frontend cache cleared after delete");
 
     // Invalidate cache to force fresh data on next API calls
     cacheManager.invalidateCache();
