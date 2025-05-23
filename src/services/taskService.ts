@@ -1,6 +1,65 @@
 import Cookies from "js-cookie";
+import { cacheManager } from "@/lib/cacheManager";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+// Frontend cache to prevent duplicate API calls
+interface CacheEntry {
+  data: any;
+  timestamp: number;
+  expiresIn: number;
+}
+
+class FrontendCache {
+  private cache = new Map<string, CacheEntry>();
+  private readonly DEFAULT_TTL = 3600000; // 1 hour
+
+  set(key: string, data: any, ttl: number = this.DEFAULT_TTL) {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      expiresIn: ttl,
+    });
+  }
+
+  get(key: string): any | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+
+    const now = Date.now();
+    if (now - entry.timestamp > entry.expiresIn) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return entry.data;
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+
+  clearPattern(pattern: string) {
+    for (const key of this.cache.keys()) {
+      if (key.includes(pattern)) {
+        this.cache.delete(key);
+      }
+    }
+  }
+}
+
+const frontendCache = new FrontendCache();
+
+// Request deduplication to prevent multiple simultaneous requests
+const pendingRequests = new Map<string, Promise<any>>();
+
+// Export function to clear task cache (for use by other services)
+export const clearTaskCache = () => {
+  frontendCache.clearPattern("tasks");
+  frontendCache.clearPattern("task_categories");
+  frontendCache.clearPattern("task_hierarchy");
+  pendingRequests.clear();
+};
 
 export enum TaskStatus {
   NOT_STARTED = "not_started",
@@ -76,6 +135,20 @@ export const fetchTasks = async (
   limit: number = 100
 ): Promise<TaskListResponse> => {
   try {
+    // Create cache key based on parameters
+    const cacheKey = `tasks_${isLongTerm}_${status}_${categoryId}_${priority}_${dueDateStart}_${dueDateEnd}_${skip}_${limit}`;
+
+    // Check frontend cache first
+    const cachedData = frontendCache.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
+    // Check if there's already a pending request for this key
+    if (pendingRequests.has(cacheKey)) {
+      return await pendingRequests.get(cacheKey)!;
+    }
+
     const token = Cookies.get("token");
     if (!token) {
       throw new Error("Authentication token missing");
@@ -93,21 +166,37 @@ export const fetchTasks = async (
     params.append("skip", String(skip));
     params.append("limit", String(limit));
 
-    const response = await fetch(
+    // Create the request promise and store it
+    const requestPromise = fetch(
       `${API_URL}/api/v1/tasks/?${params.toString()}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       }
-    );
+    )
+      .then(async (response) => {
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || "Failed to fetch tasks");
+        }
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || "Failed to fetch tasks");
-    }
+        const data = await response.json();
 
-    return await response.json();
+        // Cache the result for 1 hour
+        frontendCache.set(cacheKey, data);
+
+        return data;
+      })
+      .finally(() => {
+        // Remove from pending requests when done
+        pendingRequests.delete(cacheKey);
+      });
+
+    // Store the pending request
+    pendingRequests.set(cacheKey, requestPromise);
+
+    return await requestPromise;
   } catch (error) {
     console.error("Error fetching tasks:", error);
     throw error;
@@ -118,6 +207,20 @@ export const fetchTaskHierarchy = async (
   isLongTerm?: boolean
 ): Promise<TaskWithChildren[]> => {
   try {
+    // Create cache key based on parameters
+    const cacheKey = `task_hierarchy_${isLongTerm}`;
+
+    // Check frontend cache first
+    const cachedData = frontendCache.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
+    // Check if there's already a pending request for this key
+    if (pendingRequests.has(cacheKey)) {
+      return await pendingRequests.get(cacheKey)!;
+    }
+
     const token = Cookies.get("token");
     if (!token) {
       throw new Error("Authentication token missing");
@@ -128,21 +231,37 @@ export const fetchTaskHierarchy = async (
     if (isLongTerm !== undefined)
       params.append("is_long_term", String(isLongTerm));
 
-    const response = await fetch(
+    // Create the request promise and store it
+    const requestPromise = fetch(
       `${API_URL}/api/v1/tasks/hierarchy?${params.toString()}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       }
-    );
+    )
+      .then(async (response) => {
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || "Failed to fetch task hierarchy");
+        }
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || "Failed to fetch task hierarchy");
-    }
+        const data = await response.json();
 
-    return await response.json();
+        // Cache the result for 1 hour
+        frontendCache.set(cacheKey, data);
+
+        return data;
+      })
+      .finally(() => {
+        // Remove from pending requests when done
+        pendingRequests.delete(cacheKey);
+      });
+
+    // Store the pending request
+    pendingRequests.set(cacheKey, requestPromise);
+
+    return await requestPromise;
   } catch (error) {
     console.error("Error fetching task hierarchy:", error);
     throw error;
@@ -151,6 +270,20 @@ export const fetchTaskHierarchy = async (
 
 export const fetchTaskCategories = async (): Promise<TaskCategory[]> => {
   try {
+    // Create cache key
+    const cacheKey = `task_categories`;
+
+    // Check frontend cache first
+    const cachedData = frontendCache.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
+    // Check if there's already a pending request for this key
+    if (pendingRequests.has(cacheKey)) {
+      return await pendingRequests.get(cacheKey)!;
+    }
+
     const token = Cookies.get("token");
     if (!token) {
       throw new Error("Authentication token missing");
@@ -158,21 +291,36 @@ export const fetchTaskCategories = async (): Promise<TaskCategory[]> => {
 
     const url = `${API_URL}/api/v1/tasks/categories`;
 
-    const response = await fetch(url, {
+    // Create the request promise and store it
+    const requestPromise = fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
-      // Allow browser caching with revalidation
-      cache: "default",
-      next: { revalidate: 86400 }, // Revalidate after 24 hours
-    });
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.detail || "Failed to fetch task categories"
+          );
+        }
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || "Failed to fetch task categories");
-    }
+        const data = await response.json();
 
-    return await response.json();
+        // Cache the result for 24 hours (categories change rarely)
+        frontendCache.set(cacheKey, data, 86400000); // 24 hours in ms
+
+        return data;
+      })
+      .finally(() => {
+        // Remove from pending requests when done
+        pendingRequests.delete(cacheKey);
+      });
+
+    // Store the pending request
+    pendingRequests.set(cacheKey, requestPromise);
+
+    return await requestPromise;
   } catch (error) {
     console.error("Error fetching task categories:", error);
     throw error;
@@ -237,7 +385,15 @@ export const createTask = async (
       throw new Error(errorData.detail || "Failed to create task");
     }
 
-    return await response.json();
+    // Clear frontend cache
+    frontendCache.clearPattern("tasks");
+    frontendCache.clearPattern("task_hierarchy");
+
+    // Invalidate cache to force fresh data on next API calls
+    cacheManager.invalidateCache();
+
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error("Error creating task:", error);
     throw error;
@@ -270,7 +426,15 @@ export const updateTask = async (
       throw new Error(errorData.detail || "Failed to update task");
     }
 
-    return await response.json();
+    // Clear frontend cache
+    frontendCache.clearPattern("tasks");
+    frontendCache.clearPattern("task_hierarchy");
+
+    // Invalidate cache to force fresh data on next API calls
+    cacheManager.invalidateCache();
+
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error("Error updating task:", error);
     throw error;
@@ -295,6 +459,13 @@ export const deleteTask = async (taskId: number): Promise<void> => {
       const errorData = await response.json();
       throw new Error(errorData.detail || "Failed to delete task");
     }
+
+    // Clear frontend cache
+    frontendCache.clearPattern("tasks");
+    frontendCache.clearPattern("task_hierarchy");
+
+    // Invalidate cache to force fresh data on next API calls
+    cacheManager.invalidateCache();
   } catch (error) {
     console.error("Error deleting task:", error);
     throw error;
@@ -327,6 +498,13 @@ export const reorderTask = async (
       const errorData = await response.json();
       throw new Error(errorData.detail || "Failed to reorder task");
     }
+
+    // Clear frontend cache
+    frontendCache.clearPattern("tasks");
+    frontendCache.clearPattern("task_hierarchy");
+
+    // Invalidate cache to force fresh data on next API calls
+    cacheManager.invalidateCache();
   } catch (error) {
     console.error("Error reordering task:", error);
     throw error;
@@ -361,6 +539,13 @@ export const batchActionTasks = async (
       const errorData = await response.json();
       throw new Error(errorData.detail || "Failed to perform batch action");
     }
+
+    // Clear frontend cache
+    frontendCache.clearPattern("tasks");
+    frontendCache.clearPattern("task_hierarchy");
+
+    // Invalidate cache to force fresh data on next API calls
+    cacheManager.invalidateCache();
   } catch (error) {
     console.error("Error performing batch action:", error);
     throw error;

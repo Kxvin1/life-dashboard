@@ -42,6 +42,27 @@ async def get_task_categories(
     """
     Get all task categories (system defaults and user-created)
     """
+    import time
+
+    start_time = time.time()
+
+    # Create cache key
+    cache_key = f"user_{current_user.id}_task_categories"
+
+    # Try to get from Redis cache first
+    cache_start = time.time()
+    cached_result = redis_service.get(cache_key)
+    cache_time = time.time() - cache_start
+
+    if cached_result is not None:
+        total_time = time.time() - start_time
+        print(
+            f"⚡ CACHE HIT - Redis: {cache_time*1000:.1f}ms, Total: {total_time*1000:.1f}ms"
+        )
+        return cached_result
+
+    print(f"💾 CACHE MISS - Redis: {cache_time*1000:.1f}ms, querying database...")
+
     # Get all categories in one query
     categories = (
         db.query(TaskCategory)
@@ -52,7 +73,28 @@ async def get_task_categories(
         .all()
     )
 
-    return categories
+    # Convert to dictionaries for caching
+    category_dicts = []
+    for category in categories:
+        category_dict = {
+            "id": category.id,
+            "name": category.name,
+            "description": category.description,
+            "is_default": category.is_default,
+            "user_id": category.user_id,
+            "created_at": (
+                category.created_at.isoformat() if category.created_at else None
+            ),
+        }
+        category_dicts.append(category_dict)
+
+    # Cache the result for 24 hours (categories change rarely)
+    redis_service.set(cache_key, category_dicts, ttl_seconds=86400)
+
+    total_time = time.time() - start_time
+    print(f"💾 DATABASE QUERY - Total: {total_time*1000:.1f}ms")
+
+    return category_dicts
 
 
 @router.post("/categories", response_model=TaskCategorySchema)
@@ -158,6 +200,27 @@ async def get_task_hierarchy(
     """
     Get tasks in a hierarchical structure (parent tasks with their children)
     """
+    import time
+
+    start_time = time.time()
+
+    # Create cache key
+    cache_key = f"user_{current_user.id}_task_hierarchy_{is_long_term}"
+
+    # Try to get from Redis cache first
+    cache_start = time.time()
+    cached_result = redis_service.get(cache_key)
+    cache_time = time.time() - cache_start
+
+    if cached_result is not None:
+        total_time = time.time() - start_time
+        print(
+            f"⚡ CACHE HIT - Redis: {cache_time*1000:.1f}ms, Total: {total_time*1000:.1f}ms"
+        )
+        return cached_result
+
+    print(f"💾 CACHE MISS - Redis: {cache_time*1000:.1f}ms, querying database...")
+
     # Get all top-level tasks (tasks with no parent)
     query = db.query(Task).filter(
         Task.user_id == current_user.id, Task.parent_task_id == None
@@ -168,8 +231,22 @@ async def get_task_hierarchy(
 
     top_level_tasks = query.all()
 
-    # The TaskWithChildren schema will automatically include child tasks
-    return top_level_tasks
+    # Convert to dictionaries for caching (TaskWithChildren schema handles serialization)
+    from app.schemas.task import TaskWithChildren as TaskWithChildrenSchema
+
+    # Use Pydantic to serialize the data properly
+    serialized_tasks = []
+    for task in top_level_tasks:
+        task_dict = TaskWithChildrenSchema.model_validate(task).model_dump()
+        serialized_tasks.append(task_dict)
+
+    # Cache the result for 1 hour
+    redis_service.set(cache_key, serialized_tasks, ttl_seconds=3600)
+
+    total_time = time.time() - start_time
+    print(f"💾 DATABASE QUERY - Total: {total_time*1000:.1f}ms")
+
+    return serialized_tasks
 
 
 @router.post("/", response_model=TaskSchema)
