@@ -6,20 +6,54 @@ import { formatCurrency } from "@/lib/utils";
 import { Transaction } from "@/types/finance";
 import { fetchTransactions } from "@/services/transactionService";
 import { fetchSubscriptionSummary } from "@/services/subscriptionService";
+import { fetchMonthlySummary } from "@/services/summaryService";
 
-// Quick helper function for monthly summary
-const fetchMonthlySummary = async (year: number) => {
-  const token = Cookies.get("token");
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/summaries/monthly?year=${year}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+// Frontend cache for account summary
+interface CacheEntry {
+  data: FinancialData;
+  timestamp: number;
+  expiresIn: number;
+}
+
+class AccountSummaryCache {
+  private cache = new Map<string, CacheEntry>();
+  private readonly DEFAULT_TTL = 1800000; // 30 minutes
+
+  set(key: string, data: FinancialData, ttl: number = this.DEFAULT_TTL) {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      expiresIn: ttl,
+    });
+  }
+
+  get(key: string): FinancialData | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+
+    const now = Date.now();
+    if (now - entry.timestamp > entry.expiresIn) {
+      this.cache.delete(key);
+      return null;
     }
-  );
-  if (!response.ok) throw new Error("Failed to fetch yearly summary");
-  return await response.json();
+
+    return entry.data;
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+}
+
+const accountSummaryCache = new AccountSummaryCache();
+
+// Request deduplication
+const pendingRequests = new Map<string, Promise<FinancialData>>();
+
+// Export function to clear account summary cache (for use by other services)
+export const clearAccountSummaryCache = () => {
+  accountSummaryCache.clear();
+  pendingRequests.clear();
 };
 
 interface FinancialData {
@@ -44,63 +78,98 @@ export default function DashboardAccountSummary() {
       try {
         setLoading(true);
         setError(null);
-        const token = Cookies.get("token");
 
         // Get current year for fetching data
         const currentYear = new Date().getFullYear();
+        const cacheKey = `account_summary_${currentYear}`;
 
-        // Use the transaction service with caching and deduplication
-        const transactions: Transaction[] = await fetchTransactions();
-
-        // Calculate lifetime totals from all transactions (net worth)
-        const lifetimeIncome = transactions
-          .filter((t: Transaction) => t.type === "income")
-          .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
-
-        const lifetimeExpenses = transactions
-          .filter((t: Transaction) => t.type === "expense")
-          .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
-
-        const netWorth = lifetimeIncome - lifetimeExpenses;
-
-        // Fetch current year's monthly summaries for YTD calculations
-        const yearSummaryData = await fetchMonthlySummary(currentYear);
-
-        // Calculate YTD income and expenses
-        let ytdIncome = 0;
-        let ytdExpenses = 0;
-
-        Object.values(yearSummaryData.summary).forEach((monthData: any) => {
-          ytdIncome += monthData.income || 0;
-          ytdExpenses += monthData.expense || 0;
-        });
-
-        // Fetch subscription summary
-        let monthlySubscriptionCost = 0;
-        try {
-          const subscriptionSummary = await fetchSubscriptionSummary();
-          monthlySubscriptionCost = subscriptionSummary.total_monthly_cost;
-        } catch (subscriptionError) {
-          console.error(
-            "Failed to fetch subscription data:",
-            subscriptionError
-          );
-          // Continue with zero cost if there's an error
+        // Check cache first
+        const cachedData = accountSummaryCache.get(cacheKey);
+        if (cachedData) {
+          setFinancialData(cachedData);
+          setLoading(false);
+          return;
         }
 
-        // Set the financial data with just what we need
-        setFinancialData({
-          netWorth,
-          ytdIncome,
-          ytdExpenses,
-          monthlySubscriptionCost,
-        });
+        // Check if there's already a pending request
+        if (pendingRequests.has(cacheKey)) {
+          const data = await pendingRequests.get(cacheKey)!;
+          setFinancialData(data);
+          setLoading(false);
+          return;
+        }
+
+        // Create the data fetching promise
+        const dataPromise = (async (): Promise<FinancialData> => {
+          // Use the transaction service with caching and deduplication
+          const transactions: Transaction[] = await fetchTransactions();
+
+          // Calculate lifetime totals from all transactions (net worth)
+          const lifetimeIncome = transactions
+            .filter((t: Transaction) => t.type === "income")
+            .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
+
+          const lifetimeExpenses = transactions
+            .filter((t: Transaction) => t.type === "expense")
+            .reduce((sum: number, t: Transaction) => sum + t.amount, 0);
+
+          const netWorth = lifetimeIncome - lifetimeExpenses;
+
+          // Fetch current year's monthly summaries for YTD calculations
+          const yearSummaryData = await fetchMonthlySummary(currentYear);
+
+          // Calculate YTD income and expenses
+          let ytdIncome = 0;
+          let ytdExpenses = 0;
+
+          Object.values(yearSummaryData.summary).forEach((monthData: any) => {
+            ytdIncome += monthData.income || 0;
+            ytdExpenses += monthData.expense || 0;
+          });
+
+          // Fetch subscription summary
+          let monthlySubscriptionCost = 0;
+          try {
+            const subscriptionSummary = await fetchSubscriptionSummary();
+            monthlySubscriptionCost = subscriptionSummary.total_monthly_cost;
+          } catch (subscriptionError) {
+            console.error(
+              "Failed to fetch subscription data:",
+              subscriptionError
+            );
+            // Continue with zero cost if there's an error
+          }
+
+          // Return the financial data
+          return {
+            netWorth,
+            ytdIncome,
+            ytdExpenses,
+            monthlySubscriptionCost,
+          };
+        })();
+
+        // Store the pending request
+        pendingRequests.set(cacheKey, dataPromise);
+
+        // Execute the promise
+        const data = await dataPromise;
+
+        // Cache the result for 30 minutes
+        accountSummaryCache.set(cacheKey, data);
+
+        // Set the financial data
+        setFinancialData(data);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to fetch financial data"
         );
       } finally {
         setLoading(false);
+        // Clean up pending request
+        const currentYear = new Date().getFullYear();
+        const cacheKey = `account_summary_${currentYear}`;
+        pendingRequests.delete(cacheKey);
       }
     };
 

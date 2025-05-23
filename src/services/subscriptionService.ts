@@ -199,6 +199,16 @@ export const createSubscription = async (
     frontendCache.clearPattern("subscriptions");
     frontendCache.clearPattern("subscription_summary");
 
+    // Clear account summary cache (since subscriptions affect it)
+    try {
+      const { clearAccountSummaryCache } = await import(
+        "@/components/dashboard/DashboardAccountSummary"
+      );
+      clearAccountSummaryCache();
+    } catch (e) {
+      // Ignore if component not loaded
+    }
+
     // Invalidate cache to force fresh data on next API calls
     cacheManager.invalidateCache();
 
@@ -237,6 +247,16 @@ export const updateSubscription = async (
     // Clear frontend cache
     frontendCache.clearPattern("subscriptions");
     frontendCache.clearPattern("subscription_summary");
+
+    // Clear account summary cache (since subscriptions affect it)
+    try {
+      const { clearAccountSummaryCache } = await import(
+        "@/components/dashboard/DashboardAccountSummary"
+      );
+      clearAccountSummaryCache();
+    } catch (e) {
+      // Ignore if component not loaded
+    }
 
     // Invalidate cache to force fresh data on next API calls
     cacheManager.invalidateCache();
@@ -314,6 +334,16 @@ export const toggleSubscriptionStatus = async (
       frontendCache.clearPattern("subscriptions");
       frontendCache.clearPattern("subscription_summary");
 
+      // Clear account summary cache (since subscriptions affect it)
+      try {
+        const { clearAccountSummaryCache } = await import(
+          "@/components/dashboard/DashboardAccountSummary"
+        );
+        clearAccountSummaryCache();
+      } catch (e) {
+        // Ignore if component not loaded
+      }
+
       // Invalidate cache to force fresh data on next API calls
       cacheManager.invalidateCache();
 
@@ -380,6 +410,16 @@ export const deleteSubscription = async (id: string): Promise<boolean> => {
     // Clear frontend cache
     frontendCache.clearPattern("subscriptions");
     frontendCache.clearPattern("subscription_summary");
+
+    // Clear account summary cache (since subscriptions affect it)
+    try {
+      const { clearAccountSummaryCache } = await import(
+        "@/components/dashboard/DashboardAccountSummary"
+      );
+      clearAccountSummaryCache();
+    } catch (e) {
+      // Ignore if component not loaded
+    }
 
     // Invalidate cache to force fresh data on next API calls
     cacheManager.invalidateCache();

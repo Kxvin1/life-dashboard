@@ -52,6 +52,13 @@ const frontendCache = new FrontendCache();
 // Request deduplication to prevent multiple simultaneous requests
 const pendingRequests = new Map<string, Promise<any>>();
 
+// Export function to clear summary cache (for use by other services)
+export const clearSummaryCache = () => {
+  frontendCache.clearPattern("monthly_summary");
+  frontendCache.clearPattern("yearly_summary");
+  pendingRequests.clear();
+};
+
 export const fetchMonthlySummary = async (
   year: number,
   month?: number | null,

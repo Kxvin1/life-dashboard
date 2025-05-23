@@ -160,6 +160,24 @@ export const createTransaction = async (
     // Clear frontend cache
     frontendCache.clearPattern("transactions");
 
+    // Clear summary service cache (since transactions affect monthly/yearly summaries)
+    try {
+      const summaryService = await import("@/services/summaryService");
+      summaryService.clearSummaryCache();
+    } catch (e) {
+      // Ignore if service not loaded
+    }
+
+    // Clear account summary cache (since transactions affect it)
+    try {
+      const { clearAccountSummaryCache } = await import(
+        "@/components/dashboard/DashboardAccountSummary"
+      );
+      clearAccountSummaryCache();
+    } catch (e) {
+      // Ignore if component not loaded
+    }
+
     // Invalidate cache to force fresh data on next API calls
     cacheManager.invalidateCache();
 
@@ -197,6 +215,24 @@ export const updateTransaction = async (
     // Clear frontend cache
     frontendCache.clearPattern("transactions");
 
+    // Clear summary service cache (since transactions affect monthly/yearly summaries)
+    try {
+      const summaryService = await import("@/services/summaryService");
+      summaryService.clearSummaryCache();
+    } catch (e) {
+      // Ignore if service not loaded
+    }
+
+    // Clear account summary cache (since transactions affect it)
+    try {
+      const { clearAccountSummaryCache } = await import(
+        "@/components/dashboard/DashboardAccountSummary"
+      );
+      clearAccountSummaryCache();
+    } catch (e) {
+      // Ignore if component not loaded
+    }
+
     // Invalidate cache to force fresh data on next API calls
     cacheManager.invalidateCache();
 
@@ -227,6 +263,24 @@ export const deleteTransaction = async (id: string): Promise<boolean> => {
 
     // Clear frontend cache
     frontendCache.clearPattern("transactions");
+
+    // Clear summary service cache (since transactions affect monthly/yearly summaries)
+    try {
+      const summaryService = await import("@/services/summaryService");
+      summaryService.clearSummaryCache();
+    } catch (e) {
+      // Ignore if service not loaded
+    }
+
+    // Clear account summary cache (since transactions affect it)
+    try {
+      const { clearAccountSummaryCache } = await import(
+        "@/components/dashboard/DashboardAccountSummary"
+      );
+      clearAccountSummaryCache();
+    } catch (e) {
+      // Ignore if component not loaded
+    }
 
     // Invalidate cache to force fresh data on next API calls
     cacheManager.invalidateCache();
