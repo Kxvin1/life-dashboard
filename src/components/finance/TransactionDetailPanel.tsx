@@ -11,6 +11,10 @@ import {
 import CategorySelect from "./CategorySelect";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { cacheManager } from "@/lib/cacheManager";
+import {
+  updateTransaction,
+  deleteTransaction,
+} from "@/services/transactionService";
 
 interface TransactionDetailPanelProps {
   transaction: Transaction | null;
@@ -227,27 +231,8 @@ const TransactionDetailPanel = ({
           ? parseInt(transaction.id, 10)
           : transaction.id;
 
-      const token = Cookies.get("token");
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/${transactionId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(updateData),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to update transaction: ${errorText}`);
-      }
-
-      // Invalidate cache to force fresh data on next API calls
-      cacheManager.invalidateCache();
+      // Use the transaction service with caching and deduplication
+      await updateTransaction(transactionId, updateData);
 
       // Notify parent component
       onTransactionUpdated();
@@ -274,34 +259,9 @@ const TransactionDetailPanel = ({
 
     try {
       const transactionId = localTransaction.id;
-      const token = Cookies.get("token");
 
-      if (!token) {
-        setError("Authentication token missing");
-        return;
-      }
-
-      const baseUrl =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-      const url = `${baseUrl}/api/v1/transactions/${transactionId}`;
-
-      const response = await fetch(url, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `Failed to delete transaction: ${response.status} ${response.statusText} - ${errorText}`
-        );
-      }
-
-      // Invalidate cache to force fresh data on next API calls
-      cacheManager.invalidateCache();
+      // Use the transaction service with caching and deduplication
+      await deleteTransaction(transactionId.toString());
 
       // Refresh the data in the parent component
       onTransactionUpdated();

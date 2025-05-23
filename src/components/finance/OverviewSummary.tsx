@@ -5,6 +5,7 @@ import Cookies from "js-cookie";
 import { formatCurrency } from "@/lib/utils";
 import { Transaction } from "@/types/finance";
 import { sortTransactionsByDate } from "@/lib/utils";
+import { fetchTransactions } from "@/services/transactionService";
 
 interface MonthlySummary {
   income: number;
@@ -89,22 +90,12 @@ export default function OverviewSummary({
           setYearlyData(data);
         }
 
-        const transactionsResponse = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_URL
-          }/api/v1/transactions/?year=${year}${month ? `&month=${month}` : ""}${
-            categoryId ? `&category_id=${categoryId}` : ""
-          }`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        // Use the transaction service with caching and deduplication
+        const filters: any = { year };
+        if (month) filters.month = month;
+        if (categoryId) filters.category_id = categoryId;
 
-        if (!transactionsResponse.ok)
-          throw new Error("Failed to fetch transactions");
-        const transactionsData = await transactionsResponse.json();
+        const transactionsData = await fetchTransactions(filters);
         // Sort transactions by date in descending order (newest first)
         const sortedTransactions = sortTransactionsByDate(transactionsData);
         setTransactions(sortedTransactions);

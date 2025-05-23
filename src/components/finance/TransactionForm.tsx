@@ -4,6 +4,7 @@ import { useState } from "react";
 import Cookies from "js-cookie";
 import CategorySelect from "./CategorySelect";
 import { cacheManager } from "@/lib/cacheManager";
+import { createTransaction } from "@/services/transactionService";
 
 interface TransactionFormProps {
   onTransactionAdded: (type: TransactionType) => void;
@@ -29,7 +30,7 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
@@ -68,55 +69,33 @@ const TransactionForm = ({ onTransactionAdded }: TransactionFormProps) => {
       recurring_frequency: null,
     };
 
-    // Create a direct XMLHttpRequest for maximum compatibility
-    const xhr = new XMLHttpRequest();
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    // Use the transaction service with caching and deduplication
+    try {
+      await createTransaction(requestData);
 
-    const url = `${baseUrl}/api/v1/transactions/`;
+      // Reset form
+      setAmount("");
+      setDescription("");
+      setCategoryId(null);
 
-    xhr.open("POST", url, true);
-    xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      // Set success message
+      const typeLabel = type === "income" ? "Income" : "Expense";
+      setSuccess(`${typeLabel} transaction added successfully!`);
 
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState === 4) {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          // Reset form
-          setAmount("");
-          setDescription("");
-          setCategoryId(null);
+      // Clear success message after 5 seconds
+      setTimeout(() => {
+        setSuccess(null);
+      }, 5000);
 
-          // Set success message
-          const typeLabel = type === "income" ? "Income" : "Expense";
-          setSuccess(`${typeLabel} transaction added successfully!`);
-
-          // Clear success message after 5 seconds
-          setTimeout(() => {
-            setSuccess(null);
-          }, 5000);
-
-          // Invalidate cache to force fresh data on next API calls
-          cacheManager.invalidateCache();
-
-          // Notify parent component with the transaction type
-          onTransactionAdded(type);
-        } else {
-          setError(
-            `Failed to create transaction: ${xhr.statusText || "Unknown error"}`
-          );
-        }
-
-        setIsLoading(false);
-      }
-    };
-
-    xhr.onerror = function () {
-      setError("Network error occurred");
+      // Notify parent component with the transaction type
+      onTransactionAdded(type);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to create transaction"
+      );
+    } finally {
       setIsLoading(false);
-    };
-
-    // Send the request
-    xhr.send(JSON.stringify(requestData));
+    }
   };
 
   return (

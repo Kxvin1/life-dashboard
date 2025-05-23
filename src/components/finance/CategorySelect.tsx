@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Cookies from "js-cookie";
+import { fetchCategories } from "@/services/categoryService";
 import { Category } from "@/types/finance";
 
 interface CategorySelectProps {
@@ -29,52 +30,20 @@ const CategorySelect = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchCategories = () => {
-      // Get the token
-      const token = Cookies.get("token");
-      if (!token) {
-        // Authentication token missing
-        setError("Authentication token missing");
+    const loadCategories = async () => {
+      try {
+        const data = await fetchCategories();
+        setCategories(data);
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to load categories"
+        );
+      } finally {
         setIsLoading(false);
-        return;
       }
-
-      // Create a direct XMLHttpRequest for maximum compatibility
-      const xhr = new XMLHttpRequest();
-      const baseUrl =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const url = `${baseUrl}/api/v1/categories/`;
-
-      xhr.open("GET", url, true);
-      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const data = JSON.parse(xhr.responseText);
-              setCategories(data);
-            } catch (e) {
-              setError("Failed to parse categories");
-            }
-          } else {
-            setError("Failed to load categories");
-          }
-
-          setIsLoading(false);
-        }
-      };
-
-      xhr.onerror = function () {
-        setError("Network error occurred");
-        setIsLoading(false);
-      };
-
-      // Send the request
-      xhr.send();
     };
 
-    fetchCategories();
+    loadCategories();
   }, []);
 
   if (isLoading) {

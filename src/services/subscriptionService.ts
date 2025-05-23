@@ -64,17 +64,13 @@ export const fetchSubscriptions = async (
     // Check frontend cache first
     const cachedData = frontendCache.get(cacheKey);
     if (cachedData) {
-      console.log(`🟢 Frontend cache hit: ${cacheKey}`);
       return cachedData;
     }
 
     // Check if there's already a pending request for this key
     if (pendingRequests.has(cacheKey)) {
-      console.log(`⏳ Request already pending: ${cacheKey}`);
       return await pendingRequests.get(cacheKey)!;
     }
-
-    console.log(`🔴 Frontend cache miss: ${cacheKey}`);
 
     const token = Cookies.get("token");
     if (!token) {
@@ -101,7 +97,6 @@ export const fetchSubscriptions = async (
 
         // Cache the result for 1 hour
         frontendCache.set(cacheKey, data);
-        console.log(`💾 Frontend cache set: ${cacheKey}`);
 
         return data;
       })
@@ -173,10 +168,8 @@ export const createSubscription = async (
 
     // Clear frontend cache
     frontendCache.clearPattern("subscriptions");
-    console.log("🧹 Frontend cache cleared after create");
 
     // Invalidate cache to force fresh data on next API calls
-    console.log("🔄 Invalidating cache after creating subscription");
     cacheManager.invalidateCache();
 
     const data = await response.json();
@@ -213,7 +206,6 @@ export const updateSubscription = async (
 
     // Clear frontend cache
     frontendCache.clearPattern("subscriptions");
-    console.log("🧹 Frontend cache cleared after update");
 
     // Invalidate cache to force fresh data on next API calls
     cacheManager.invalidateCache();
@@ -289,7 +281,6 @@ export const toggleSubscriptionStatus = async (
     if (getResponse.ok) {
       // Clear frontend cache
       frontendCache.clearPattern("subscriptions");
-      console.log("🧹 Frontend cache cleared after toggle");
 
       // Invalidate cache to force fresh data on next API calls
       cacheManager.invalidateCache();
@@ -356,7 +347,6 @@ export const deleteSubscription = async (id: string): Promise<boolean> => {
 
     // Clear frontend cache
     frontendCache.clearPattern("subscriptions");
-    console.log("🧹 Frontend cache cleared after delete");
 
     // Invalidate cache to force fresh data on next API calls
     cacheManager.invalidateCache();

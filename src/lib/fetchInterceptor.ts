@@ -47,7 +47,10 @@ export const fetchWithAuth = async (
  */
 export const setupFetchInterceptor = () => {
   // Check if we've already set up the interceptor to avoid double-patching
-  if ((window as any).__fetchInterceptorInstalled) {
+  if (
+    (window as Window & { __fetchInterceptorInstalled?: boolean })
+      .__fetchInterceptorInstalled
+  ) {
     return;
   }
 
@@ -58,77 +61,49 @@ export const setupFetchInterceptor = () => {
   const REDIRECT_COOLDOWN = 2000; // 2 seconds cooldown between redirects
 
   window.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
-    // First, handle the case where input might be undefined or null
-    if (!input) {
-      return originalFetch(input as any, init);
-    }
+    // For API requests, just pass through to original fetch
+    // We've removed all direct API calls, so this should just handle auth
+    const response = await originalFetch(input, init);
 
-    try {
-      // Only intercept requests to our API
-      const inputUrl =
-        typeof input === "string" ? input : (input as Request).url;
+    // Only handle auth errors for our API
+    const inputUrl = typeof input === "string" ? input : (input as Request).url;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-      // Skip interception for Next.js internal requests and RSC
-      if (
-        !inputUrl ||
-        inputUrl.includes("_next/") ||
-        inputUrl.includes("?_rsc=") ||
-        inputUrl.includes("/_next/")
-      ) {
-        return originalFetch(input, init);
-      }
+    if (
+      inputUrl &&
+      apiUrl &&
+      inputUrl.includes(apiUrl) &&
+      response.status === 401
+    ) {
+      // Clear the token
+      Cookies.remove("token");
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      // Store a message in sessionStorage
+      sessionStorage.setItem(
+        "auth_message",
+        "Your session has expired. Please log in again."
+      );
 
-      // Only intercept API requests
-      if (apiUrl && inputUrl.includes(apiUrl)) {
-        const response = await originalFetch(input, init);
+      // Only redirect if we haven't redirected recently
+      const now = Date.now();
+      if (now - lastRedirectTime > REDIRECT_COOLDOWN) {
+        lastRedirectTime = now;
 
-        // Handle 401 Unauthorized errors
-        if (response.status === 401) {
-          // Clear the token
-          Cookies.remove("token");
-
-          // Store a message in sessionStorage
-          sessionStorage.setItem(
-            "auth_message",
-            "Your session has expired. Please log in again."
-          );
-
-          // Only redirect if we haven't redirected recently
-          const now = Date.now();
-          if (now - lastRedirectTime > REDIRECT_COOLDOWN) {
-            lastRedirectTime = now;
-
-            // Check if we're already on the login page to avoid redirect loops
-            if (!window.location.pathname.includes("/login")) {
-              // Use a timeout to allow current operations to complete
-              setTimeout(() => {
-                window.location.href = "/login";
-              }, 100);
-            }
-          }
-
-          // Create a cloned response to return
-          return new Response(
-            JSON.stringify({ error: "Authentication failed" }),
-            {
-              status: 401,
-              headers: { "Content-Type": "application/json" },
-            }
-          );
+        // Check if we're already on the login page to avoid redirect loops
+        if (!window.location.pathname.includes("/login")) {
+          // Use a timeout to allow current operations to complete
+          setTimeout(() => {
+            window.location.href = "/login";
+          }, 100);
         }
-
-        return response;
       }
-    } catch (error) {
-      console.error("Fetch interceptor error:", error);
     }
 
-    // For all other requests, use the original fetch
-    return originalFetch(input, init);
+    return response;
   };
 
   // Mark that we've installed the interceptor
-  (window as any).__fetchInterceptorInstalled = true;
+  (
+    window as Window & { __fetchInterceptorInstalled?: boolean }
+  ).__fetchInterceptorInstalled = true;
 };

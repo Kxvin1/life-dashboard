@@ -4,7 +4,23 @@ import { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import { formatCurrency } from "@/lib/utils";
 import { Transaction } from "@/types/finance";
+import { fetchTransactions } from "@/services/transactionService";
 import { fetchSubscriptionSummary } from "@/services/subscriptionService";
+
+// Quick helper function for monthly summary
+const fetchMonthlySummary = async (year: number) => {
+  const token = Cookies.get("token");
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/v1/summaries/monthly?year=${year}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  if (!response.ok) throw new Error("Failed to fetch yearly summary");
+  return await response.json();
+};
 
 interface FinancialData {
   netWorth: number;
@@ -33,21 +49,8 @@ export default function DashboardAccountSummary() {
         // Get current year for fetching data
         const currentYear = new Date().getFullYear();
 
-        // Fetch all transactions to calculate net worth
-        const transactionsResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!transactionsResponse.ok) {
-          throw new Error("Failed to fetch transactions");
-        }
-
-        const transactions: Transaction[] = await transactionsResponse.json();
+        // Use the transaction service with caching and deduplication
+        const transactions: Transaction[] = await fetchTransactions();
 
         // Calculate lifetime totals from all transactions (net worth)
         const lifetimeIncome = transactions
@@ -61,20 +64,7 @@ export default function DashboardAccountSummary() {
         const netWorth = lifetimeIncome - lifetimeExpenses;
 
         // Fetch current year's monthly summaries for YTD calculations
-        const yearSummaryResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/v1/summaries/monthly?year=${currentYear}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!yearSummaryResponse.ok) {
-          throw new Error("Failed to fetch yearly summary");
-        }
-
-        const yearSummaryData = await yearSummaryResponse.json();
+        const yearSummaryData = await fetchMonthlySummary(currentYear);
 
         // Calculate YTD income and expenses
         let ytdIncome = 0;

@@ -69,13 +69,40 @@ async def get_transactions(
     """
     Get transactions with optional filtering.
     """
+    import time
+
+    start_time = time.time()
+
     # Create cache key
     cache_key = f"user_{current_user.id}_transactions_{type}_{start_date}_{end_date}_{category_id}_{year}_{month}_{skip}_{limit}"
+    print(f"⏱️ Cache key: {cache_key}")
 
     # Try to get from Redis cache first
+    cache_start = time.time()
     cached_result = redis_service.get(cache_key)
+    cache_time = time.time() - cache_start
+
     if cached_result is not None:
-        return cached_result
+        total_time = time.time() - start_time
+        print(
+            f"⚡ CACHE HIT - Redis: {cache_time*1000:.1f}ms, Total: {total_time*1000:.1f}ms"
+        )
+
+        # Validate cached data before returning
+        try:
+            if isinstance(cached_result, list) and all(
+                isinstance(item, dict) for item in cached_result
+            ):
+                return cached_result
+            else:
+                # Invalid cache format, clear and fall back to database
+                print(f"🧹 Invalid cache format, clearing cache entry")
+                redis_service.delete(cache_key)
+        except Exception as e:
+            print(f"❌ Cache validation error: {e}, clearing cache")
+            redis_service.delete(cache_key)
+
+    print(f"💾 CACHE MISS - Redis: {cache_time*1000:.1f}ms, querying database...")
 
     # Build the query with eager loading of category
     query = (
@@ -117,10 +144,46 @@ async def get_transactions(
         if transaction.is_recurring is None:
             transaction.is_recurring = False
 
-    # Cache the result for 10 minutes
-    redis_service.set(cache_key, transactions, ttl_seconds=600)
+    # Convert to clean dictionaries for caching and response
+    print(f"🔄 Converting transactions to dictionaries for caching")
+    serialize_start = time.time()
 
-    return transactions
+    transaction_dicts = []
+    for txn in transactions:
+        txn_dict = {
+            "id": txn.id,
+            "user_id": txn.user_id,
+            "amount": float(txn.amount) if txn.amount else None,
+            "description": txn.description,
+            "date": txn.date.isoformat() if txn.date else None,
+            "type": txn.type.value if txn.type else None,
+            "payment_method": txn.payment_method.value if txn.payment_method else None,
+            "is_recurring": txn.is_recurring,
+            "recurring_frequency": txn.recurring_frequency,
+            "notes": txn.notes,
+            "category_id": txn.category_id,
+            "category": (
+                {
+                    "id": txn.category.id,
+                    "name": txn.category.name,
+                    "type": txn.category.type.value,
+                    "color": txn.category.color,
+                }
+                if txn.category
+                else None
+            ),
+        }
+        transaction_dicts.append(txn_dict)
+
+    # Cache the clean dictionaries (not SQLAlchemy objects)
+    redis_service.set(
+        cache_key, transaction_dicts, ttl_seconds=3600
+    )  # Increased to 1 hour
+
+    serialize_time = time.time() - serialize_start
+    print(f"💾 DATABASE QUERY - Serialization: {serialize_time*1000:.1f}ms")
+
+    return transaction_dicts
 
 
 @router.get("/transactions/{transaction_id}", response_model=TransactionSchema)

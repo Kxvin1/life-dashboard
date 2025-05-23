@@ -7,6 +7,7 @@ import {
   sortTransactionsByDate,
   formatDateWithTimezoneOffset,
 } from "@/lib/utils";
+import { fetchTransactions } from "@/services/transactionService";
 
 const TransactionList = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -15,23 +16,10 @@ const TransactionList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const transactionsPerPage = 10;
 
-  const fetchTransactions = async () => {
+  const fetchTransactionsData = async () => {
     try {
-      const token = Cookies.get("token");
-
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/api/v1/transactions/`;
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch transactions");
-      }
-
-      const data = await response.json();
+      // Use the transaction service with caching and deduplication
+      const data = await fetchTransactions();
       // Sort transactions by date in descending order (newest first)
       const sortedTransactions = sortTransactionsByDate(data);
       setTransactions(sortedTransactions);
@@ -47,7 +35,7 @@ const TransactionList = () => {
   };
 
   useEffect(() => {
-    fetchTransactions();
+    fetchTransactionsData();
   }, []);
 
   // Use the shared utility function for date formatting
