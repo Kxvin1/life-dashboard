@@ -79,8 +79,11 @@ const LoginForm = () => {
     setIsDemoLoading(true);
 
     try {
-      // Simple demo login - backend handles all the pre-warming
+      // Step 1: Login as demo user
       await loginAsDemo();
+
+      // Step 2: Pre-warm frontend caches for instant first loads
+      await prewarmService.prewarmDemoUserData();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to login as demo user"
