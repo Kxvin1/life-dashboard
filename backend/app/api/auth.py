@@ -739,36 +739,41 @@ async def prewarm_demo_user_cache(db: Session, demo_user: User):
             .all()
         )
 
-        # Convert to dictionaries for caching
+        # Convert to dictionaries for caching (match real API format exactly)
         transaction_dicts = []
         for transaction in transactions:
+            # Ensure all transactions have valid is_recurring values
+            if transaction.is_recurring is None:
+                transaction.is_recurring = False
+
             transaction_dict = {
                 "id": transaction.id,
                 "user_id": transaction.user_id,
-                "amount": float(transaction.amount),
+                "amount": (
+                    float(transaction.amount)
+                    if transaction.amount is not None
+                    else None
+                ),
                 "description": transaction.description,
-                "date": transaction.date.isoformat(),
+                "date": transaction.date.isoformat() if transaction.date else None,
                 "type": transaction.type.value if transaction.type else None,
                 "payment_method": (
                     transaction.payment_method.value
                     if transaction.payment_method
                     else None
                 ),
+                "is_recurring": transaction.is_recurring,
+                "recurring_frequency": transaction.recurring_frequency,
+                "notes": transaction.notes,
                 "category_id": transaction.category_id,
-                "created_at": (
-                    transaction.created_at.isoformat()
-                    if hasattr(transaction, "created_at") and transaction.created_at
-                    else None
-                ),
                 "category": (
                     {
                         "id": transaction.category.id,
                         "name": transaction.category.name,
-                        "type": (
-                            transaction.category.type.value
-                            if transaction.category.type
-                            else None
-                        ),
+                        "type": transaction.category.type.value,
+                        "color": getattr(
+                            transaction.category, "color", "#6B7280"
+                        ),  # Default color
                     }
                     if transaction.category
                     else None

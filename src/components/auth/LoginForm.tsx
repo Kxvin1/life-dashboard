@@ -79,33 +79,34 @@ const LoginForm = () => {
     setIsDemoLoading(true);
 
     try {
-      // Step 1: Login as demo user
-      await loginAsDemo();
-
-      // Step 2: Start frontend pre-warming
+      // Step 1: Show backend preparation progress
       setPrewarmProgress({
         isPrewarming: true,
-        currentTask: "Initializing...",
-        completed: 0,
-        total: 8,
+        currentTask: "Preparing demo data...",
+        completed: 1,
+        total: 3,
       });
 
-      // Pre-warm frontend caches in the background
-      await prewarmService.prewarmDemoUserData((progress) => {
-        setPrewarmProgress({
-          isPrewarming: true,
-          currentTask: progress.currentTask,
-          completed: progress.completed,
-          total: progress.total,
-        });
+      // Step 2: Login as demo user (this triggers backend pre-warming)
+      await loginAsDemo();
+
+      // Step 3: Show completion
+      setPrewarmProgress({
+        isPrewarming: true,
+        currentTask: "Finalizing...",
+        completed: 3,
+        total: 3,
       });
 
-      // Pre-warming complete
+      // Small delay to show completion
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Complete
       setPrewarmProgress({
         isPrewarming: false,
         currentTask: "Complete",
-        completed: 8,
-        total: 8,
+        completed: 3,
+        total: 3,
       });
     } catch (err) {
       setError(
@@ -283,8 +284,8 @@ const LoginForm = () => {
                     "Loading demo..."}
                   {prewarmProgress.isPrewarming && (
                     <>
-                      Pre-warming {prewarmProgress.currentTask} (
-                      {prewarmProgress.completed}/{prewarmProgress.total})
+                      {prewarmProgress.currentTask} ({prewarmProgress.completed}
+                      /{prewarmProgress.total})
                     </>
                   )}
                   {!isDemoLoading &&
