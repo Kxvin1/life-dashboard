@@ -62,25 +62,31 @@ class RedisService:
         """Get value from Redis cache"""
         if not self.is_available:
             print(f"🔴 Redis not available for GET key: {key}")
+            logger.error(f"Redis not available for GET key: {key}")
             return None
 
         try:
+            print(f"🔍 Redis GET attempt for key: {key}")
             value = self.redis_client.get(key)
             if value is None:
                 print(f"🔴 Redis CACHE MISS for key: {key}")
+                logger.info(f"Redis CACHE MISS for key: {key}")
                 return None
 
             # Try to parse as JSON, fallback to string
             try:
                 result = json.loads(value)
-                print(f"🟢 Redis CACHE HIT for key: {key}")
+                print(f"🟢 Redis CACHE HIT for key: {key} (JSON data)")
+                logger.info(f"Redis CACHE HIT for key: {key}")
                 return result
             except json.JSONDecodeError:
                 print(f"🟢 Redis CACHE HIT (string) for key: {key}")
+                logger.info(f"Redis CACHE HIT (string) for key: {key}")
                 return value
 
         except Exception as e:
             print(f"❌ Redis get failed for key {key}: {e}")
+            logger.error(f"Redis get failed for key {key}: {e}")
             return None
 
     def set(self, key: str, value: Any, ttl_seconds: int = 3600) -> bool:

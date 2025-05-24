@@ -108,11 +108,16 @@ async def get_subscriptions(
     status_str = status.value if status else "all"
     cache_key = f"user_{current_user.id}_subscriptions_{status_str}_{skip}_{limit}"
     print(f"⏱️ Cache key: {cache_key}")
+    print(f"🔍 User ID: {current_user.id}, Status: {status}, Status str: {status_str}")
+    print(f"🔍 Redis available: {redis_service.is_available}")
 
     # Try to get from Redis cache first
     cache_start = time.time()
     cached_result = redis_service.get(cache_key)
     cache_time = time.time() - cache_start
+    print(
+        f"🔍 Cache lookup result: {type(cached_result)} - {cached_result is not None}"
+    )
 
     if cached_result is not None:
         total_time = time.time() - start_time
