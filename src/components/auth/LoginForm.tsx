@@ -4,12 +4,24 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { prewarmService } from "@/services/prewarmService";
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isDemoLoading, setIsDemoLoading] = useState(false);
+  const [prewarmProgress, setPrewarmProgress] = useState<{
+    isPrewarming: boolean;
+    currentTask: string;
+    completed: number;
+    total: number;
+  }>({
+    isPrewarming: false,
+    currentTask: "",
+    completed: 0,
+    total: 0,
+  });
   const { login, loginAsDemo, isLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const MAX_EMAIL_LENGTH = 50;
@@ -65,12 +77,46 @@ const LoginForm = () => {
   const handleDemoLogin = async () => {
     setError(null);
     setIsDemoLoading(true);
+
     try {
+      // Step 1: Login as demo user
       await loginAsDemo();
+
+      // Step 2: Start frontend pre-warming
+      setPrewarmProgress({
+        isPrewarming: true,
+        currentTask: "Initializing...",
+        completed: 0,
+        total: 8,
+      });
+
+      // Pre-warm frontend caches in the background
+      await prewarmService.prewarmDemoUserData((progress) => {
+        setPrewarmProgress({
+          isPrewarming: true,
+          currentTask: progress.currentTask,
+          completed: progress.completed,
+          total: progress.total,
+        });
+      });
+
+      // Pre-warming complete
+      setPrewarmProgress({
+        isPrewarming: false,
+        currentTask: "Complete",
+        completed: 8,
+        total: 8,
+      });
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to login as demo user"
       );
+      setPrewarmProgress({
+        isPrewarming: false,
+        currentTask: "",
+        completed: 0,
+        total: 0,
+      });
     } finally {
       setIsDemoLoading(false);
     }
@@ -208,7 +254,44 @@ const LoginForm = () => {
               className="group relative w-full flex justify-center py-2 px-4 border border-green-600 dark:border-green-500 text-sm font-medium rounded-md text-green-600 dark:text-green-500 bg-transparent hover:bg-green-50 dark:hover:bg-green-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
               title="Try the app with sample data without creating an account"
             >
-              {isDemoLoading ? "Loading demo..." : "Try Demo Mode"}
+              <div className="flex items-center space-x-2">
+                {prewarmProgress.isPrewarming && (
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-green-600 dark:text-green-500"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                )}
+                <span>
+                  {isDemoLoading &&
+                    !prewarmProgress.isPrewarming &&
+                    "Loading demo..."}
+                  {prewarmProgress.isPrewarming && (
+                    <>
+                      Pre-warming {prewarmProgress.currentTask} (
+                      {prewarmProgress.completed}/{prewarmProgress.total})
+                    </>
+                  )}
+                  {!isDemoLoading &&
+                    !prewarmProgress.isPrewarming &&
+                    "Try Demo Mode"}
+                </span>
+              </div>
             </button>
           </div>
 

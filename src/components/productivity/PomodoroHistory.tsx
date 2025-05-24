@@ -47,19 +47,40 @@ const PomodoroHistory = () => {
     async (pageNum: number) => {
       if (isDemoUser) {
         // For demo users, return mock data
+        // Create 10 sessions per page to match the 42 total from Timer tab
+        const sessionsPerPage = 10;
+        const totalSessions = 42; // Match the Timer tab total count
+        const totalPages = Math.ceil(totalSessions / sessionsPerPage);
+
+        // Calculate the starting index for this page
+        const startIndex = (pageNum - 1) * sessionsPerPage;
+        const sessionsToCreate = Math.min(
+          sessionsPerPage,
+          totalSessions - startIndex
+        );
+
         const mockSessions: PomodoroSession[] = Array.from(
-          { length: 10 },
-          (_, i) => ({
-            id: i,
-            user_id: 0,
-            task_name: `Demo Task ${i + 1}`,
-            start_time: new Date(Date.now() - (i + 1) * 3600000).toISOString(),
-            end_time: new Date(Date.now() - i * 3600000).toISOString(),
-            duration_minutes: 25,
-            status: i % 3 === 0 ? "interrupted" : "completed",
-            notes: i % 2 === 0 ? "Demo note" : undefined,
-            created_at: new Date(Date.now() - i * 3600000).toISOString(),
-          })
+          { length: sessionsToCreate },
+          (_, i) => {
+            const sessionIndex = startIndex + i;
+            return {
+              id: sessionIndex,
+              user_id: 0,
+              task_name: `Demo Task ${sessionIndex + 1}`,
+              start_time: new Date(
+                Date.now() - (sessionIndex + 1) * 3600000
+              ).toISOString(),
+              end_time: new Date(
+                Date.now() - sessionIndex * 3600000
+              ).toISOString(),
+              duration_minutes: 25,
+              status: sessionIndex % 3 === 0 ? "interrupted" : "completed",
+              notes: sessionIndex % 2 === 0 ? "Demo note" : undefined,
+              created_at: new Date(
+                Date.now() - sessionIndex * 3600000
+              ).toISOString(),
+            };
+          }
         );
 
         setSessions((prev) =>
@@ -67,8 +88,8 @@ const PomodoroHistory = () => {
         );
         // We're using the streak count from the context instead
         // setBackendStreakCount(5); // Mock streak count
-        setTotalCount(25); // Mock total count
-        setHasMore(pageNum < 3); // Limit to 3 pages for demo
+        setTotalCount(totalSessions); // Match Timer tab total count (42)
+        setHasMore(pageNum < totalPages); // Allow infinite scroll through all pages
         return;
       }
 
@@ -102,22 +123,44 @@ const PomodoroHistory = () => {
 
   // Set up intersection observer for infinite scroll
   useEffect(() => {
-    if (loading) return;
+    if (loading || !hasMore) {
+      return;
+    }
 
-    if (observer.current) observer.current.disconnect();
+    // Use a small delay to ensure the DOM element is rendered
+    const setupObserver = () => {
+      if (observer.current) {
+        observer.current.disconnect();
+      }
 
-    const callback = (entries: IntersectionObserverEntry[]) => {
-      if (entries[0].isIntersecting && hasMore) {
-        setPage((prevPage) => prevPage + 1);
+      const callback = (entries: IntersectionObserverEntry[]) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setPage((prevPage) => prevPage + 1);
+        }
+      };
+
+      observer.current = new IntersectionObserver(callback, {
+        rootMargin: "100px", // Trigger 100px before the element comes into view
+        threshold: 0.1,
+      });
+
+      if (loadingRef.current) {
+        observer.current.observe(loadingRef.current);
+      } else {
+        // Retry after a short delay if ref is not ready
+        setTimeout(setupObserver, 100);
       }
     };
 
-    observer.current = new IntersectionObserver(callback);
+    // Start setup immediately, but with retry logic
+    setupObserver();
 
-    if (loadingRef.current) {
-      observer.current.observe(loadingRef.current);
-    }
-  }, [loading, hasMore]);
+    return () => {
+      if (observer.current) {
+        observer.current.disconnect();
+      }
+    };
+  }, [loading, hasMore, page]);
 
   // Load more when page changes
   useEffect(() => {
@@ -248,15 +291,23 @@ const PomodoroHistory = () => {
             ))}
 
             {/* Loading indicator */}
-            <div ref={loadingRef} className="py-4 text-center">
+            <div
+              ref={loadingRef}
+              className="py-8 text-center min-h-[100px] bg-blue-500/5 border border-blue-500/20 rounded-md"
+            >
               {loading && (
                 <p className="text-muted-foreground">
                   Loading more sessions...
                 </p>
               )}
+              {!loading && hasMore && (
+                <p className="text-muted-foreground">
+                  Scroll down to load more sessions...
+                </p>
+              )}
               {!hasMore && sessions.length > 0 && (
                 <p className="text-muted-foreground">
-                  No more sessions to load
+                  No more sessions to load (All {totalCount} sessions loaded)
                 </p>
               )}
             </div>

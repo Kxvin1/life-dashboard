@@ -4,6 +4,7 @@ from sqlalchemy import func, extract, and_, desc, case
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date, timedelta
 import logging
+import math
 from app.db.database import get_db
 from app.models.subscription import Subscription, SubscriptionStatus, BillingFrequency
 from app.schemas.subscription import (
@@ -388,21 +389,41 @@ async def get_subscriptions_summary(
     future_active_count = 0
 
     for subscription in active_subscriptions:
+        # Skip subscriptions with no amount
+        if not subscription.amount or subscription.amount <= 0:
+            print(
+                f"⚠️ Skipping subscription {subscription.name} - invalid amount: {subscription.amount}"
+            )
+            continue
+
         # Determine if this is a future subscription
         is_future = subscription.start_date > today
 
         # Calculate the monthly cost based on billing frequency
         subscription_monthly_cost = 0
-        if subscription.billing_frequency == BillingFrequency.monthly:
-            subscription_monthly_cost = subscription.amount
-        elif subscription.billing_frequency == BillingFrequency.yearly:
-            subscription_monthly_cost = subscription.amount / 12
-        elif subscription.billing_frequency == BillingFrequency.quarterly:
-            subscription_monthly_cost = subscription.amount / 3
-        elif subscription.billing_frequency == BillingFrequency.weekly:
-            subscription_monthly_cost = (
-                subscription.amount * 4.33
-            )  # Average weeks in a month
+        try:
+            if subscription.billing_frequency == BillingFrequency.monthly:
+                subscription_monthly_cost = float(subscription.amount)
+            elif subscription.billing_frequency == BillingFrequency.yearly:
+                subscription_monthly_cost = float(subscription.amount) / 12
+            elif subscription.billing_frequency == BillingFrequency.quarterly:
+                subscription_monthly_cost = float(subscription.amount) / 3
+            elif subscription.billing_frequency == BillingFrequency.weekly:
+                subscription_monthly_cost = (
+                    float(subscription.amount) * 4.33
+                )  # Average weeks in a month
+            else:
+                print(
+                    f"⚠️ Unknown billing frequency for {subscription.name}: {subscription.billing_frequency}"
+                )
+                continue
+
+            print(
+                f"💰 {subscription.name}: ${subscription.amount} {subscription.billing_frequency.value} = ${subscription_monthly_cost:.2f}/mo"
+            )
+        except (ValueError, TypeError) as e:
+            print(f"❌ Error calculating cost for {subscription.name}: {e}")
+            continue
 
         # Add to the appropriate total
         if is_future:
@@ -412,6 +433,14 @@ async def get_subscriptions_summary(
             monthly_cost += subscription_monthly_cost
             current_active_count += 1
 
+    # Ensure we have valid numbers (not NaN or None)
+    monthly_cost = monthly_cost if monthly_cost and not math.isnan(monthly_cost) else 0
+    future_monthly_cost = (
+        future_monthly_cost
+        if future_monthly_cost and not math.isnan(future_monthly_cost)
+        else 0
+    )
+
     result = {
         "total_monthly_cost": round(monthly_cost, 2),
         "future_monthly_cost": round(future_monthly_cost, 2),
@@ -420,6 +449,8 @@ async def get_subscriptions_summary(
         "future_subscriptions_count": future_active_count,
         "total_subscriptions_count": len(active_subscriptions),
     }
+
+    print(f"📊 Subscription summary: {result}")
 
     # Cache the result for 30 minutes
     redis_service.set(cache_key, result, ttl_seconds=1800)
