@@ -35,6 +35,7 @@ class DemoUserMiddleware(BaseHTTPMiddleware):
         self.simulated_endpoints = [
             "/api/v1/transactions/",
             "/api/v1/subscriptions/",
+            "/api/v1/tasks/",
         ]
 
         # Endpoints that should be blocked for demo users
@@ -182,7 +183,7 @@ class DemoUserMiddleware(BaseHTTPMiddleware):
             # For all other GET requests
             return await call_next(request)
 
-        # Block specific endpoints for demo users
+        # Block specific endpoints for demo users (check this FIRST)
         for endpoint in self.blocked_endpoints:
             if request.url.path.startswith(endpoint):
                 return Response(
@@ -190,6 +191,32 @@ class DemoUserMiddleware(BaseHTTPMiddleware):
                         {"detail": "This feature is not available in demo mode."}
                     ),
                     status_code=403,
+                    media_type="application/json",
+                )
+
+        # Handle special task endpoints
+        if request.url.path.startswith("/api/v1/tasks/"):
+            # Handle task batch operations
+            if request.url.path == "/api/v1/tasks/batch" and request.method == "POST":
+                return Response(
+                    content=json.dumps(
+                        {
+                            "message": "Batch operation completed successfully (demo mode)"
+                        }
+                    ),
+                    status_code=200,
+                    media_type="application/json",
+                )
+
+            # Handle task reorder operations
+            elif (
+                request.url.path == "/api/v1/tasks/reorder" and request.method == "POST"
+            ):
+                return Response(
+                    content=json.dumps(
+                        {"message": "Task reordered successfully (demo mode)"}
+                    ),
+                    status_code=200,
                     media_type="application/json",
                 )
 
@@ -206,6 +233,14 @@ class DemoUserMiddleware(BaseHTTPMiddleware):
                     body_dict["id"] = 9999  # Demo ID
                     body_dict["user_id"] = user.id
 
+                    # For task creation, add additional required fields
+                    if request.url.path.startswith("/api/v1/tasks/"):
+                        from datetime import datetime
+
+                        now = datetime.now().isoformat()
+                        body_dict["created_at"] = now
+                        body_dict["updated_at"] = now
+
                     # Return a success response without actually writing to the database
                     return Response(
                         content=json.dumps(body_dict),
@@ -218,6 +253,12 @@ class DemoUserMiddleware(BaseHTTPMiddleware):
                     # Read the request body
                     body = await request.body()
                     body_dict = json.loads(body)
+
+                    # For task updates, add updated timestamp
+                    if request.url.path.startswith("/api/v1/tasks/"):
+                        from datetime import datetime
+
+                        body_dict["updated_at"] = datetime.now().isoformat()
 
                     # Return a success response without actually writing to the database
                     return Response(
