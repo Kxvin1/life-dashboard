@@ -130,6 +130,11 @@ async def login_as_demo(response: Response, db: Session = Depends(get_db)):
         data={"sub": demo_user.email}, expires_delta=access_token_expires
     )
 
+    # Store demo user token for instant middleware lookup
+    from app.middleware.demo_cache import store_demo_user_token
+
+    await store_demo_user_token(demo_user.id, access_token)
+
     # Pre-warm cache in background (don't wait for it to complete)
     asyncio.create_task(prewarm_demo_user_cache(db, demo_user))
 
@@ -691,11 +696,13 @@ def create_demo_user_data(db: Session, demo_user: User):
 
 async def prewarm_demo_user_cache(db: Session, demo_user: User):
     """
-    Pre-warm Redis cache with demo user data for instant loading.
-    This populates cache with the same data that API endpoints would return.
+    REAL Pre-warming: Precompute and store fully rendered API responses for demo user.
+    This creates exactly what the frontend needs, stored in Redis for instant serving.
     """
     try:
-        print(f"Starting cache pre-warming for demo user {demo_user.id}")
+        print(
+            f"🔥 REAL PRE-WARMING: Precomputing all API responses for demo user {demo_user.id}"
+        )
 
         from datetime import datetime
         from app.services.task_service import TaskService
@@ -1152,10 +1159,14 @@ async def refresh_demo_data(db: Session = Depends(get_db)):
         print(f"❌ Error creating demo data: {str(e)}")
         raise
 
-    # Pre-warm cache in background
-    asyncio.create_task(prewarm_demo_user_cache(db, demo_user))
-    print(f"🔥 Started comprehensive cache pre-warming for user {demo_user.id}")
+    # REAL Pre-warming: Precompute all API responses for instant serving
+    from app.middleware.demo_cache import precompute_demo_responses
+
+    asyncio.create_task(precompute_demo_responses(db, demo_user))
+    print(
+        f"🚀 Started REAL pre-warming: precomputing all API responses for instant serving"
+    )
 
     return {
-        "message": "Demo user data refreshed successfully with wealthy profile and cache pre-warming"
+        "message": "Demo user data refreshed successfully with wealthy profile and REAL pre-warming"
     }

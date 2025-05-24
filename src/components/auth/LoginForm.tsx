@@ -79,51 +79,12 @@ const LoginForm = () => {
     setIsDemoLoading(true);
 
     try {
-      // Step 1: Login as demo user first
-      setPrewarmProgress({
-        isPrewarming: true,
-        currentTask: "Logging in...",
-        completed: 1,
-        total: 11,
-      });
-
+      // Simple demo login - backend handles all the pre-warming
       await loginAsDemo();
-
-      // Step 2: Now pre-warm all frontend caches
-      setPrewarmProgress({
-        isPrewarming: true,
-        currentTask: "Pre-loading data...",
-        completed: 2,
-        total: 11,
-      });
-
-      // Actually pre-warm frontend caches with real API calls
-      await prewarmService.prewarmDemoUserData((progress) => {
-        setPrewarmProgress({
-          isPrewarming: true,
-          currentTask: progress.currentTask,
-          completed: progress.completed + 2, // Offset by 2 for login steps
-          total: 11,
-        });
-      });
-
-      // Complete
-      setPrewarmProgress({
-        isPrewarming: false,
-        currentTask: "Complete",
-        completed: 11,
-        total: 11,
-      });
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to login as demo user"
       );
-      setPrewarmProgress({
-        isPrewarming: false,
-        currentTask: "",
-        completed: 0,
-        total: 0,
-      });
     } finally {
       setIsDemoLoading(false);
     }
@@ -261,44 +222,7 @@ const LoginForm = () => {
               className="group relative w-full flex justify-center py-2 px-4 border border-green-600 dark:border-green-500 text-sm font-medium rounded-md text-green-600 dark:text-green-500 bg-transparent hover:bg-green-50 dark:hover:bg-green-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
               title="Try the app with sample data without creating an account"
             >
-              <div className="flex items-center space-x-2">
-                {prewarmProgress.isPrewarming && (
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-green-600 dark:text-green-500"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                )}
-                <span>
-                  {isDemoLoading &&
-                    !prewarmProgress.isPrewarming &&
-                    "Loading demo..."}
-                  {prewarmProgress.isPrewarming && (
-                    <>
-                      {prewarmProgress.currentTask} ({prewarmProgress.completed}
-                      /{prewarmProgress.total})
-                    </>
-                  )}
-                  {!isDemoLoading &&
-                    !prewarmProgress.isPrewarming &&
-                    "Try Demo Mode"}
-                </span>
-              </div>
+              {isDemoLoading ? "Loading demo..." : "Try Demo Mode"}
             </button>
           </div>
 
