@@ -243,7 +243,7 @@ const CalendarWidget = () => {
 
       {/* Calendar Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-foreground">
+        <h2 className="text-2xl font-semibold text-center text-foreground">
           📅 {monthNames[month]} {year}
         </h2>
         <Link
@@ -255,7 +255,7 @@ const CalendarWidget = () => {
       </div>
 
       {/* Mini Legend */}
-      <div className="flex flex-wrap gap-2 mb-4 text-xs">
+      <div className="flex flex-wrap gap-8 mb-4 text-[15px] justify-center">
         <div className="flex items-center gap-1">
           <div className="w-2 h-2 rounded-full bg-emerald-600"></div>
           <span className="text-muted-foreground">Holidays</span>
@@ -328,7 +328,7 @@ const CalendarWidget = () => {
                     <div
                       className={`w-2 h-2 rounded-full ${event.color} flex-shrink-0`}
                     />
-                    <span className="text-[12px] truncate text-foreground">
+                    <span className="text-[14px] truncate text-foreground">
                       {event.title
                         .replace(
                           /[🎄🛒💰🚨🎬📚👥🎵⛽🍽️📈🎁🏥🔍📊🏠📝💪☁️📱✍️🎨🔍📖🧘🎆☕⚛️💼]/g,
@@ -339,7 +339,7 @@ const CalendarWidget = () => {
                   </div>
                 ))}
                 {events.length > 2 && (
-                  <div className="text-[12px] text-muted-foreground">
+                  <div className="text-[14px] text-muted-foreground">
                     +{events.length - 2} more
                   </div>
                 )}

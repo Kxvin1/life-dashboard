@@ -301,7 +301,7 @@ const CalendarPreview = () => {
 
         {/* Legend */}
         <div className="mb-6">
-          <h3 className="text-sm font-semibold text-foreground mb-3">
+          <h3 className="mb-3 text-sm font-semibold text-foreground">
             Event Types
           </h3>
           <div className="grid grid-cols-2 gap-3 p-4 rounded-lg md:grid-cols-4 lg:grid-cols-8 bg-secondary/30">
@@ -396,7 +396,7 @@ const CalendarPreview = () => {
                   {events.slice(0, 3).map((event) => (
                     <div
                       key={event.id}
-                      className={`text-sm px-2 py-1 rounded text-white truncate ${event.color} hover:opacity-80 cursor-pointer relative group`}
+                      className={`text-[15px] px-2 py-1 rounded text-white truncate ${event.color} hover:opacity-80 cursor-pointer relative group`}
                       title={`${event.title} (${event.type})`}
                     >
                       <div className="flex items-center justify-between">
@@ -518,57 +518,6 @@ const CalendarPreview = () => {
               <p className="text-xs text-muted-foreground">
                 Updates instantly when you add new data
               </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Section */}
-      <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2 lg:grid-cols-4">
-        <div className="p-4 border rounded-lg shadow-md bg-card border-border">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-lg dark:bg-green-900/30">
-              <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Income Events</p>
-              <p className="text-lg font-semibold text-foreground">3</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 border rounded-lg shadow-md bg-card border-border">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 bg-red-100 rounded-lg dark:bg-red-900/30">
-              <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Expense Events</p>
-              <p className="text-lg font-semibold text-foreground">4</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 border rounded-lg shadow-md bg-card border-border">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg dark:bg-blue-900/30">
-              <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Tasks Due</p>
-              <p className="text-lg font-semibold text-foreground">6</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 border rounded-lg shadow-md bg-card border-border">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 bg-orange-100 rounded-lg dark:bg-orange-900/30">
-              <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Pomodoro Sessions</p>
-              <p className="text-lg font-semibold text-foreground">6</p>
             </div>
           </div>
         </div>
