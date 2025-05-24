@@ -7,6 +7,8 @@ import { Transaction } from "@/types/finance";
 import { fetchTransactions } from "@/services/transactionService";
 import { fetchSubscriptionSummary } from "@/services/subscriptionService";
 import { fetchMonthlySummary } from "@/services/summaryService";
+import { useDashboard } from "@/contexts/DashboardContext";
+import DashboardCard from "./DashboardCard";
 
 // Frontend cache for account summary
 interface CacheEntry {
@@ -72,6 +74,13 @@ export default function DashboardAccountSummary() {
     ytdExpenses: 0,
     monthlySubscriptionCost: 0,
   });
+
+  const { allCards } = useDashboard();
+
+  // Get only the finance tools
+  const financeTools = allCards.filter(
+    (card) => card.category === "finance" && card.isImplemented
+  );
 
   useEffect(() => {
     const fetchFinancialData = async () => {
@@ -244,65 +253,85 @@ export default function DashboardAccountSummary() {
       <h2 className="mb-4 text-xl font-semibold text-foreground">
         Account Summary
       </h2>
-      <div className="space-y-4">
-        {/* Net Worth */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-muted-foreground">Net Worth</span>
-            <span
-              className={`font-medium ${
-                financialData.netWorth >= 0 ? "text-[#4ade80]" : "text-red-500"
-              }`}
-            >
-              {formatCurrency(financialData.netWorth)}
-            </span>
-          </div>
-          <div className="w-full h-1 overflow-hidden rounded-full bg-secondary/50">
-            <div
-              className={`h-full ${
-                financialData.netWorth >= 0 ? "bg-[#4ade80]" : "bg-red-500"
-              }`}
-              style={{
-                width: `${Math.min(
-                  (Math.abs(financialData.netWorth) /
-                    (financialData.ytdIncome || 1)) *
-                    100,
-                  100
-                )}%`,
-              }}
-            ></div>
-          </div>
-        </div>
 
-        {/* Year to Date */}
-        <div>
-          <h3 className="mb-2 text-sm font-medium text-foreground">
-            {currentYear} Summary
-          </h3>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Total Income</span>
-              <span className="text-[#4ade80] font-medium">
-                {formatCurrency(financialData.ytdIncome)}
+      {/* Financial Data Section */}
+      <div className="mb-6">
+        <div className="space-y-4">
+          {/* Net Worth */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-muted-foreground">Net Worth</span>
+              <span
+                className={`font-medium ${
+                  financialData.netWorth >= 0
+                    ? "text-[#4ade80]"
+                    : "text-red-500"
+                }`}
+              >
+                {formatCurrency(financialData.netWorth)}
               </span>
             </div>
+            <div className="w-full h-1 overflow-hidden rounded-full bg-secondary/50">
+              <div
+                className={`h-full ${
+                  financialData.netWorth >= 0 ? "bg-[#4ade80]" : "bg-red-500"
+                }`}
+                style={{
+                  width: `${Math.min(
+                    (Math.abs(financialData.netWorth) /
+                      (financialData.ytdIncome || 1)) *
+                      100,
+                    100
+                  )}%`,
+                }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Year to Date */}
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-foreground">
+              {currentYear} Summary
+            </h3>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Total Income</span>
+                <span className="text-[#4ade80] font-medium">
+                  {formatCurrency(financialData.ytdIncome)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Total Expenses</span>
+                <span className="font-medium text-red-500">
+                  {formatCurrency(financialData.ytdExpenses)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Subscriptions */}
+          <div className="pt-2 mt-2 border-t border-border">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Total Expenses</span>
-              <span className="font-medium text-red-500">
-                {formatCurrency(financialData.ytdExpenses)}
+              <span className="text-muted-foreground">Subscriptions</span>
+              <span className="font-medium text-foreground">
+                {formatCurrency(financialData.monthlySubscriptionCost)}/mo
               </span>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Subscriptions */}
-        <div className="pt-2 mt-2 border-t border-border">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Subscriptions</span>
-            <span className="font-medium text-foreground">
-              {formatCurrency(financialData.monthlySubscriptionCost)}/mo
-            </span>
-          </div>
+      {/* Financial Tools Section */}
+      <div>
+        <h3 className="mb-3 text-lg font-medium text-foreground">
+          Financial Tools
+        </h3>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          {financeTools.map((card) => (
+            <div key={card.id} className="scale-95">
+              <DashboardCard card={card} />
+            </div>
+          ))}
         </div>
       </div>
     </div>

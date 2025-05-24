@@ -45,7 +45,7 @@ const defaultCards: DashboardCard[] = [
   // Finance Cards
   {
     id: "finance-overview",
-    title: "Transactions Overview",
+    title: "Transactions",
     description: "View your transaction history and analyze spending patterns.",
     href: "/finance/overview",
     category: "finance",

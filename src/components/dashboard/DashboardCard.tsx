@@ -54,9 +54,9 @@ const DashboardCard = ({ card, onRemove, onAdd }: DashboardCardProps) => {
         <p className="mt-1 text-sm text-muted-foreground">{card.description}</p>
 
         {/* Category badge */}
-        <div className="absolute z-20 top-1 right-2">
+        <div className="absolute z-20 top-2 right-2">
           <span
-            className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+            className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
               card.category === "finance"
                 ? "bg-green-200 text-green-800"
                 : card.category === "productivity"

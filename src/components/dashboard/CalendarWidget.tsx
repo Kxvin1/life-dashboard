@@ -229,15 +229,16 @@ const CalendarWidget = () => {
   return (
     <div className="p-6 mb-6 border shadow-md bg-card rounded-xl border-border">
       {/* Development Banner */}
-      <div className="p-3 mb-4 border rounded-lg bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
-          <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+      <div className="p-6 mb-4 text-center border rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-amber-200 dark:border-amber-800">
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="w-4 h-4 rounded-full bg-amber-500 animate-pulse"></div>
+          <span className="text-lg font-semibold text-amber-800 dark:text-amber-200">
             🚧 Calendar Integration - Currently in Development
           </span>
         </div>
-        <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-          This preview shows how your unified calendar will look when completed
+        <p className="text-base text-amber-700 dark:text-amber-300 leading-relaxed">
+          This preview shows how your unified calendar will integrate with our
+          currently released features
         </p>
       </div>
 
