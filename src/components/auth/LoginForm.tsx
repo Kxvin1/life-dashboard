@@ -79,34 +79,40 @@ const LoginForm = () => {
     setIsDemoLoading(true);
 
     try {
-      // Step 1: Show backend preparation progress
+      // Step 1: Login as demo user first
       setPrewarmProgress({
         isPrewarming: true,
-        currentTask: "Preparing demo data...",
+        currentTask: "Logging in...",
         completed: 1,
-        total: 3,
+        total: 11,
       });
 
-      // Step 2: Login as demo user (this triggers backend pre-warming)
       await loginAsDemo();
 
-      // Step 3: Show completion
+      // Step 2: Now pre-warm all frontend caches
       setPrewarmProgress({
         isPrewarming: true,
-        currentTask: "Finalizing...",
-        completed: 3,
-        total: 3,
+        currentTask: "Pre-loading data...",
+        completed: 2,
+        total: 11,
       });
 
-      // Small delay to show completion
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Actually pre-warm frontend caches with real API calls
+      await prewarmService.prewarmDemoUserData((progress) => {
+        setPrewarmProgress({
+          isPrewarming: true,
+          currentTask: progress.currentTask,
+          completed: progress.completed + 2, // Offset by 2 for login steps
+          total: 11,
+        });
+      });
 
       // Complete
       setPrewarmProgress({
         isPrewarming: false,
         currentTask: "Complete",
-        completed: 3,
-        total: 3,
+        completed: 11,
+        total: 11,
       });
     } catch (err) {
       setError(

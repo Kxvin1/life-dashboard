@@ -1,6 +1,6 @@
 /**
  * Frontend Pre-warming Service
- * 
+ *
  * Proactively fetches and caches data for demo users to ensure instant loading
  * when navigating between features. This works in conjunction with backend
  * Redis caching for optimal performance.
@@ -22,34 +22,43 @@ class PrewarmService {
    * Pre-warm all frontend caches for demo user
    * This should be called immediately after demo login
    */
-  async prewarmDemoUserData(
-    onProgress?: PrewarmCallback
-  ): Promise<void> {
+  async prewarmDemoUserData(onProgress?: PrewarmCallback): Promise<void> {
     // Prevent multiple simultaneous pre-warming operations
     if (this.isPrewarming && this.prewarmPromise) {
       return this.prewarmPromise;
     }
 
     this.isPrewarming = true;
-    
+
     const tasks = [
-      { name: 'Transaction Categories', fn: () => this.prewarmTransactionCategories() },
-      { name: 'Recent Transactions', fn: () => this.prewarmTransactions() },
-      { name: 'Account Summary', fn: () => this.prewarmAccountSummary() },
-      { name: 'Monthly Summary', fn: () => this.prewarmMonthlySummary() },
-      { name: 'Yearly Summary', fn: () => this.prewarmYearlySummary() },
-      { name: 'Active Subscriptions', fn: () => this.prewarmActiveSubscriptions() },
-      { name: 'Inactive Subscriptions', fn: () => this.prewarmInactiveSubscriptions() },
-      { name: 'Subscription Summary', fn: () => this.prewarmSubscriptionSummary() },
+      { name: "Categories", fn: () => this.prewarmTransactionCategories() },
+      { name: "Transactions", fn: () => this.prewarmTransactions() },
+      { name: "Account Summary", fn: () => this.prewarmAccountSummary() },
+      { name: "Monthly Summary", fn: () => this.prewarmMonthlySummary() },
+      { name: "Yearly Summary", fn: () => this.prewarmYearlySummary() },
+      {
+        name: "Active Subscriptions",
+        fn: () => this.prewarmActiveSubscriptions(),
+      },
+      {
+        name: "Inactive Subscriptions",
+        fn: () => this.prewarmInactiveSubscriptions(),
+      },
+      {
+        name: "Subscription Summary",
+        fn: () => this.prewarmSubscriptionSummary(),
+      },
+      { name: "Tasks", fn: () => this.prewarmTasks() },
+      { name: "Pomodoro", fn: () => this.prewarmPomodoro() },
     ];
 
     this.prewarmPromise = this.executePrewarmTasks(tasks, onProgress);
-    
+
     try {
       await this.prewarmPromise;
-      console.log('🔥 Frontend pre-warming completed successfully');
+      console.log("🔥 Frontend pre-warming completed successfully");
     } catch (error) {
-      console.error('❌ Frontend pre-warming failed:', error);
+      console.error("❌ Frontend pre-warming failed:", error);
     } finally {
       this.isPrewarming = false;
       this.prewarmPromise = null;
@@ -66,15 +75,15 @@ class PrewarmService {
     onProgress?: PrewarmCallback
   ): Promise<void> {
     const total = tasks.length;
-    
+
     for (let i = 0; i < tasks.length; i++) {
       const task = tasks[i];
-      
+
       if (onProgress) {
         onProgress({
           completed: i,
           total,
-          currentTask: task.name
+          currentTask: task.name,
         });
       }
 
@@ -91,7 +100,7 @@ class PrewarmService {
       onProgress({
         completed: total,
         total,
-        currentTask: 'Complete'
+        currentTask: "Complete",
       });
     }
   }
@@ -100,24 +109,18 @@ class PrewarmService {
    * Pre-warm transaction categories
    */
   private async prewarmTransactionCategories(): Promise<void> {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    
-    await fetch('/api/v1/categories', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
+    const { fetchCategories } = await import("./categoryService");
+    await fetchCategories();
   }
 
   /**
    * Pre-warm recent transactions
    */
   private async prewarmTransactions(): Promise<void> {
-    const { fetchTransactions } = await import('./transactionService');
+    const { fetchTransactions } = await import("./transactionService");
     await fetchTransactions({
       skip: 0,
-      limit: 100
+      limit: 100,
     });
   }
 
@@ -125,7 +128,7 @@ class PrewarmService {
    * Pre-warm account summary
    */
   private async prewarmAccountSummary(): Promise<void> {
-    const { getSummary } = await import('./summaryService');
+    const { getSummary } = await import("./summaryService");
     await getSummary();
   }
 
@@ -133,7 +136,7 @@ class PrewarmService {
    * Pre-warm monthly summary for current year
    */
   private async prewarmMonthlySummary(): Promise<void> {
-    const { getMonthlySummary } = await import('./summaryService');
+    const { getMonthlySummary } = await import("./summaryService");
     const currentYear = new Date().getFullYear();
     await getMonthlySummary(currentYear);
   }
@@ -142,7 +145,7 @@ class PrewarmService {
    * Pre-warm yearly summary for current year
    */
   private async prewarmYearlySummary(): Promise<void> {
-    const { getYearlySummary } = await import('./summaryService');
+    const { getYearlySummary } = await import("./summaryService");
     const currentYear = new Date().getFullYear();
     await getYearlySummary(currentYear);
   }
@@ -151,24 +154,54 @@ class PrewarmService {
    * Pre-warm active subscriptions
    */
   private async prewarmActiveSubscriptions(): Promise<void> {
-    const { getSubscriptions } = await import('./subscriptionService');
-    await getSubscriptions('active');
+    const { getSubscriptions } = await import("./subscriptionService");
+    await getSubscriptions("active");
   }
 
   /**
    * Pre-warm inactive subscriptions
    */
   private async prewarmInactiveSubscriptions(): Promise<void> {
-    const { getSubscriptions } = await import('./subscriptionService');
-    await getSubscriptions('inactive');
+    const { getSubscriptions } = await import("./subscriptionService");
+    await getSubscriptions("inactive");
   }
 
   /**
    * Pre-warm subscription summary
    */
   private async prewarmSubscriptionSummary(): Promise<void> {
-    const { getSubscriptionSummary } = await import('./subscriptionService');
+    const { getSubscriptionSummary } = await import("./subscriptionService");
     await getSubscriptionSummary();
+  }
+
+  /**
+   * Pre-warm subscription summary
+   */
+  private async prewarmSubscriptionSummary(): Promise<void> {
+    const { getSubscriptionSummary } = await import("./subscriptionService");
+    await getSubscriptionSummary();
+  }
+
+  /**
+   * Pre-warm tasks (both short-term and long-term)
+   */
+  private async prewarmTasks(): Promise<void> {
+    const { getTasks } = await import("./taskService");
+    // Pre-warm both short-term and long-term tasks
+    await getTasks({ is_long_term: false, skip: 0, limit: 10 });
+    await getTasks({ is_long_term: true, skip: 0, limit: 10 });
+  }
+
+  /**
+   * Pre-warm pomodoro data
+   */
+  private async prewarmPomodoro(): Promise<void> {
+    const { getPomodoroSessions, getPomodoroStats } = await import(
+      "./pomodoroService"
+    );
+    // Pre-warm pomodoro sessions and stats
+    await getPomodoroSessions({ skip: 0, limit: 10 });
+    await getPomodoroStats();
   }
 
   /**
@@ -184,23 +217,23 @@ class PrewarmService {
   clearAllCaches(): void {
     try {
       // Clear transaction cache
-      import('./transactionService').then(({ transactionCache }) => {
+      import("./transactionService").then(({ transactionCache }) => {
         transactionCache.clear();
       });
-      
+
       // Clear subscription cache
-      import('./subscriptionService').then(({ subscriptionCache }) => {
+      import("./subscriptionService").then(({ subscriptionCache }) => {
         subscriptionCache.clear();
       });
-      
+
       // Clear summary cache
-      import('./summaryService').then(({ clearSummaryCache }) => {
+      import("./summaryService").then(({ clearSummaryCache }) => {
         clearSummaryCache();
       });
-      
-      console.log('🧹 All frontend caches cleared');
+
+      console.log("🧹 All frontend caches cleared");
     } catch (error) {
-      console.warn('⚠️ Some caches could not be cleared:', error);
+      console.warn("⚠️ Some caches could not be cleared:", error);
     }
   }
 }
