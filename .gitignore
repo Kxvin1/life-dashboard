@@ -27,6 +27,9 @@ AI_INSIGHTS_README.md
 .DS_Store
 *.pem
 
+# Scripts (one-time utilities, not part of main app)
+backend/scripts/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

@@ -33,7 +33,6 @@ from app.db.seed_task_categories import (
     verify_task_categories_async,
 )
 from app.core.demo_middleware import DemoUserMiddleware
-from app.services.scheduler_service import prewarm_scheduler
 import asyncio
 from alembic import command
 from alembic.config import Config
@@ -113,16 +112,6 @@ def startup_event():
 
     # Start a background thread to preload categories
     threading.Thread(target=preload_categories).start()
-
-    # Start the pre-warming scheduler for production in background
-    asyncio.create_task(prewarm_scheduler.start())
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Clean shutdown tasks."""
-    # Stop the pre-warming scheduler
-    await prewarm_scheduler.stop()
 
 
 # Add performance monitoring middleware
@@ -247,46 +236,6 @@ async def redis_health_check():
                 "redis_enabled": False,
                 "timestamp": str(datetime.now()),
             }
-    except Exception as e:
-        return {
-            "status": "error",
-            "error": str(e),
-            "timestamp": str(datetime.now()),
-        }
-
-
-@app.get("/prewarm-health")
-async def prewarm_health_check():
-    """
-    Check pre-warming system health for production monitoring.
-    This endpoint is useful for monitoring pre-warming status.
-    """
-    try:
-        scheduler_status = prewarm_scheduler.get_status()
-
-        # Determine overall health
-        is_healthy = (
-            scheduler_status["scheduler_running"]
-            and scheduler_status["prewarm_enabled"]
-            and scheduler_status["last_prewarm_success"]
-        )
-
-        # Check cache freshness (warn if older than 6 hours)
-        cache_freshness_hours = scheduler_status.get("cache_freshness_hours")
-        is_cache_fresh = cache_freshness_hours is None or cache_freshness_hours < 6
-
-        return {
-            "status": "healthy" if is_healthy and is_cache_fresh else "degraded",
-            "scheduler_running": scheduler_status["scheduler_running"],
-            "prewarm_enabled": scheduler_status["prewarm_enabled"],
-            "last_prewarm_success": scheduler_status["last_prewarm_success"],
-            "cache_freshness_hours": cache_freshness_hours,
-            "cache_fresh": is_cache_fresh,
-            "total_prewarm_count": scheduler_status["total_prewarm_count"],
-            "total_error_count": scheduler_status["total_error_count"],
-            "timestamp": str(datetime.now()),
-        }
-
     except Exception as e:
         return {
             "status": "error",

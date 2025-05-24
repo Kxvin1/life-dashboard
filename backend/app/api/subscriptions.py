@@ -28,7 +28,6 @@ async def create_subscription(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    print(f"🔵 CREATE subscription called for user {current_user.id}")
     try:
         # Create a new subscription
         db_subscription = Subscription(
@@ -47,8 +46,6 @@ async def create_subscription(
 
         # Clear user's subscription cache
         redis_service.clear_user_cache(current_user.id)
-
-        print(f"✅ CREATE subscription success for user {current_user.id}")
 
         # Return as dictionary to match GET endpoint format
         return {
@@ -81,7 +78,6 @@ async def create_subscription(
         }
 
     except Exception as e:
-        print(f"❌ CREATE subscription error: {str(e)}")
         db.rollback()
         raise HTTPException(
             status_code=500, detail=f"Failed to create subscription: {str(e)}"
@@ -107,31 +103,13 @@ async def get_subscriptions(
     # Create cache key using string value of status to avoid enum serialization issues
     status_str = status.value if status else "all"
     cache_key = f"user_{current_user.id}_subscriptions_{status_str}_{skip}_{limit}"
-    print(f"⏱️ Cache key: {cache_key}")
-    print(f"🔍 User ID: {current_user.id}, Status: {status}, Status str: {status_str}")
-    print(f"🔍 Redis available: {redis_service.is_available}")
 
     # Try to get from Redis cache first
-    cache_start = time.time()
     cached_result = redis_service.get(cache_key)
-    cache_time = time.time() - cache_start
-    print(
-        f"🔍 Cache lookup result: {type(cached_result)} - {cached_result is not None}"
-    )
 
     if cached_result is not None:
-        total_time = time.time() - start_time
-        print(
-            f"⚡ CACHE HIT - Redis: {cache_time*1000:.1f}ms, Total: {total_time*1000:.1f}ms"
-        )
-        print(
-            f"🔍 Cached result type: {type(cached_result)}, length: {len(cached_result) if isinstance(cached_result, list) else 'N/A'}"
-        )
-
         # Return cached data directly (already serialized as dictionaries)
         return cached_result
-
-    print(f"💾 CACHE MISS - Redis: {cache_time*1000:.1f}ms, querying database...")
 
     query = db.query(Subscription).filter(Subscription.user_id == current_user.id)
 
@@ -149,9 +127,6 @@ async def get_subscriptions(
     subscriptions = query.offset(skip).limit(limit).all()
 
     # Convert to clean dictionaries for caching and response
-    print(f"🔄 Converting to dictionaries for caching")
-    serialize_start = time.time()
-
     subscription_dicts = []
     for sub in subscriptions:
         sub_dict = {
@@ -176,12 +151,6 @@ async def get_subscriptions(
 
     # Cache the clean dictionaries (not SQLAlchemy objects)
     redis_service.set(cache_key, subscription_dicts, ttl_seconds=3600)
-
-    serialize_time = time.time() - serialize_start
-    total_time = time.time() - start_time
-    print(
-        f"💾 DATABASE QUERY - Serialization: {serialize_time*1000:.1f}ms, Total: {total_time*1000:.1f}ms"
-    )
 
     return subscription_dicts
 
@@ -396,9 +365,6 @@ async def get_subscriptions_summary(
     for subscription in active_subscriptions:
         # Skip subscriptions with no amount
         if not subscription.amount or subscription.amount <= 0:
-            print(
-                f"⚠️ Skipping subscription {subscription.name} - invalid amount: {subscription.amount}"
-            )
             continue
 
         # Determine if this is a future subscription
@@ -418,16 +384,9 @@ async def get_subscriptions_summary(
                     float(subscription.amount) * 4.33
                 )  # Average weeks in a month
             else:
-                print(
-                    f"⚠️ Unknown billing frequency for {subscription.name}: {subscription.billing_frequency}"
-                )
                 continue
 
-            print(
-                f"💰 {subscription.name}: ${subscription.amount} {subscription.billing_frequency.value} = ${subscription_monthly_cost:.2f}/mo"
-            )
         except (ValueError, TypeError) as e:
-            print(f"❌ Error calculating cost for {subscription.name}: {e}")
             continue
 
         # Add to the appropriate total
@@ -454,8 +413,6 @@ async def get_subscriptions_summary(
         "future_subscriptions_count": future_active_count,
         "total_subscriptions_count": len(active_subscriptions),
     }
-
-    print(f"📊 Subscription summary: {result}")
 
     # Cache the result for 30 minutes
     redis_service.set(cache_key, result, ttl_seconds=1800)

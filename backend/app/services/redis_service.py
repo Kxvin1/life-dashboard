@@ -61,31 +61,21 @@ class RedisService:
     def get(self, key: str) -> Optional[Any]:
         """Get value from Redis cache"""
         if not self.is_available:
-            print(f"🔴 Redis not available for GET key: {key}")
-            logger.error(f"Redis not available for GET key: {key}")
             return None
 
         try:
-            print(f"🔍 Redis GET attempt for key: {key}")
             value = self.redis_client.get(key)
             if value is None:
-                print(f"🔴 Redis CACHE MISS for key: {key}")
-                logger.info(f"Redis CACHE MISS for key: {key}")
                 return None
 
             # Try to parse as JSON, fallback to string
             try:
                 result = json.loads(value)
-                print(f"🟢 Redis CACHE HIT for key: {key} (JSON data)")
-                logger.info(f"Redis CACHE HIT for key: {key}")
                 return result
             except json.JSONDecodeError:
-                print(f"🟢 Redis CACHE HIT (string) for key: {key}")
-                logger.info(f"Redis CACHE HIT (string) for key: {key}")
                 return value
 
         except Exception as e:
-            print(f"❌ Redis get failed for key {key}: {e}")
             logger.error(f"Redis get failed for key {key}: {e}")
             return None
 
@@ -112,11 +102,10 @@ class RedisService:
 
             serialized_value = json.dumps(value, default=json_serializer)
             self.redis_client.setex(key, ttl_seconds, serialized_value)
-            print(f"🟡 Redis SET key: {key} (TTL: {ttl_seconds}s)")
             return True
 
         except Exception as e:
-            print(f"❌ Redis set failed for key {key}: {e}")
+            logger.error(f"Redis set failed for key {key}: {e}")
             return False
 
     def delete(self, key: str) -> bool:
@@ -142,12 +131,11 @@ class RedisService:
             keys = self.redis_client.keys(pattern)
             if keys:
                 deleted = self.redis_client.delete(*keys)
-                print(f"🧹 Cleared {deleted} cache entries for user {user_id}")
                 return deleted
             return 0
 
         except Exception as e:
-            print(f"❌ Redis clear_user_cache failed for user {user_id}: {e}")
+            logger.error(f"Redis clear_user_cache failed for user {user_id}: {e}")
             return 0
 
 

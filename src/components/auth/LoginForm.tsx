@@ -4,24 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { prewarmService } from "@/services/prewarmService";
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isDemoLoading, setIsDemoLoading] = useState(false);
-  const [prewarmProgress, setPrewarmProgress] = useState<{
-    isPrewarming: boolean;
-    currentTask: string;
-    completed: number;
-    total: number;
-  }>({
-    isPrewarming: false,
-    currentTask: "",
-    completed: 0,
-    total: 0,
-  });
   const { login, loginAsDemo, isLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const MAX_EMAIL_LENGTH = 50;

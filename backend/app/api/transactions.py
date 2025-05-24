@@ -75,19 +75,11 @@ async def get_transactions(
 
     # Create cache key
     cache_key = f"user_{current_user.id}_transactions_{type}_{start_date}_{end_date}_{category_id}_{year}_{month}_{skip}_{limit}"
-    print(f"⏱️ Cache key: {cache_key}")
 
     # Try to get from Redis cache first
-    cache_start = time.time()
     cached_result = redis_service.get(cache_key)
-    cache_time = time.time() - cache_start
 
     if cached_result is not None:
-        total_time = time.time() - start_time
-        print(
-            f"⚡ CACHE HIT - Redis: {cache_time*1000:.1f}ms, Total: {total_time*1000:.1f}ms"
-        )
-
         # Validate cached data before returning
         try:
             if isinstance(cached_result, list) and all(
@@ -96,13 +88,9 @@ async def get_transactions(
                 return cached_result
             else:
                 # Invalid cache format, clear and fall back to database
-                print(f"🧹 Invalid cache format, clearing cache entry")
                 redis_service.delete(cache_key)
         except Exception as e:
-            print(f"❌ Cache validation error: {e}, clearing cache")
             redis_service.delete(cache_key)
-
-    print(f"💾 CACHE MISS - Redis: {cache_time*1000:.1f}ms, querying database...")
 
     try:
         # Build the query with eager loading of category
@@ -143,8 +131,6 @@ async def get_transactions(
         transactions = query.offset(skip).limit(limit).all()
 
     except Exception as e:
-        print(f"❌ Database query error: {e}")
-        print(f"❌ Error type: {type(e)}")
         raise HTTPException(status_code=500, detail=f"Database query failed: {str(e)}")
 
     # Ensure all transactions have valid is_recurring values
@@ -153,9 +139,6 @@ async def get_transactions(
             transaction.is_recurring = False
 
     # Convert to clean dictionaries for caching and response
-    print(f"🔄 Converting transactions to dictionaries for caching")
-    serialize_start = time.time()
-
     transaction_dicts = []
     try:
         for txn in transactions:
@@ -163,7 +146,6 @@ async def get_transactions(
             try:
                 amount_value = float(txn.amount) if txn.amount is not None else None
             except (ValueError, TypeError) as e:
-                print(f"❌ Amount conversion error for transaction {txn.id}: {e}")
                 amount_value = None
 
             txn_dict = {
@@ -201,8 +183,6 @@ async def get_transactions(
         )  # Increased to 1 hour
 
     except Exception as e:
-        print(f"❌ Error during serialization: {e}")
-        print(f"❌ Error type: {type(e)}")
         # Continue without caching - return the data anyway
         if not transaction_dicts:
             # If serialization completely failed, create basic dicts
@@ -225,9 +205,6 @@ async def get_transactions(
                     "category": None,  # Skip category to avoid further errors
                 }
                 transaction_dicts.append(basic_dict)
-
-    serialize_time = time.time() - serialize_start
-    print(f"💾 DATABASE QUERY - Serialization: {serialize_time*1000:.1f}ms")
 
     return transaction_dicts
 

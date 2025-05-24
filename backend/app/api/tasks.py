@@ -56,13 +56,7 @@ async def get_task_categories(
     cache_time = time.time() - cache_start
 
     if cached_result is not None:
-        total_time = time.time() - start_time
-        print(
-            f"⚡ CACHE HIT - Redis: {cache_time*1000:.1f}ms, Total: {total_time*1000:.1f}ms"
-        )
         return cached_result
-
-    print(f"💾 CACHE MISS - Redis: {cache_time*1000:.1f}ms, querying database...")
 
     # Get all categories in one query
     categories = (
@@ -91,9 +85,6 @@ async def get_task_categories(
 
     # Cache the result for 24 hours (categories change rarely)
     redis_service.set(cache_key, category_dicts, ttl_seconds=86400)
-
-    total_time = time.time() - start_time
-    print(f"💾 DATABASE QUERY - Total: {total_time*1000:.1f}ms")
 
     return category_dicts
 
@@ -225,13 +216,7 @@ async def get_task_hierarchy(
     cache_time = time.time() - cache_start
 
     if cached_result is not None:
-        total_time = time.time() - start_time
-        print(
-            f"⚡ CACHE HIT - Redis: {cache_time*1000:.1f}ms, Total: {total_time*1000:.1f}ms"
-        )
         return cached_result
-
-    print(f"💾 CACHE MISS - Redis: {cache_time*1000:.1f}ms, querying database...")
 
     # Get all top-level tasks (tasks with no parent)
     query = db.query(Task).filter(
@@ -255,9 +240,6 @@ async def get_task_hierarchy(
     # Cache the result for 1 hour
     redis_service.set(cache_key, serialized_tasks, ttl_seconds=3600)
 
-    total_time = time.time() - start_time
-    print(f"💾 DATABASE QUERY - Total: {total_time*1000:.1f}ms")
-
     return serialized_tasks
 
 
@@ -271,12 +253,8 @@ async def create_task(
     Create a new task
     """
     try:
-        print(f"📝 CREATE TASK - Starting creation for user_id: {current_user.id}")
-        print(f"📝 CREATE TASK - Task data: {task.title}")
-
         # Check if parent task exists and belongs to user
         if task.parent_task_id:
-            print(f"📝 CREATE TASK - Checking parent task: {task.parent_task_id}")
             parent_task = (
                 db.query(Task)
                 .filter(Task.id == task.parent_task_id, Task.user_id == current_user.id)
@@ -284,30 +262,24 @@ async def create_task(
             )
 
             if not parent_task:
-                print(f"❌ CREATE TASK - Parent task {task.parent_task_id} not found")
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Parent task not found or does not belong to user",
                 )
-            print(f"✅ CREATE TASK - Parent task found: {parent_task.title}")
 
         # Check if category exists
         if task.category_id:
-            print(f"📝 CREATE TASK - Checking category: {task.category_id}")
             category = (
                 db.query(TaskCategory)
                 .filter(TaskCategory.id == task.category_id)
                 .first()
             )
             if not category:
-                print(f"❌ CREATE TASK - Category {task.category_id} not found")
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND, detail="Category not found"
                 )
-            print(f"✅ CREATE TASK - Category found: {category.name}")
 
         # Create task with retry logic
-        print(f"📝 CREATE TASK - Creating database record...")
 
         max_retries = 3
         db_task = None
@@ -315,7 +287,6 @@ async def create_task(
         for attempt in range(max_retries):
             try:
                 if attempt > 0:
-                    print(f"🔄 CREATE TASK - Retry attempt {attempt + 1}/{max_retries}")
                     # Refresh the database session
                     db.rollback()
 
@@ -337,15 +308,9 @@ async def create_task(
                 db.add(db_task)
                 db.commit()
                 db.refresh(db_task)
-                print(
-                    f"✅ CREATE TASK - Database creation successful, task_id: {db_task.id} (attempt {attempt + 1})"
-                )
                 break
 
             except Exception as db_error:
-                print(
-                    f"❌ CREATE TASK - Database error on attempt {attempt + 1}: {str(db_error)}"
-                )
                 if attempt == max_retries - 1:
                     # Last attempt failed, re-raise the error
                     raise db_error
@@ -357,23 +322,17 @@ async def create_task(
 
         # Clear user's task cache (with error handling)
         try:
-            print(f"🧹 CREATE TASK - Clearing cache for user {current_user.id}")
             redis_service.clear_user_cache(current_user.id)
-            print(f"✅ CREATE TASK - Cache cleared successfully")
         except Exception as cache_error:
-            print(f"⚠️ CREATE TASK - Cache clear failed (non-critical): {cache_error}")
             # Don't fail the request if cache clearing fails
+            pass
 
-        print(f"🎉 CREATE TASK - Task created successfully: {db_task.id}")
         return db_task
 
     except HTTPException:
         # Re-raise HTTP exceptions (like 404)
         raise
     except Exception as e:
-        print(f"❌ CREATE TASK - Unexpected error: {str(e)}")
-        print(f"❌ CREATE TASK - Error type: {type(e).__name__}")
-
         # Rollback transaction if it's still active
         try:
             db.rollback()
@@ -485,16 +444,10 @@ async def delete_task(
     Delete a task
     """
     try:
-        print(
-            f"🗑️ DELETE TASK - Starting deletion for task_id: {task_id}, user_id: {current_user.id}"
-        )
-
         # Test database connection health
         try:
             db.execute("SELECT 1")
-            print(f"✅ DELETE TASK - Database connection healthy")
         except Exception as conn_error:
-            print(f"⚠️ DELETE TASK - Database connection issue: {conn_error}")
             # Try to refresh the connection
             db.rollback()
 
@@ -506,26 +459,19 @@ async def delete_task(
         )
 
         if not task:
-            print(
-                f"❌ DELETE TASK - Task {task_id} not found for user {current_user.id}"
-            )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
             )
-
-        print(f"✅ DELETE TASK - Found task: {task.title}")
 
         # Store is_long_term before deleting the task
         is_long_term = task.is_long_term
 
         # Delete the task with retry logic
-        print(f"🗑️ DELETE TASK - Deleting from database...")
 
         max_retries = 3
         for attempt in range(max_retries):
             try:
                 if attempt > 0:
-                    print(f"🔄 DELETE TASK - Retry attempt {attempt + 1}/{max_retries}")
                     # Refresh the database session
                     db.rollback()
                     # Re-fetch the task to ensure it still exists
@@ -535,22 +481,13 @@ async def delete_task(
                         .first()
                     )
                     if not task:
-                        print(
-                            f"✅ DELETE TASK - Task {task_id} already deleted in previous attempt"
-                        )
                         break
 
                 db.delete(task)
                 db.commit()
-                print(
-                    f"✅ DELETE TASK - Database deletion successful (attempt {attempt + 1})"
-                )
                 break
 
             except Exception as db_error:
-                print(
-                    f"❌ DELETE TASK - Database error on attempt {attempt + 1}: {str(db_error)}"
-                )
                 if attempt == max_retries - 1:
                     # Last attempt failed, re-raise the error
                     raise db_error
@@ -562,23 +499,17 @@ async def delete_task(
 
         # Clear user's task cache (with error handling)
         try:
-            print(f"🧹 DELETE TASK - Clearing cache for user {current_user.id}")
             redis_service.clear_user_cache(current_user.id)
-            print(f"✅ DELETE TASK - Cache cleared successfully")
         except Exception as cache_error:
-            print(f"⚠️ DELETE TASK - Cache clear failed (non-critical): {cache_error}")
             # Don't fail the request if cache clearing fails
+            pass
 
-        print(f"🎉 DELETE TASK - Task {task_id} deleted successfully")
         return None
 
     except HTTPException:
         # Re-raise HTTP exceptions (like 404)
         raise
     except Exception as e:
-        print(f"❌ DELETE TASK - Unexpected error: {str(e)}")
-        print(f"❌ DELETE TASK - Error type: {type(e).__name__}")
-
         # Rollback transaction if it's still active
         try:
             db.rollback()
