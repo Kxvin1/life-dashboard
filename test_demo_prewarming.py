@@ -78,11 +78,19 @@ def trigger_prewarming():
     if response.status_code == 200:
         data = response.json()
         print(f"✅ Pre-warming completed in {prewarm_time*1000:.1f}ms")
-        print(f"📊 Pre-warmed endpoints: {len(data['details']['prewarmed_endpoints'])}")
-        if data["details"]["errors"]:
-            print(f"⚠️ Errors: {len(data['details']['errors'])}")
-            for error in data["details"]["errors"]:
-                print(f"   - {error}")
+
+        # Handle both old and new response formats
+        if "details" in data:
+            print(
+                f"📊 Pre-warmed endpoints: {len(data['details']['prewarmed_endpoints'])}"
+            )
+            if data["details"]["errors"]:
+                print(f"⚠️ Errors: {len(data['details']['errors'])}")
+                for error in data["details"]["errors"]:
+                    print(f"   - {error}")
+        elif "scheduler_status" in data:
+            print(f"📊 Scheduler-based pre-warming completed")
+
         return True
     else:
         print(f"❌ Pre-warming failed: {response.status_code}")

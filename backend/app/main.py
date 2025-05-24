@@ -106,7 +106,7 @@ def preload_categories():
 
 # Start connection warmup and preload data in background threads
 @app.on_event("startup")
-async def startup_event():
+def startup_event():
     """Run startup tasks in the background."""
     # Start a background thread for database connection warmup
     threading.Thread(target=warmup_db_connection).start()
@@ -114,8 +114,8 @@ async def startup_event():
     # Start a background thread to preload categories
     threading.Thread(target=preload_categories).start()
 
-    # Start the pre-warming scheduler for production
-    await prewarm_scheduler.start()
+    # Start the pre-warming scheduler for production in background
+    asyncio.create_task(prewarm_scheduler.start())
 
 
 @app.on_event("shutdown")
