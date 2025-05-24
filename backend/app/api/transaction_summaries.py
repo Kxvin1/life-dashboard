@@ -108,18 +108,12 @@ async def get_yearly_summary(
         # Create a cache key based on the parameters
         cache_key = f"yearly_summary:{current_user.id}:{year}:{category_id}"
 
-        # Try to get from cache first
-        cached_summary = get_cache(cache_key)
-        if cached_summary is not None:
-            # Set cache control headers
-            response.headers["Cache-Control"] = (
-                "private, max-age=300"  # 5 minutes client-side cache
-            )
-            response.headers["ETag"] = f'W/"summary-{hash(str(cached_summary))}"'
-            return cached_summary
+        # Try to get from Redis cache first
+        cached_result = redis_service.get(cache_key)
+        if cached_result is not None:
+            return cached_result
 
-        # If not in cache, fetch from database with caching
-        @cached(ttl_seconds=300)  # Cache for 5 minutes
+        # If not in cache, fetch from database
         def get_yearly_summary_from_db(user_id, year_val, category_id_val):
             # Get total income and expenses for the year
             query = db.query(
@@ -157,11 +151,8 @@ async def get_yearly_summary(
         # Get summary from database and cache it
         result = get_yearly_summary_from_db(current_user.id, year, category_id)
 
-        # Set cache control headers
-        response.headers["Cache-Control"] = (
-            "private, max-age=300"  # 5 minutes client-side cache
-        )
-        response.headers["ETag"] = f'W/"summary-{hash(str(result))}"'
+        # Cache the result for 30 minutes
+        redis_service.set(cache_key, result, ttl_seconds=1800)
 
         return result
 

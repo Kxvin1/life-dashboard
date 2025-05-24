@@ -79,11 +79,8 @@ const LoginForm = () => {
     setIsDemoLoading(true);
 
     try {
-      // Step 1: Login as demo user
+      // Login as demo user - data should already be pre-warmed in Redis
       await loginAsDemo();
-
-      // Step 2: Pre-warm frontend caches for instant first loads
-      await prewarmService.prewarmDemoUserData();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to login as demo user"

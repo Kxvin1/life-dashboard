@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379"  # Redis connection URL
     REDIS_ENABLED: bool = True  # Enable/disable Redis caching
 
+    # Pre-warming configuration for production
+    PREWARM_ENABLED: bool = True  # Enable/disable automatic pre-warming
+    PREWARM_INTERVAL_HOURS: int = 2  # Hours between regular pre-warming runs
+    PREWARM_STARTUP_DELAY_SECONDS: int = 30  # Delay before initial pre-warming
+    PREWARM_MAX_RETRIES: int = 3  # Maximum retries for failed pre-warming
+
     class Config:
         # Only load .env file in development to prevent overriding Railway variables in production
         if os.getenv("ENVIRONMENT") != "production":

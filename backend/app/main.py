@@ -26,12 +26,14 @@ from app.api import (
     pomodoro_router,
     tasks_router,
 )
+from app.api.admin import router as admin_router
 from app.db.seed_categories import seed_categories, verify_categories
 from app.db.seed_task_categories import (
     seed_task_categories,
     verify_task_categories_async,
 )
 from app.core.demo_middleware import DemoUserMiddleware
+from app.services.scheduler_service import prewarm_scheduler
 import asyncio
 from alembic import command
 from alembic.config import Config
@@ -104,13 +106,23 @@ def preload_categories():
 
 # Start connection warmup and preload data in background threads
 @app.on_event("startup")
-def startup_event():
+async def startup_event():
     """Run startup tasks in the background."""
     # Start a background thread for database connection warmup
     threading.Thread(target=warmup_db_connection).start()
 
     # Start a background thread to preload categories
     threading.Thread(target=preload_categories).start()
+
+    # Start the pre-warming scheduler for production
+    await prewarm_scheduler.start()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Clean shutdown tasks."""
+    # Stop the pre-warming scheduler
+    await prewarm_scheduler.stop()
 
 
 # Add performance monitoring middleware
@@ -166,6 +178,7 @@ app.include_router(subscriptions_router, prefix="/api/v1", tags=["subscriptions"
 app.include_router(ai_insights_router, prefix="/api/v1", tags=["ai_insights"])
 app.include_router(pomodoro_router, prefix="/api/v1", tags=["pomodoro"])
 app.include_router(tasks_router, prefix="/api/v1/tasks", tags=["tasks"])
+app.include_router(admin_router, prefix="/api/v1", tags=["admin"])
 app.include_router(health_router, tags=["health"])
 
 
@@ -234,6 +247,46 @@ async def redis_health_check():
                 "redis_enabled": False,
                 "timestamp": str(datetime.now()),
             }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "timestamp": str(datetime.now()),
+        }
+
+
+@app.get("/prewarm-health")
+async def prewarm_health_check():
+    """
+    Check pre-warming system health for production monitoring.
+    This endpoint is useful for monitoring pre-warming status.
+    """
+    try:
+        scheduler_status = prewarm_scheduler.get_status()
+
+        # Determine overall health
+        is_healthy = (
+            scheduler_status["scheduler_running"]
+            and scheduler_status["prewarm_enabled"]
+            and scheduler_status["last_prewarm_success"]
+        )
+
+        # Check cache freshness (warn if older than 6 hours)
+        cache_freshness_hours = scheduler_status.get("cache_freshness_hours")
+        is_cache_fresh = cache_freshness_hours is None or cache_freshness_hours < 6
+
+        return {
+            "status": "healthy" if is_healthy and is_cache_fresh else "degraded",
+            "scheduler_running": scheduler_status["scheduler_running"],
+            "prewarm_enabled": scheduler_status["prewarm_enabled"],
+            "last_prewarm_success": scheduler_status["last_prewarm_success"],
+            "cache_freshness_hours": cache_freshness_hours,
+            "cache_fresh": is_cache_fresh,
+            "total_prewarm_count": scheduler_status["total_prewarm_count"],
+            "total_error_count": scheduler_status["total_error_count"],
+            "timestamp": str(datetime.now()),
+        }
+
     except Exception as e:
         return {
             "status": "error",
