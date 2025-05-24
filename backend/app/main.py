@@ -133,8 +133,8 @@ async def add_process_time_header(request: Request, call_next):
 # Add demo user middleware
 app.add_middleware(DemoUserMiddleware)
 
-# Add GZip compression middleware for faster responses
-app.add_middleware(GZipMiddleware, minimum_size=1000)
+# Add GZip compression middleware for faster responses (lower threshold for demo users)
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # Configure CORS - Use only FastAPI's CORSMiddleware for simplicity
 app.add_middleware(

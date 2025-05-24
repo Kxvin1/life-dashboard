@@ -130,10 +130,7 @@ async def login_as_demo(response: Response, db: Session = Depends(get_db)):
         data={"sub": demo_user.email}, expires_delta=access_token_expires
     )
 
-    # Store demo user token for instant middleware lookup
-    from app.middleware.demo_cache import store_demo_user_token
-
-    await store_demo_user_token(demo_user.id, access_token)
+    # Demo user will benefit from existing Redis caching + gzip compression
 
     # Pre-warm cache in background (don't wait for it to complete)
     asyncio.create_task(prewarm_demo_user_cache(db, demo_user))
@@ -1159,13 +1156,9 @@ async def refresh_demo_data(db: Session = Depends(get_db)):
         print(f"❌ Error creating demo data: {str(e)}")
         raise
 
-    # REAL Pre-warming: Precompute all API responses for instant serving
-    from app.middleware.demo_cache import precompute_demo_responses
-
-    asyncio.create_task(precompute_demo_responses(db, demo_user))
-    print(
-        f"🚀 Started REAL pre-warming: precomputing all API responses for instant serving"
-    )
+    # Pre-warm cache in background (same as regular users)
+    asyncio.create_task(prewarm_demo_user_cache(db, demo_user))
+    print(f"🔥 Started comprehensive cache pre-warming for user {demo_user.id}")
 
     return {
         "message": "Demo user data refreshed successfully with wealthy profile and REAL pre-warming"
