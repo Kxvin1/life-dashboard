@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import QuickAccess from "@/components/dashboard/QuickAccess";
 import AllTools from "@/components/dashboard/AllTools";
 import DashboardAccountSummary from "@/components/dashboard/DashboardAccountSummary";
+import CalendarWidget from "@/components/dashboard/CalendarWidget";
 
 const HomePage = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -170,6 +171,9 @@ const HomePage = () => {
 
         <DashboardAccountSummary />
       </div>
+
+      {/* Calendar Widget Section */}
+      <CalendarWidget />
 
       {/* Quick Access Section */}
       <QuickAccess />

@@ -34,18 +34,6 @@ const financeFeatures = [
     icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15",
     isImplemented: true,
   },
-  {
-    name: "Budgeting",
-    href: "/finance/budgeting",
-    icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-    isImplemented: false,
-  },
-  {
-    name: "Savings Goals",
-    href: "/finance/savings",
-    icon: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6",
-    isImplemented: false,
-  },
 ];
 
 // Define productivity features
@@ -61,18 +49,6 @@ const productivityFeatures = [
     href: "/productivity/todo",
     icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
     isImplemented: true,
-  },
-  {
-    name: "Habit Tracker",
-    href: "/productivity/habits",
-    icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",
-    isImplemented: false,
-  },
-  {
-    name: "Notes",
-    href: "/productivity/notes",
-    icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
-    isImplemented: false,
   },
 ];
 

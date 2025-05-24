@@ -68,22 +68,6 @@ const defaultCards: DashboardCard[] = [
     category: "finance",
     isImplemented: true,
   },
-  {
-    id: "finance-budgeting",
-    title: "Budgeting",
-    description: "Plan your monthly budget and track your spending.",
-    href: "/finance/budgeting",
-    category: "finance",
-    isImplemented: false,
-  },
-  {
-    id: "finance-savings",
-    title: "Savings Goals",
-    description: "Set and track your savings goals to reach financial targets.",
-    href: "/finance/savings",
-    category: "finance",
-    isImplemented: false,
-  },
 
   // Productivity Cards
   {
@@ -103,30 +87,6 @@ const defaultCards: DashboardCard[] = [
     category: "productivity",
     isImplemented: true,
   },
-  {
-    id: "productivity-habits",
-    title: "Habit Tracker",
-    description: "Track your daily or weekly habits and view streaks.",
-    href: "/productivity/habits",
-    category: "productivity",
-    isImplemented: false,
-  },
-  {
-    id: "productivity-time",
-    title: "Time Tracker",
-    description: "Track time spent on activities and view basic time reports.",
-    href: "/productivity/time",
-    category: "productivity",
-    isImplemented: false,
-  },
-  {
-    id: "productivity-goals",
-    title: "Goal Tracker",
-    description: "Set and track your broader personal objectives.",
-    href: "/productivity/goals",
-    category: "productivity",
-    isImplemented: false,
-  },
 
   // Health Cards
   {
@@ -137,14 +97,7 @@ const defaultCards: DashboardCard[] = [
     category: "health",
     isImplemented: false,
   },
-  {
-    id: "health-gratitude",
-    title: "Gratitude Log",
-    description: "Record things you are thankful for daily.",
-    href: "/health/gratitude",
-    category: "health",
-    isImplemented: false,
-  },
+
   {
     id: "health-sleep",
     title: "Sleep Log",
@@ -153,26 +106,9 @@ const defaultCards: DashboardCard[] = [
     category: "health",
     isImplemented: false,
   },
-  {
-    id: "health-mindfulness",
-    title: "Mindfulness Timer",
-    description:
-      "Use a simple guided timer for mindfulness or breathing exercises.",
-    href: "/health/mindfulness",
-    category: "health",
-    isImplemented: false,
-  },
 
   // Personal Organization Cards
-  {
-    id: "personal-notes",
-    title: "Notes",
-    description:
-      "Capture and manage text notes with basic tagging or folder organization.",
-    href: "/personal/notes",
-    category: "personal",
-    isImplemented: false,
-  },
+
   {
     id: "personal-reading",
     title: "Reading List",
@@ -181,14 +117,7 @@ const defaultCards: DashboardCard[] = [
     category: "personal",
     isImplemented: false,
   },
-  {
-    id: "personal-filing",
-    title: "Digital Filing",
-    description: "Track metadata for important personal documents.",
-    href: "/personal/filing",
-    category: "personal",
-    isImplemented: false,
-  },
+
   {
     id: "personal-skills",
     title: "Skill Progress",
@@ -197,32 +126,26 @@ const defaultCards: DashboardCard[] = [
     category: "personal",
     isImplemented: false,
   },
+
+  // Calendar Integration
   {
-    id: "personal-recipes",
-    title: "Recipe Manager",
-    description: "Save and organize recipes with basic tagging.",
-    href: "/personal/recipes",
-    category: "personal",
-    isImplemented: false,
-  },
-  {
-    id: "personal-shopping",
-    title: "Shopping List",
-    description:
-      "Create and manage simple checklists for grocery or household needs.",
-    href: "/personal/shopping",
-    category: "personal",
+    id: "productivity-calendar",
+    title: "Calendar",
+    description: "View all your data in one unified calendar interface.",
+    href: "/calendar",
+    category: "productivity",
     isImplemented: false,
   },
 ];
 
-// Default quick access cards (implemented cards only)
+// Default quick access cards (including featured teasers)
 const defaultQuickAccess = [
   "finance-overview",
   "finance-income-expense",
   "finance-subscriptions",
   "productivity-pomodoro",
   "productivity-todo",
+  "productivity-calendar", // Calendar teaser - prominently featured
 ];
 
 interface DashboardProviderProps {
