@@ -178,22 +178,22 @@ const SubscriptionForm = ({
             Notes (Optional)
           </label>
           <span className="text-xs text-muted-foreground">
-            {notes.length}/18 characters
+            {notes.length}/100 characters
           </span>
         </div>
         <textarea
           id="notes"
           value={notes}
           onChange={(e) => {
-            // Limit to 18 characters
-            if (e.target.value.length <= 18) {
+            // Limit to 100 characters
+            if (e.target.value.length <= 100) {
               setNotes(e.target.value);
             }
           }}
-          placeholder="Additional information (max 18 chars)"
+          placeholder="Additional information (max 100 chars)"
           className="w-full px-3 py-2 text-sm border rounded-md border-input bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          rows={2}
-          maxLength={18}
+          rows={3}
+          maxLength={100}
         />
       </div>
 

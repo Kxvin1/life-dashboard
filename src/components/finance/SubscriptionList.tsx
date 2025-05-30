@@ -7,10 +7,15 @@ import {
   deleteSubscription,
   toggleSubscriptionStatus,
 } from "@/services/subscriptionService";
-import { formatCurrency, formatSubscriptionDuration } from "@/lib/utils";
+import {
+  formatCurrency,
+  formatSubscriptionDuration,
+  truncateText,
+} from "@/lib/utils";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Toast from "@/components/ui/Toast";
 import { cacheManager } from "@/lib/cacheManager";
+import SubscriptionEditModal from "./SubscriptionEditModal";
 
 interface SubscriptionListProps {
   status: SubscriptionStatus;
@@ -43,6 +48,9 @@ const SubscriptionList = ({
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [upcomingPaymentIds, setUpcomingPaymentIds] = useState<string[]>([]);
+  const [subscriptionToEdit, setSubscriptionToEdit] =
+    useState<Subscription | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const subscriptionsPerPage = 10;
 
@@ -294,6 +302,35 @@ const SubscriptionList = ({
 
     // Set isToggling to false
     setIsToggling(false);
+
+    // Auto-hide toast after 3 seconds
+    setTimeout(() => {
+      setShowToast(false);
+    }, 3000);
+  };
+
+  const handleEditClick = (subscription: Subscription) => {
+    setSubscriptionToEdit(subscription);
+    setShowEditModal(true);
+  };
+
+  const handleEditModalClose = () => {
+    setShowEditModal(false);
+    setSubscriptionToEdit(null);
+  };
+
+  const handleSubscriptionUpdated = async () => {
+    // Show success toast
+    setToastMessage("Subscription updated successfully");
+    setShowToast(true);
+
+    // Refresh the data
+    await Promise.all([loadSubscriptions(), loadUpcomingPayments()]);
+
+    // Notify parent component
+    if (onSubscriptionToggled) {
+      onSubscriptionToggled();
+    }
 
     // Auto-hide toast after 3 seconds
     setTimeout(() => {
@@ -574,8 +611,15 @@ const SubscriptionList = ({
                       <div className="font-medium text-muted-foreground">
                         Note:
                       </div>
-                      <div className="italic break-words text-foreground">
-                        &quot;{subscription.notes}&quot;
+                      <div
+                        className="italic break-words text-foreground cursor-help"
+                        title={
+                          subscription.notes.length > 30
+                            ? subscription.notes
+                            : undefined
+                        }
+                      >
+                        &quot;{truncateText(subscription.notes, 30)}&quot;
                       </div>
                     </>
                   )}
@@ -613,12 +657,20 @@ const SubscriptionList = ({
                     </button>
                   </div>
 
-                  <button
-                    onClick={() => handleDeleteClick(subscription.id)}
-                    className="px-4 py-1.5 text-sm rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 font-medium"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleEditClick(subscription)}
+                      className="px-4 py-1.5 text-sm rounded-md bg-secondary text-foreground hover:bg-secondary/80 font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(subscription.id)}
+                      className="px-4 py-1.5 text-sm rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 font-medium"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -664,6 +716,16 @@ const SubscriptionList = ({
           variant={
             subscriptionToToggle.status === "active" ? "warning" : "info"
           }
+        />
+      )}
+
+      {/* Edit Modal */}
+      {subscriptionToEdit && (
+        <SubscriptionEditModal
+          subscription={subscriptionToEdit}
+          isOpen={showEditModal}
+          onClose={handleEditModalClose}
+          onSubscriptionUpdated={handleSubscriptionUpdated}
         />
       )}
 

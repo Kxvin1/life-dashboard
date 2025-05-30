@@ -282,13 +282,18 @@ export const toggleSubscriptionStatus = async (
     throw new Error("Authentication token missing");
   }
 
-  // If setting to inactive, include the last_active_date
+  // Prepare update data based on status change
   const updateData: Partial<Subscription> = {
     status: newStatus,
   };
 
   if (newStatus === "inactive") {
+    // When deactivating, set last_active_date to today
     updateData.last_active_date = new Date().toISOString().split("T")[0];
+  } else {
+    // When reactivating, update start_date to today so backend recalculates next_payment_date
+    // The backend will automatically recalculate next_payment_date when start_date is updated
+    updateData.start_date = new Date().toISOString().split("T")[0];
   }
 
   try {
