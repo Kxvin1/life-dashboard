@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     )
     SECRET_KEY: str
     ENVIRONMENT: str = "development"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 300
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 days (7 * 24 * 60)
     # Get frontend URL from environment or use default
     FRONTEND_URL: str = os.environ.get(
         "FRONTEND_URL", "https://life-dashboard-eta.vercel.app"

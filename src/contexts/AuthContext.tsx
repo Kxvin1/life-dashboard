@@ -350,7 +350,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       // Set the token in cookies
       Cookies.set("token", data.access_token, {
-        expires: 1, // Demo user token expires in 1 day
+        expires: 3, // Demo user token expires in 3 days (matches JWT expiration)
         secure: true,
         sameSite: "lax",
         path: "/",
