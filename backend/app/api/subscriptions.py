@@ -84,17 +84,18 @@ async def create_subscription(
         )
 
 
-@router.get("/subscriptions/", response_model=List[SubscriptionSchema])
+@router.get("/subscriptions/", response_model=Dict[str, Any])
 async def get_subscriptions(
     response: Response,
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 10,
     status: Optional[SubscriptionStatus] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
     Get subscriptions with optional filtering by status.
+    Returns paginated results with has_more flag for infinite scroll.
     """
     import time
 
@@ -111,6 +112,15 @@ async def get_subscriptions(
         # Return cached data directly (already serialized as dictionaries)
         return cached_result
 
+    # Get total count first
+    count_query = db.query(func.count(Subscription.id)).filter(
+        Subscription.user_id == current_user.id
+    )
+    if status:
+        count_query = count_query.filter(Subscription.status == status)
+    total_count = count_query.scalar()
+
+    # Get subscriptions with pagination
     query = db.query(Subscription).filter(Subscription.user_id == current_user.id)
 
     if status:
@@ -149,10 +159,19 @@ async def get_subscriptions(
         }
         subscription_dicts.append(sub_dict)
 
-    # Cache the clean dictionaries (not SQLAlchemy objects)
-    redis_service.set(cache_key, subscription_dicts, ttl_seconds=3600)
+    # Create response structure similar to Pomodoro sessions
+    result = {
+        "items": subscription_dicts,
+        "total": total_count,
+        "page": skip // limit + 1,
+        "size": limit,
+        "has_more": total_count > skip + limit,
+    }
 
-    return subscription_dicts
+    # Cache the result (not just the items)
+    redis_service.set(cache_key, result, ttl_seconds=3600)
+
+    return result
 
 
 @router.get("/subscriptions/{subscription_id}", response_model=SubscriptionSchema)

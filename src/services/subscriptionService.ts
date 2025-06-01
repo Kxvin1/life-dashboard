@@ -54,6 +54,89 @@ const frontendCache = new FrontendCache();
 // Request deduplication to prevent multiple simultaneous requests
 const pendingRequests = new Map<string, Promise<any>>();
 
+const dedupedFetch = async (
+  url: string,
+  options: RequestInit = {}
+): Promise<any> => {
+  const key = `${url}_${JSON.stringify(options)}`;
+
+  if (pendingRequests.has(key)) {
+    return pendingRequests.get(key)!;
+  }
+
+  const request = fetch(url, options).then(async (response) => {
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || `HTTP ${response.status}`);
+    }
+    return response.json();
+  });
+
+  pendingRequests.set(key, request);
+
+  try {
+    const data = await request;
+    return data;
+  } finally {
+    pendingRequests.delete(key);
+  }
+};
+
+// Interface for paginated subscription response
+interface SubscriptionResponse {
+  items: Subscription[];
+  total: number;
+  page: number;
+  size: number;
+  has_more: boolean;
+}
+
+export const fetchSubscriptionsPaginated = async (
+  page: number = 1,
+  limit: number = 10,
+  status?: string
+): Promise<SubscriptionResponse> => {
+  try {
+    const skip = (page - 1) * limit;
+    const cacheBust = cacheManager.getCacheBustParam();
+
+    // Create cache key
+    const cacheKey = `subscriptions_paginated_${
+      status || "all"
+    }_${page}_${limit}`;
+
+    // Check frontend cache first
+    const cachedData = frontendCache.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
+    const token = Cookies.get("token");
+    if (!token) {
+      throw new Error("Authentication token missing");
+    }
+
+    let url = `${API_URL}/api/v1/subscriptions/?skip=${skip}&limit=${limit}${cacheBust}`;
+    if (status) {
+      url += `&status=${status}`;
+    }
+
+    const data = await dedupedFetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Accept-Encoding": "gzip, deflate, br",
+      },
+    });
+
+    // Cache the result for 1 hour
+    frontendCache.set(cacheKey, data, 3600000); // 1 hour in ms
+
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const fetchSubscriptions = async (
   status?: string
 ): Promise<Subscription[]> => {
@@ -77,9 +160,9 @@ export const fetchSubscriptions = async (
       throw new Error("Authentication token missing");
     }
 
-    let url = `${API_URL}/api/v1/subscriptions/`;
+    let url = `${API_URL}/api/v1/subscriptions/?limit=100`;
     if (status) {
-      url += `?status=${status}`;
+      url += `&status=${status}`;
     }
 
     // Create the request promise and store it
@@ -95,10 +178,13 @@ export const fetchSubscriptions = async (
 
         const data = await response.json();
 
-        // Cache the result for 1 hour
-        frontendCache.set(cacheKey, data);
+        // Extract items from the new response format
+        const items = data.items || data;
 
-        return data;
+        // Cache the result for 1 hour
+        frontendCache.set(cacheKey, items);
+
+        return items;
       })
       .finally(() => {
         // Remove from pending requests when done

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Subscription, SubscriptionStatus } from "@/types/finance";
 import {
-  fetchSubscriptions,
+  fetchSubscriptionsPaginated,
   deleteSubscription,
   toggleSubscriptionStatus,
 } from "@/services/subscriptionService";
@@ -32,9 +32,11 @@ const SubscriptionList = ({
   sortDirection,
 }: SubscriptionListProps) => {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showToggleConfirm, setShowToggleConfirm] = useState(false);
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<
@@ -52,7 +54,9 @@ const SubscriptionList = ({
     useState<Subscription | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  const subscriptionsPerPage = 10;
+  // Infinite scroll refs
+  const observer = useRef<IntersectionObserver | null>(null);
+  const loadingRef = useRef<HTMLDivElement>(null);
 
   // Format date for display with Pacific Time (PT) adjustment
   const formatDate = (dateString: string | null) => {
@@ -103,62 +107,85 @@ const SubscriptionList = ({
     return frequency.charAt(0).toUpperCase() + frequency.slice(1);
   };
 
-  const loadSubscriptions = async () => {
-    try {
-      setIsLoading(true);
+  // Load subscriptions with infinite scroll
+  const loadSubscriptions = useCallback(
+    async (pageNum: number) => {
+      try {
+        setIsLoading(true);
+        setError(null);
 
-      const data = await fetchSubscriptions(status);
+        const response = await fetchSubscriptionsPaginated(pageNum, 10, status);
 
-      // Sort the subscriptions based on the sortField and sortDirection props
-      const sortedData = [...data].sort((a, b) => {
-        let comparison = 0;
+        // Sort the subscriptions based on the sortField and sortDirection props
+        const sortedData = [...response.items].sort((a, b) => {
+          let comparison = 0;
 
-        if (sortField === "price") {
-          comparison = a.amount - b.amount;
-        } else if (sortField === "upcoming" && status === "active") {
-          // Get the effective date for each subscription (next payment date or start date for future ones)
-          const getEffectiveDate = (sub: Subscription) => {
-            if (isFutureDate(sub.start_date)) {
-              return new Date(sub.start_date).getTime();
-            } else {
-              return sub.next_payment_date
-                ? new Date(sub.next_payment_date).getTime()
-                : Infinity;
-            }
-          };
+          if (sortField === "price") {
+            comparison = a.amount - b.amount;
+          } else if (sortField === "upcoming" && status === "active") {
+            // Get the effective date for each subscription (next payment date or start date for future ones)
+            const getEffectiveDate = (sub: Subscription) => {
+              if (isFutureDate(sub.start_date)) {
+                return new Date(sub.start_date).getTime();
+              } else {
+                return sub.next_payment_date
+                  ? new Date(sub.next_payment_date).getTime()
+                  : Infinity;
+              }
+            };
 
-          const dateA = getEffectiveDate(a);
-          const dateB = getEffectiveDate(b);
+            const dateA = getEffectiveDate(a);
+            const dateB = getEffectiveDate(b);
 
-          // Sort by the effective date (ascending - closest date first)
-          comparison = dateA - dateB;
+            // Sort by the effective date (ascending - closest date first)
+            comparison = dateA - dateB;
+          } else {
+            comparison = a.name.localeCompare(b.name);
+          }
+
+          // Reverse the comparison if sorting in descending order
+          return sortDirection === "asc" ? comparison : -comparison;
+        });
+
+        setSubscriptions((prev) =>
+          pageNum === 1 ? sortedData : [...prev, ...sortedData]
+        );
+        setTotalCount(response.total);
+        setHasMore(response.has_more);
+      } catch (err) {
+        if (err instanceof Error) {
+          setError(err.message);
         } else {
-          comparison = a.name.localeCompare(b.name);
+          setError("An unexpected error occurred");
         }
-
-        // Reverse the comparison if sorting in descending order
-        return sortDirection === "asc" ? comparison : -comparison;
-      });
-
-      setSubscriptions(sortedData);
-      setError(null);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unexpected error occurred");
+      } finally {
+        setIsLoading(false);
       }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+    [status, sortField, sortDirection]
+  );
 
   // Function to get upcoming payment IDs
   const loadUpcomingPayments = async () => {
     if (status === "active") {
       try {
-        // Get all active subscriptions
-        const allSubscriptions = await fetchSubscriptions("active");
+        // Get multiple pages to ensure we have enough data for sorting
+        // Start with a reasonable limit and fetch more if needed
+        let allSubscriptions: Subscription[] = [];
+        let page = 1;
+        let hasMore = true;
+
+        // Fetch up to 5 pages (50 items) to get enough data for upcoming payments
+        while (hasMore && page <= 5) {
+          const response = await fetchSubscriptionsPaginated(
+            page,
+            10,
+            "active"
+          );
+          allSubscriptions = [...allSubscriptions, ...response.items];
+          hasMore = response.has_more;
+          page++;
+        }
 
         // Sort them by next payment date (or start date for future ones)
         const sortedSubscriptions = [...allSubscriptions].sort((a, b) => {
@@ -185,8 +212,10 @@ const SubscriptionList = ({
           .slice(0, 3)
           .map((sub) => sub.id);
         setUpcomingPaymentIds(upcomingIds);
-      } catch {
+      } catch (error) {
         // Silently handle error - we don't want to break the UI if this fails
+        console.warn("Failed to load upcoming payments:", error);
+        setUpcomingPaymentIds([]);
       }
     } else {
       // Clear upcoming payment IDs if we're on the inactive tab
@@ -194,18 +223,73 @@ const SubscriptionList = ({
     }
   };
 
+  // Initial load and reset when dependencies change
   useEffect(() => {
-    loadSubscriptions();
+    setPage(1);
+    setHasMore(true);
+    setSubscriptions([]);
+    loadSubscriptions(1);
     loadUpcomingPayments();
 
     // Subscribe to cache invalidation events
     const unsubscribe = cacheManager.subscribe(() => {
-      loadSubscriptions();
+      setPage(1);
+      setHasMore(true);
+      setSubscriptions([]);
+      loadSubscriptions(1);
       loadUpcomingPayments();
     });
 
     return unsubscribe;
-  }, [status, sortField, sortDirection]);
+  }, [status, sortField, sortDirection, loadSubscriptions]);
+
+  // Set up intersection observer for infinite scroll
+  useEffect(() => {
+    if (isLoading || !hasMore) {
+      return;
+    }
+
+    // Use a small delay to ensure the DOM element is rendered
+    const setupObserver = () => {
+      if (observer.current) {
+        observer.current.disconnect();
+      }
+
+      const callback = (entries: IntersectionObserverEntry[]) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setPage((prevPage) => prevPage + 1);
+        }
+      };
+
+      observer.current = new IntersectionObserver(callback, {
+        rootMargin: "100px", // Trigger 100px before the element comes into view
+        threshold: 0.1,
+      });
+
+      if (loadingRef.current) {
+        observer.current.observe(loadingRef.current);
+      } else {
+        // Retry after a short delay if ref is not ready
+        setTimeout(setupObserver, 100);
+      }
+    };
+
+    // Start setup immediately, but with retry logic
+    setupObserver();
+
+    return () => {
+      if (observer.current) {
+        observer.current.disconnect();
+      }
+    };
+  }, [isLoading, hasMore, page]);
+
+  // Load more when page changes
+  useEffect(() => {
+    if (page > 1) {
+      loadSubscriptions(page);
+    }
+  }, [page, loadSubscriptions]);
 
   const handleDeleteClick = (id: string) => {
     setSubscriptionToDelete(id);
@@ -226,7 +310,10 @@ const SubscriptionList = ({
 
       // Force a complete refresh of subscription data from the server
       // This ensures we don't see stale cached data
-      await Promise.all([loadSubscriptions(), loadUpcomingPayments()]);
+      setPage(1);
+      setHasMore(true);
+      setSubscriptions([]);
+      await Promise.all([loadSubscriptions(1), loadUpcomingPayments()]);
 
       // Auto-hide toast after 3 seconds
       setTimeout(() => {
@@ -286,7 +373,10 @@ const SubscriptionList = ({
     // This ensures we're showing the current state
     try {
       // First refresh the local data
-      await loadSubscriptions();
+      setPage(1);
+      setHasMore(true);
+      setSubscriptions([]);
+      await loadSubscriptions(1);
       await loadUpcomingPayments();
 
       // Then notify parent component that a subscription was toggled
@@ -325,7 +415,10 @@ const SubscriptionList = ({
     setShowToast(true);
 
     // Refresh the data
-    await Promise.all([loadSubscriptions(), loadUpcomingPayments()]);
+    setPage(1);
+    setHasMore(true);
+    setSubscriptions([]);
+    await Promise.all([loadSubscriptions(1), loadUpcomingPayments()]);
 
     // Notify parent component
     if (onSubscriptionToggled) {
@@ -338,7 +431,7 @@ const SubscriptionList = ({
     }, 3000);
   };
 
-  if (isLoading) {
+  if (isLoading && subscriptions.length === 0) {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="text-muted-foreground">Loading subscriptions...</div>
@@ -364,126 +457,20 @@ const SubscriptionList = ({
     );
   }
 
-  // Calculate pagination
-  const totalPages = Math.ceil(subscriptions.length / subscriptionsPerPage);
-  const startIndex = (currentPage - 1) * subscriptionsPerPage;
-  const paginatedSubscriptions = subscriptions.slice(
-    startIndex,
-    startIndex + subscriptionsPerPage
-  );
-
   return (
     <div className="overflow-hidden border rounded-xl border-border">
-      {/* Table Header with Pagination */}
+      {/* Header */}
       <div className="px-6 py-4 border-b bg-card border-border">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-xl font-semibold text-foreground">
             {status === "active" ? "Active" : "Inactive"} Subscriptions
           </h2>
-          {totalPages > 1 && (
-            <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
-              <p className="text-sm text-center text-muted-foreground sm:text-left">
-                <span className="font-medium">{startIndex + 1}</span> -{" "}
-                <span className="font-medium">
-                  {Math.min(
-                    startIndex + subscriptionsPerPage,
-                    subscriptions.length
-                  )}
-                </span>{" "}
-                of <span className="font-medium">{subscriptions.length}</span>
-              </p>
-
-              {/* Simplified mobile pagination */}
-              <div className="flex justify-center sm:justify-start">
-                <nav
-                  className="inline-flex rounded-md shadow-sm"
-                  aria-label="Pagination"
-                >
-                  {/* Previous button */}
-                  <button
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                    className="relative inline-flex items-center px-3 py-2 text-sm font-medium border rounded-l-md border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span className="sr-only">Previous</span>
-                    <svg
-                      className="w-5 h-5"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
-
-                  {/* First page button - always visible on desktop */}
-                  {currentPage > 2 && (
-                    <button
-                      onClick={() => setCurrentPage(1)}
-                      className="relative items-center hidden px-4 py-2 text-sm font-medium border sm:inline-flex border-border bg-card text-foreground hover:bg-accent/50"
-                    >
-                      1
-                    </button>
-                  )}
-
-                  {/* Ellipsis - shown when needed on desktop */}
-                  {currentPage > 3 && (
-                    <span className="relative items-center hidden px-4 py-2 text-sm font-medium border sm:inline-flex border-border bg-card text-muted-foreground">
-                      ...
-                    </span>
-                  )}
-
-                  {/* Current page indicator - always visible */}
-                  <span className="relative inline-flex items-center px-4 py-2 text-sm font-medium border border-primary/30 bg-primary/10 text-primary">
-                    {currentPage} of {totalPages}
-                  </span>
-
-                  {/* Ellipsis - shown when needed on desktop */}
-                  {currentPage < totalPages - 2 && (
-                    <span className="relative items-center hidden px-4 py-2 text-sm font-medium border sm:inline-flex border-border bg-card text-muted-foreground">
-                      ...
-                    </span>
-                  )}
-
-                  {/* Last page button - always visible on desktop */}
-                  {currentPage < totalPages - 1 && (
-                    <button
-                      onClick={() => setCurrentPage(totalPages)}
-                      className="relative items-center hidden px-4 py-2 text-sm font-medium border sm:inline-flex border-border bg-card text-foreground hover:bg-accent/50"
-                    >
-                      {totalPages}
-                    </button>
-                  )}
-
-                  {/* Next button */}
-                  <button
-                    onClick={() =>
-                      setCurrentPage(Math.min(totalPages, currentPage + 1))
-                    }
-                    disabled={currentPage === totalPages}
-                    className="relative inline-flex items-center px-3 py-2 text-sm font-medium border rounded-r-md border-border bg-card text-muted-foreground hover:bg-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span className="sr-only">Next</span>
-                    <svg
-                      className="w-5 h-5"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
-                </nav>
-              </div>
-            </div>
+          {totalCount > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Showing{" "}
+              <span className="font-medium">{subscriptions.length}</span> of{" "}
+              <span className="font-medium">{totalCount}</span> subscriptions
+            </p>
           )}
         </div>
       </div>
@@ -513,25 +500,25 @@ const SubscriptionList = ({
 
       {/* Card-based Layout for All Screen Sizes */}
       <div className="bg-card">
-        <div className="p-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4">
-            {paginatedSubscriptions.map((subscription) => (
+        <div className="p-6 md:p-8">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 xl:gap-8">
+            {subscriptions.map((subscription) => (
               <div
                 key={subscription.id}
                 className={`bg-card border ${
                   upcomingPaymentIds.includes(subscription.id)
                     ? "border-primary/50 shadow-md ring-1 ring-primary/20"
                     : "border-border"
-                } rounded-lg p-5 shadow-sm hover:bg-muted/30 transition-colors ${
+                } rounded-lg p-6 xl:p-7 shadow-sm hover:bg-muted/30 transition-colors ${
                   upcomingPaymentIds.includes(subscription.id)
                     ? "bg-primary/5"
                     : ""
                 }`}
               >
                 {/* Service Name and Price */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex flex-col max-w-[70%]">
-                    <h3 className="text-lg font-medium break-words text-foreground">
+                <div className="flex items-start justify-between mb-5 gap-4">
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <h3 className="text-lg font-medium break-words text-foreground line-clamp-2">
                       {subscription.name}
                     </h3>
                     {upcomingPaymentIds.includes(subscription.id) && (
@@ -550,7 +537,7 @@ const SubscriptionList = ({
                 </div>
 
                 {/* Details Grid */}
-                <div className="grid grid-cols-2 mb-5 text-sm gap-y-3">
+                <div className="grid grid-cols-2 mb-6 text-sm gap-y-4 gap-x-4">
                   <div className="font-medium text-muted-foreground">
                     Start Date:
                   </div>
@@ -626,8 +613,8 @@ const SubscriptionList = ({
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center justify-between pt-4 border-t border-border">
-                  <div className="flex items-center space-x-2">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-5 border-t border-border gap-4 sm:gap-6">
+                  <div className="flex items-center space-x-3">
                     <span className="text-sm font-medium text-muted-foreground">
                       {subscription.status === "active" ? "Active" : "Inactive"}
                     </span>
@@ -657,16 +644,16 @@ const SubscriptionList = ({
                     </button>
                   </div>
 
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-2 sm:space-x-3 flex-shrink-0">
                     <button
                       onClick={() => handleEditClick(subscription)}
-                      className="px-4 py-1.5 text-sm rounded-md bg-secondary text-foreground hover:bg-secondary/80 font-medium"
+                      className="flex-1 sm:flex-none px-2 sm:px-3 py-1.5 text-sm rounded-md bg-secondary text-foreground hover:bg-secondary/80 font-medium"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDeleteClick(subscription.id)}
-                      className="px-4 py-1.5 text-sm rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 font-medium"
+                      className="flex-1 sm:flex-none px-2 sm:px-3 py-1.5 text-sm rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 font-medium"
                     >
                       Delete
                     </button>
@@ -675,6 +662,32 @@ const SubscriptionList = ({
               </div>
             ))}
           </div>
+
+          {/* Infinite scroll loading indicator */}
+          {hasMore && (
+            <div
+              ref={loadingRef}
+              className="flex items-center justify-center py-8"
+            >
+              {isLoading ? (
+                <div className="flex items-center space-x-2 text-muted-foreground">
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                  <span>Loading more subscriptions...</span>
+                </div>
+              ) : (
+                <div className="text-muted-foreground">Scroll for more</div>
+              )}
+            </div>
+          )}
+
+          {/* End of results indicator */}
+          {!hasMore && subscriptions.length > 0 && (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-muted-foreground">
+                All subscriptions loaded ({subscriptions.length} total)
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

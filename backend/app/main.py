@@ -150,6 +150,7 @@ app.add_middleware(
         "Authorization",
         "Content-Type",
         "Accept",
+        "Accept-Encoding",
         "Origin",
         "X-Requested-With",
     ],

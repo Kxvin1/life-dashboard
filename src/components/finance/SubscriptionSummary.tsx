@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   fetchSubscriptionSummary,
-  fetchSubscriptions,
+  fetchSubscriptionsPaginated,
 } from "@/services/subscriptionService";
 import { formatCurrency } from "@/lib/utils";
 import { Subscription } from "@/types/finance";
@@ -84,10 +84,21 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
       setYearlyTotal(summaryData.total_combined_monthly_cost * 12);
 
       // Fetch active subscriptions for upcoming payments
-      const subscriptions = await fetchSubscriptions("active");
+      // Get multiple pages to ensure we have enough data for sorting
+      let allSubscriptions: Subscription[] = [];
+      let page = 1;
+      let hasMore = true;
+
+      // Fetch up to 5 pages (50 items) to get enough data for upcoming payments
+      while (hasMore && page <= 5) {
+        const response = await fetchSubscriptionsPaginated(page, 10, "active");
+        allSubscriptions = [...allSubscriptions, ...response.items];
+        hasMore = response.has_more;
+        page++;
+      }
 
       // Sort subscriptions by next payment date (or start date for future subscriptions)
-      const sortedSubscriptions = [...subscriptions].sort((a, b) => {
+      const sortedSubscriptions = [...allSubscriptions].sort((a, b) => {
         // Get the effective date for each subscription (next payment date or start date for future ones)
         const getEffectiveDate = (sub: Subscription) => {
           if (isFutureDate(sub.start_date)) {
