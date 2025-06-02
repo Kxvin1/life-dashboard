@@ -21,6 +21,7 @@ from app.schemas.pomodoro import (
     PomodoroSessionsPage,
     PomodoroAIResponse,
     PomodoroAIRemainingResponse,
+    PomodoroStreakResponse,
 )
 
 router = APIRouter()
@@ -358,5 +359,47 @@ async def get_pomodoro_counts(
 
     # Cache the result for 30 minutes
     redis_service.set(cache_key, result, ttl_seconds=1800)
+
+    return result
+
+
+@router.get("/pomodoro/streak", response_model=PomodoroStreakResponse)
+async def get_pomodoro_streak(
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get the current Pomodoro streak count and today's completion status
+    """
+    # Check if user is a demo user
+    if current_user.is_demo_user:
+        # Return mock streak data for demo users
+        return {
+            "streak_count": 5,
+            "has_completed_today": True,
+        }
+
+    # Create cache key
+    cache_key = f"user_{current_user.id}_pomodoro_streak"
+
+    # Try to get from Redis cache first
+    cached_result = redis_service.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
+    service = PomodoroService(db)
+
+    # Get streak count and today's completion status
+    streak_count = service.get_streak_count(current_user.id)
+    has_completed_today = service.has_completed_today(current_user.id)
+
+    result = {
+        "streak_count": streak_count,
+        "has_completed_today": has_completed_today,
+    }
+
+    # Cache the result for 10 minutes (shorter cache for streak data)
+    redis_service.set(cache_key, result, ttl_seconds=600)
 
     return result

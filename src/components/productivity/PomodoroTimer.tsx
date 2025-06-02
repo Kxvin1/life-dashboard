@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { usePomodoro } from "@/contexts/PomodoroContext";
+import { useStreakCountdown } from "@/hooks/useStreakCountdown";
+import { getStreakStyling, getStreakEmoji } from "@/utils/timeUtils";
 import { v4 as uuidv4 } from "uuid";
 
 const PomodoroTimer = () => {
@@ -22,12 +24,24 @@ const PomodoroTimer = () => {
     // completedPomodoros, // Local count from localStorage (not used)
     taskQueue,
     streakCount,
-    streakTimeRemaining,
     hasCompletedTodayPomodoro,
     todayCount, // Database count
     weeklyCount,
     totalCount,
   } = usePomodoro();
+
+  // Use countdown timer hook for streak display
+  const { streakMessage } = useStreakCountdown({
+    streakCount,
+    hasCompletedTodayPomodoro,
+  });
+
+  // Get enhanced visual styling for streak state
+  const streakStyling = getStreakStyling(
+    streakCount,
+    hasCompletedTodayPomodoro
+  );
+  const streakEmoji = getStreakEmoji(streakCount, hasCompletedTodayPomodoro);
 
   const [newTaskName, setNewTaskName] = useState("");
 
@@ -121,41 +135,29 @@ const PomodoroTimer = () => {
           </div>
 
           <div className="w-full sm:w-1/2">
-            {streakCount > 0 ? (
-              <div className="bg-card/50 border border-border rounded-md p-3 w-full">
-                <div className="flex items-center justify-center mb-1">
-                  <span className="text-sm font-medium text-orange-500 flex items-center">
-                    <span className="text-xl mr-1">🔥</span> {streakCount} Day
-                    Streak
+            <div
+              className={`bg-card/50 border border-border rounded-md p-3 w-full ${streakStyling.containerClass}`}
+            >
+              <div className="flex items-center justify-center mb-1">
+                <span
+                  className={`text-sm font-medium flex items-center ${streakStyling.textClass}`}
+                >
+                  <span className="text-xl mr-1">
+                    {streakCount > 0 ? "🔥" : streakEmoji}
                   </span>
-                </div>
-                <div className="bg-orange-500/10 rounded-md p-2 text-center">
-                  <div className="text-xs text-orange-500/80">
-                    {hasCompletedTodayPomodoro
-                      ? "✅ Streak is safe for today!"
-                      : "Complete a Pomodoro today to maintain streak"}
-                  </div>
-                  <div className="text-xs text-orange-500/80 font-medium mt-1">
-                    {hasCompletedTodayPomodoro
-                      ? `Next streak day begins at midnight PST (${streakTimeRemaining})`
-                      : `Streak expires at midnight PST (${streakTimeRemaining})`}
-                  </div>
+                  {streakCount > 0
+                    ? `${streakCount} Day Streak`
+                    : "Start your streak today!"}
+                </span>
+              </div>
+              <div
+                className={`rounded-md p-2 text-center ${streakStyling.bgClass}`}
+              >
+                <div className={`text-xs ${streakStyling.textClass}/80`}>
+                  {streakMessage}
                 </div>
               </div>
-            ) : (
-              <div className="bg-card/50 border border-border rounded-md p-3 w-full">
-                <div className="flex items-center justify-center mb-1">
-                  <span className="text-sm font-medium text-blue-500">
-                    Start your streak today!
-                  </span>
-                </div>
-                <div className="bg-blue-500/10 rounded-md p-2 text-center">
-                  <div className="text-xs text-blue-500/80">
-                    Complete a Pomodoro to begin your streak
-                  </div>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         </div>
 

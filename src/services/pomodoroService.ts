@@ -196,6 +196,11 @@ export interface PomodoroCountsResponse {
   total: number;
 }
 
+export interface PomodoroStreakResponse {
+  streak_count: number;
+  has_completed_today: boolean;
+}
+
 export const createPomodoroSession = async (sessionData: {
   task_name: string;
   start_time: Date;
@@ -444,5 +449,39 @@ export const getPomodoroCounts = async (): Promise<PomodoroCountsResponse> => {
     console.error("Error getting Pomodoro counts:", error);
     // Return default values if there's an error
     return { today: 0, week: 0, total: 0 };
+  }
+};
+
+export const getPomodoroStreak = async (): Promise<PomodoroStreakResponse> => {
+  try {
+    const token = Cookies.get("token");
+    const cacheBust = cacheManager.getCacheBustParam();
+
+    // Create cache key
+    const cacheKey = "pomodoro_streak";
+
+    // Check frontend cache first
+    const cachedData = frontendCache.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
+    const url = `${API_URL}/api/v1/pomodoro/streak${cacheManager.getCacheBustParamFirst()}${cacheBust}`;
+
+    const data = await dedupedFetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Accept-Encoding": "gzip, deflate, br",
+      },
+    });
+
+    // Cache for 10 minutes (streak data changes when sessions are completed)
+    frontendCache.set(cacheKey, data, 600000);
+
+    return data;
+  } catch (error) {
+    console.error("Error getting Pomodoro streak:", error);
+    // Return default values if there's an error
+    return { streak_count: 0, has_completed_today: false };
   }
 };

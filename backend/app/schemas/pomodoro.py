@@ -91,3 +91,8 @@ class PomodoroSessionsPage(BaseModel):
     page: int
     size: int
     has_more: bool
+
+
+class PomodoroStreakResponse(BaseModel):
+    streak_count: int
+    has_completed_today: bool

@@ -7,19 +7,32 @@ import {
 } from "@/services/pomodoroService";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePomodoro } from "@/contexts/PomodoroContext";
+import { useStreakCountdown } from "@/hooks/useStreakCountdown";
+import { getStreakStyling, getStreakEmoji } from "@/utils/timeUtils";
 
 const PomodoroHistory = () => {
   const { isDemoUser } = useAuth();
-  const { streakCount, streakTimeRemaining, hasCompletedTodayPomodoro } =
-    usePomodoro();
+  const { streakCount, hasCompletedTodayPomodoro } = usePomodoro();
+
+  // Use countdown timer hook for streak display
+  const { streakMessage } = useStreakCountdown({
+    streakCount,
+    hasCompletedTodayPomodoro,
+  });
+
+  // Get enhanced visual styling for streak state
+  const streakStyling = getStreakStyling(
+    streakCount,
+    hasCompletedTodayPomodoro
+  );
+  const streakEmoji = getStreakEmoji(streakCount, hasCompletedTodayPomodoro);
+
   const [sessions, setSessions] = useState<PomodoroSession[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
-  // We're using the streak count from the context instead of the backend
-  // const [backendStreakCount, setBackendStreakCount] = useState(0);
   const observer = useRef<IntersectionObserver | null>(null);
   const loadingRef = useRef<HTMLDivElement>(null);
 
@@ -86,8 +99,6 @@ const PomodoroHistory = () => {
         setSessions((prev) =>
           pageNum === 1 ? mockSessions : [...prev, ...mockSessions]
         );
-        // We're using the streak count from the context instead
-        // setBackendStreakCount(5); // Mock streak count
         setTotalCount(totalSessions); // Match Timer tab total count (42)
         setHasMore(pageNum < totalPages); // Allow infinite scroll through all pages
         return;
@@ -102,8 +113,6 @@ const PomodoroHistory = () => {
         setSessions((prev) =>
           pageNum === 1 ? response.items : [...prev, ...response.items]
         );
-        // We're using the streak count from the context instead
-        // setBackendStreakCount(response.streak_count);
         setTotalCount(response.total);
         setHasMore(response.has_more);
       } catch (err) {
@@ -172,55 +181,47 @@ const PomodoroHistory = () => {
   return (
     <div>
       {/* Streak display */}
-      {streakCount > 0 ? (
-        <div className="bg-orange-500/10 text-orange-500 p-4 rounded-md mb-6">
-          <div className="flex items-center mb-2">
-            <span className="text-2xl mr-3">🔥</span>
-            <div className="flex-1">
-              <p className="font-medium text-lg">
-                {streakCount} Day{streakCount !== 1 ? "s" : ""} Streak
+      <div
+        className={`p-4 rounded-md mb-6 border ${streakStyling.containerClass}`}
+      >
+        {streakCount > 0 ? (
+          <>
+            <div className="flex items-center mb-2">
+              <span className="text-2xl mr-3">🔥</span>
+              <div className="flex-1">
+                <p className={`font-medium text-lg ${streakStyling.textClass}`}>
+                  {streakCount} Day{streakCount !== 1 ? "s" : ""} Streak
+                </p>
+              </div>
+              <div className="text-right">
+                <p className={`text-sm font-medium ${streakStyling.textClass}`}>
+                  Resets at midnight PST
+                </p>
+              </div>
+            </div>
+            <div
+              className={`mt-2 p-2 rounded text-sm ${streakStyling.bgClass}`}
+            >
+              <p className="flex items-center">
+                <span className="text-lg mr-2">{streakEmoji}</span>
+                <span className={streakStyling.textClass}>{streakMessage}</span>
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-medium">Resets at midnight PST</p>
-              <p className="text-lg font-mono">{streakTimeRemaining}</p>
-            </div>
-          </div>
-          <div className="mt-2 bg-orange-500/20 p-2 rounded text-sm">
-            <p className="flex items-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 mr-2"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              {hasCompletedTodayPomodoro
-                ? "✅ Streak is safe for today!"
-                : "Complete at least one Pomodoro today to maintain your streak"}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-blue-500/10 text-blue-500 p-4 rounded-md mb-6">
+          </>
+        ) : (
           <div className="flex items-center">
-            <span className="text-2xl mr-3">🏆</span>
+            <span className="text-2xl mr-3">{streakEmoji}</span>
             <div>
-              <p className="font-medium text-lg">Start Your Streak Today</p>
-              <p className="text-sm mt-1">
-                Complete a Pomodoro session to begin your productivity streak!
+              <p className={`font-medium text-lg ${streakStyling.textClass}`}>
+                Start Your Streak Today
+              </p>
+              <p className={`text-sm mt-1 ${streakStyling.textClass}`}>
+                {streakMessage}
               </p>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Total sessions count */}
       <div className="mb-6 flex justify-between items-center">

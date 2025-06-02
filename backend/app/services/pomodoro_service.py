@@ -226,6 +226,33 @@ class PomodoroService:
             logger.error(f"Error calculating streak count: {str(e)}")
             return 0
 
+    def has_completed_today(self, user_id: int) -> bool:
+        """
+        Check if the user has completed at least one Pomodoro session today.
+
+        Returns:
+            bool: True if user has completed a session today, False otherwise
+        """
+        try:
+            # Get today's date in PST
+            today = self._get_pst_date()
+
+            # Check if there are any completed sessions today
+            session_count = (
+                self.db.query(func.count(PomodoroSession.id))
+                .filter(
+                    PomodoroSession.user_id == user_id,
+                    PomodoroSession.status == "completed",
+                    func.date(PomodoroSession.end_time) == today,
+                )
+                .scalar()
+            )
+
+            return session_count > 0
+        except Exception as e:
+            logger.error(f"Error checking today's completion: {str(e)}")
+            return False
+
     def _prepare_chart_data(self, sessions: List[PomodoroSession]) -> Dict[str, Any]:
         """
         Prepare chart data for visualization
