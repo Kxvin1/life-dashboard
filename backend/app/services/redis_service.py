@@ -131,11 +131,48 @@ class RedisService:
             keys = self.redis_client.keys(pattern)
             if keys:
                 deleted = self.redis_client.delete(*keys)
+                logger.debug(f"Cleared {deleted} cache entries for user {user_id}")
                 return deleted
             return 0
 
         except Exception as e:
             logger.error(f"Redis clear_user_cache failed for user {user_id}: {e}")
+            return 0
+
+    def clear_user_pomodoro_cache(self, user_id: int) -> int:
+        """Clear Pomodoro-specific cache entries for a user"""
+        if not self.is_available:
+            return 0
+
+        try:
+            # Clear all Pomodoro-related cache for the user
+            patterns = [
+                f"user_{user_id}_pomodoro_*",
+                f"user_{user_id}_pomodoro_sessions_*",
+                f"user_{user_id}_pomodoro_counts",
+                f"user_{user_id}_pomodoro_streak",
+                f"user_{user_id}_pomodoro_remaining",
+            ]
+
+            total_deleted = 0
+            for pattern in patterns:
+                keys = self.redis_client.keys(pattern)
+                if keys:
+                    deleted = self.redis_client.delete(*keys)
+                    total_deleted += deleted
+                    logger.debug(
+                        f"Cleared {deleted} cache entries for pattern {pattern}"
+                    )
+
+            logger.debug(
+                f"Total Pomodoro cache entries cleared for user {user_id}: {total_deleted}"
+            )
+            return total_deleted
+
+        except Exception as e:
+            logger.error(
+                f"Redis clear_user_pomodoro_cache failed for user {user_id}: {e}"
+            )
             return 0
 
 

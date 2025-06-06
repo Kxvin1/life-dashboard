@@ -115,8 +115,8 @@ async def create_pomodoro_session(
         user_id=current_user.id, session_data=session_data
     )
 
-    # Clear user's pomodoro cache
-    redis_service.clear_user_cache(current_user.id)
+    # Clear user's pomodoro-specific cache to ensure fresh streak data
+    redis_service.clear_user_pomodoro_cache(current_user.id)
 
     return created_session
 

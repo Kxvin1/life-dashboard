@@ -171,18 +171,32 @@ class PomodoroService:
             int: The current streak count
         """
         try:
+            # Get timezone for PST
+            pst = pytz.timezone("America/Los_Angeles")
+
             # Get all completed sessions for the user, ordered by date
+            # Convert end_time to PST timezone before extracting date
             try:
                 sessions = (
                     self.db.query(
-                        func.date(PomodoroSession.end_time).label("session_date"),
+                        func.date(
+                            func.timezone(
+                                "America/Los_Angeles", PomodoroSession.end_time
+                            )
+                        ).label("session_date"),
                         func.count().label("count"),
                     )
                     .filter(
                         PomodoroSession.user_id == user_id,
                         PomodoroSession.status == "completed",
                     )
-                    .group_by(func.date(PomodoroSession.end_time))
+                    .group_by(
+                        func.date(
+                            func.timezone(
+                                "America/Los_Angeles", PomodoroSession.end_time
+                            )
+                        )
+                    )
                     .order_by(desc("session_date"))
                     .all()
                 )
@@ -191,36 +205,47 @@ class PomodoroService:
                 return 0
 
             if not sessions:
+                logger.debug(f"No completed sessions found for user {user_id}")
                 return 0
 
             # Get today's date in PST
             today = self._get_pst_date()
+            yesterday = today - timedelta(days=1)
+
+            logger.debug(
+                f"Calculating streak for user {user_id}. Today: {today}, Sessions found: {len(sessions)}"
+            )
 
             # Check if the most recent session was today or yesterday
             most_recent_date = sessions[0].session_date
+            logger.debug(f"Most recent session date: {most_recent_date}")
 
-            # If the most recent session wasn't today or yesterday, streak is broken
-            if most_recent_date != today and most_recent_date != (
-                today - timedelta(days=1)
-            ):
-                # Check if there was a session today
-                if most_recent_date == today:
-                    return 1  # Streak is just today
-                return 0  # Streak is broken
+            # If the most recent session wasn't today or yesterday, check if streak is broken
+            if most_recent_date != today and most_recent_date != yesterday:
+                logger.debug(
+                    f"Most recent session ({most_recent_date}) is not today ({today}) or yesterday ({yesterday}). Streak broken."
+                )
+                return 0
 
-            # Count consecutive days
-            streak = 1  # Start with 1 for the most recent day
+            # Count consecutive days starting from the most recent session
+            streak = 0
+            expected_date = today if most_recent_date == today else yesterday
 
-            for i in range(1, len(sessions)):
-                # Check if this date is consecutive with the previous one
-                if (
-                    sessions[i - 1].session_date - timedelta(days=1)
-                    == sessions[i].session_date
-                ):
+            for session in sessions:
+                if session.session_date == expected_date:
                     streak += 1
+                    expected_date = expected_date - timedelta(days=1)
+                    logger.debug(
+                        f"Streak day {streak}: {session.session_date}, next expected: {expected_date}"
+                    )
                 else:
+                    # Gap found, stop counting
+                    logger.debug(
+                        f"Gap found at {session.session_date}, expected {expected_date}. Final streak: {streak}"
+                    )
                     break
 
+            logger.debug(f"Final streak count for user {user_id}: {streak}")
             return streak
         except Exception as e:
             logger.error(f"Error calculating streak count: {str(e)}")
@@ -238,16 +263,23 @@ class PomodoroService:
             today = self._get_pst_date()
 
             # Check if there are any completed sessions today
+            # Convert end_time to PST timezone before extracting date
             session_count = (
                 self.db.query(func.count(PomodoroSession.id))
                 .filter(
                     PomodoroSession.user_id == user_id,
                     PomodoroSession.status == "completed",
-                    func.date(PomodoroSession.end_time) == today,
+                    func.date(
+                        func.timezone("America/Los_Angeles", PomodoroSession.end_time)
+                    )
+                    == today,
                 )
                 .scalar()
             )
 
+            logger.debug(
+                f"User {user_id} completed sessions today ({today}): {session_count}"
+            )
             return session_count > 0
         except Exception as e:
             logger.error(f"Error checking today's completion: {str(e)}")
@@ -887,22 +919,28 @@ class PomodoroService:
                 # If there's an error, return zeros
                 return 0, 0, 0
 
-            # Get today's count using datetime objects instead of strings
+            # Get today's count using timezone-aware date comparison
             today_count = (
                 self.db.query(func.count(PomodoroSession.id))
                 .filter(
                     PomodoroSession.user_id == user_id,
-                    func.date(PomodoroSession.end_time) >= func.date(today_start),
+                    func.date(
+                        func.timezone("America/Los_Angeles", PomodoroSession.end_time)
+                    )
+                    >= today_start.date(),
                 )
                 .scalar()
             )
 
-            # Get week's count
+            # Get week's count using timezone-aware date comparison
             week_count = (
                 self.db.query(func.count(PomodoroSession.id))
                 .filter(
                     PomodoroSession.user_id == user_id,
-                    func.date(PomodoroSession.end_time) >= func.date(week_start),
+                    func.date(
+                        func.timezone("America/Los_Angeles", PomodoroSession.end_time)
+                    )
+                    >= week_start.date(),
                 )
                 .scalar()
             )
