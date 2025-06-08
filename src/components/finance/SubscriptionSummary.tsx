@@ -67,6 +67,28 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
     return inputDate > todayWithoutTime;
   };
 
+  // Check if a payment date is past due (today or earlier)
+  const isPastDue = (dateString: string | null) => {
+    if (!dateString) return true; // No date means it's overdue
+
+    // Parse the date string
+    const [year, month, day] = dateString
+      .split("-")
+      .map((num) => parseInt(num, 10));
+
+    // Create date objects without time components for accurate comparison
+    const inputDate = new Date(year, month - 1, day);
+    const today = new Date();
+    const todayWithoutTime = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+
+    // Past due if the date is today or earlier
+    return inputDate <= todayWithoutTime;
+  };
+
   // Function to load subscription data
   const loadData = async () => {
     try {
@@ -97,8 +119,19 @@ const SubscriptionSummary = ({}: SubscriptionSummaryProps) => {
         page++;
       }
 
-      // Sort subscriptions by next payment date (or start date for future subscriptions)
-      const sortedSubscriptions = [...allSubscriptions].sort((a, b) => {
+      // Filter out past-due payments to show only upcoming payments
+      const upcomingSubscriptions = allSubscriptions.filter((subscription) => {
+        // Always include future subscriptions (start date in the future)
+        if (isFutureDate(subscription.start_date)) {
+          return true;
+        }
+
+        // For active subscriptions, only include those with future payment dates
+        return !isPastDue(subscription.next_payment_date);
+      });
+
+      // Sort filtered subscriptions by next payment date (or start date for future subscriptions)
+      const sortedSubscriptions = [...upcomingSubscriptions].sort((a, b) => {
         // Get the effective date for each subscription (next payment date or start date for future ones)
         const getEffectiveDate = (sub: Subscription) => {
           if (isFutureDate(sub.start_date)) {
