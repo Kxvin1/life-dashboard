@@ -42,6 +42,10 @@ Life Dashboard has evolved from a conceptual MVP into a production-ready persona
 - **Database:** PostgreSQL (Railway)
 - **Authentication:** JWT with bcrypt password hashing (7-day expiration)
 - **AI Integration:** OpenAI API 1.12.0 (GPT-4o-mini for cost optimization)
+- **AI Framework:** LangChain with custom tools for SQL, Redis, and Pinecone routing
+- **Vector Database:** Pinecone for semantic search and embeddings storage
+- **File Storage:** Azure Blob Storage with SAS token authentication
+- **Embeddings Pipeline:** OpenAI text-embedding-ada-002 for vector generation
 - **Caching:** Redis 6.1.0 with fallback to in-memory
 - **Performance:** Gzip compression, connection pooling
 - **Deployment:** Railway with Gunicorn + Uvicorn workers
@@ -63,9 +67,48 @@ Life Dashboard has evolved from a conceptual MVP into a production-ready persona
   - Frontend request deduplication
   - Gzip compression
   - Database query optimization
+  - Vector search result caching for Pinecone queries
+  - Azure Blob CDN integration for media delivery
 - **Database:** Railway PostgreSQL with connection pooling
+- **File Storage:** Azure Blob Storage with hot/cool tier optimization
+- **Vector Operations:** Pinecone index management with namespace isolation
+- **AI Tool Routing:** LangChain agent optimization with tool result caching
 - **Monitoring:** Custom health checks and error logging
 - **Security:** CORS configuration, input validation, SQL injection protection
+
+## Security & Privacy Architecture
+
+### Cloud Service Security
+
+- **Azure Blob Storage:**
+
+  - Time-limited SAS tokens for secure file uploads
+  - Container-level access control with private/public blob policies
+  - Encryption at rest and in transit (AES-256)
+  - CORS configuration for frontend direct uploads
+  - Blob lifecycle management for automatic cleanup
+
+- **Pinecone Vector Database:**
+
+  - API key authentication with environment-based rotation
+  - Namespace isolation for user data segregation
+  - Vector data encryption in transit and at rest
+  - Query result filtering to prevent data leakage
+  - Metadata scrubbing for sensitive information
+
+- **LangChain Tool Security:**
+  - Tool access control with user permission validation
+  - SQL injection prevention in dynamic query generation
+  - Rate limiting for AI tool usage
+  - Audit logging for all tool executions
+  - Fallback mechanisms for service unavailability
+
+### Data Privacy Compliance
+
+- **User Data Isolation:** Strict namespace and container separation per user
+- **Data Retention:** Configurable retention policies for vectors and blobs
+- **Right to Deletion:** Complete data removal across all cloud services
+- **Audit Trail:** Comprehensive logging of all data access and modifications
 
 ## Currently Implemented Features (Version 2)
 
@@ -274,10 +317,11 @@ Implemented semantic search using OpenAI embeddings and Pinecone vector database
 
 **Technical Implementation:**
 
-- Image storage and processing
-- Weather API integration
-- Machine learning for style preferences
-- Outfit combination algorithms
+- Azure Blob Storage for wardrobe image management with CDN delivery
+- Image processing pipeline for outfit categorization and color analysis
+- Weather API integration for climate-appropriate suggestions
+- Machine learning for style preferences using historical data
+- Outfit combination algorithms with vector similarity matching
 
 ### Phase 4: Rekindle - Personal Timeline Feature
 
@@ -333,9 +377,10 @@ Rekindle is a private and social feature that allows users to document their lif
 
 **Technical Implementation:**
 
-- Exercise database integration
-- Progress tracking algorithms
-- Health data visualization
+- Exercise database integration with video/image storage in Azure Blob
+- Progress tracking algorithms with Pinecone-powered workout similarity analysis
+- Health data visualization with trend analysis
+- LangChain integration for natural language workout queries
 - Wearable device integration potential
 
 ### Phase 6: Personal Vault
@@ -344,19 +389,28 @@ Rekindle is a private and social feature that allows users to document their lif
 
 **Scope:**
 
-- Secure document storage and organization
-- Link and bookmark management
-- Encrypted file storage
-- Advanced search and tagging
-- Sharing and collaboration features
+- Secure document storage and organization with Azure Blob Storage
+- Link and bookmark management with metadata extraction
+- Encrypted file storage with client-side encryption options
+- Advanced semantic search using Pinecone vector embeddings
+- Natural language document queries via LangChain integration
+- Sharing and collaboration features with granular permissions
+
+**Technical Implementation:**
+
+- Azure Blob Storage with hierarchical namespace for document organization
+- Pinecone vector database for semantic document search and similarity
+- LangChain document processing pipeline for content extraction and summarization
+- OpenAI embeddings for document content vectorization
+- Full-text search combined with semantic search capabilities
 
 **Security Features:**
 
-- End-to-end encryption
-- Secure file upload and storage
-- Access control and permissions
-- Audit logging
-- Backup and recovery
+- End-to-end encryption with user-controlled keys
+- Secure file upload via Azure SAS tokens
+- Access control and permissions with audit trails
+- Document versioning and backup in Azure Blob
+- Compliance with data retention and deletion policies
 
 ## AI Integration Strategy (Version 2)
 
@@ -431,11 +485,38 @@ Visualizing how LangChain integrates with Redis, SQL, Pinecone, and OpenAI to ge
 
 ### AI Cost Management Strategy
 
+#### Core AI Services
+
 - **Model Selection:** Continue using cost-effective models (GPT-4o-mini)
 - **Usage Optimization:** Implement caching for repeated queries
 - **User Limits:** Maintain daily/monthly usage caps
 - **Batch Processing:** Group similar requests for efficiency
 - **Fallback Systems:** Graceful degradation when AI services are unavailable
+
+#### Cloud Service Cost Optimization
+
+**Azure Blob Storage:**
+
+- Hot/Cool/Archive tier management based on access patterns
+- Lifecycle policies for automatic tier transitions
+- CDN integration to reduce egress costs
+- Compression for document storage
+- Estimated cost: $0.02-0.05 per GB/month
+
+**Pinecone Vector Database:**
+
+- Index optimization with appropriate pod sizes
+- Query result caching to reduce API calls
+- Namespace management for efficient resource usage
+- Vector dimension optimization (1536 for OpenAI embeddings)
+- Estimated cost: $70-200/month for starter tier
+
+**LangChain & OpenAI Integration:**
+
+- Embedding generation batching (up to 2048 inputs per request)
+- Tool result caching to avoid redundant API calls
+- Smart prompt engineering to reduce token usage
+- Estimated embedding cost: $0.0001 per 1K tokens
 
 ## Feature Coherence Analysis
 
@@ -485,23 +566,54 @@ Visualizing how LangChain integrates with Redis, SQL, Pinecone, and OpenAI to ge
 
 ## Implementation Considerations
 
+### Development & Testing Strategy
+
+#### Local Development Setup
+
+- **Azure Blob Storage:** Azurite emulator for local blob storage testing
+- **Pinecone:** Separate development index with limited vectors
+- **LangChain:** Mock tool implementations for offline development
+- **Environment Management:** Comprehensive .env.example with all cloud service keys
+
+#### Testing Approaches
+
+- **Unit Tests:** Mock external service calls for fast test execution
+- **Integration Tests:** Use test containers for Redis and PostgreSQL
+- **AI Component Testing:** Deterministic responses for LangChain tools
+- **End-to-End Tests:** Separate test environment with real cloud services
+- **Performance Testing:** Load testing for vector search and blob operations
+
+#### CI/CD Considerations
+
+- **Secret Management:** Secure handling of multiple cloud service credentials
+- **Environment Promotion:** Automated deployment with service health checks
+- **Rollback Strategy:** Database and vector index backup procedures
+- **Monitoring:** Comprehensive alerting for all cloud service dependencies
+
 ### Technical Debt & Improvements
 
 1. **Frontend State Management:** Consider migrating to more robust state management
-2. **Testing Coverage:** Expand automated testing suite
-3. **API Documentation:** Enhance OpenAPI documentation
-4. **Error Handling:** Improve error boundaries and user feedback
+2. **Testing Coverage:** Expand automated testing suite with cloud service mocking
+3. **API Documentation:** Enhance OpenAPI documentation with AI endpoint examples
+4. **Error Handling:** Improve error boundaries and user feedback for cloud service failures
 5. **Accessibility:** Ensure WCAG 2.1 AA compliance
-6. **Blob Lifecycle Management:** Configure Azure Blob retention policies for cost optimization
+6. **Cloud Service Management:**
+   - Configure Azure Blob retention policies for cost optimization
+   - Implement Pinecone index monitoring and alerting
+   - Add LangChain tool performance metrics
 
 ### Scalability Preparations
 
 1. **Database Optimization:** Implement advanced indexing strategies
-2. **Caching Evolution:** Consider CDN integration for static assets
-3. **API Rate Limiting:** Implement comprehensive rate limiting
-4. **Monitoring Enhancement:** Add application performance monitoring
-5. **Security Hardening:** Regular security audits and updates
-6. **Vector Indexing:** Monitor and manage Pinecone vector growth and costs
+2. **Caching Evolution:** Consider CDN integration for static assets and Azure Blob content
+3. **API Rate Limiting:** Implement comprehensive rate limiting for AI and cloud services
+4. **Monitoring Enhancement:** Add application performance monitoring with cloud service metrics
+5. **Security Hardening:** Regular security audits and updates for all cloud integrations
+6. **Cloud Service Scaling:**
+   - **Vector Indexing:** Monitor and manage Pinecone vector growth and costs
+   - **Blob Storage:** Implement intelligent tiering and CDN distribution
+   - **LangChain Tools:** Optimize tool routing and implement circuit breakers
+   - **Multi-region Strategy:** Consider geographic distribution for global users
 
 ### User Experience Enhancements
 
